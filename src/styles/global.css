@@ -1,5 +1,5 @@
 /* =========================================================================
-   ESN Natation — système de design
+   ESN Compétition — système de design
    Inspiré des apps iOS natives : sombre par défaut, listes groupées, flou.
    ========================================================================= */
 
@@ -2758,6 +2758,17 @@ button.meet-nav-btn:active {
 
 .brand-logo .on-dark {
   display: none;
+}
+
+/* Logo du club dans la barre du haut de l'accueil (téléphone ; sur grand écran il est dans la barre latérale) */
+.nav-brand {
+  margin-left: 4px;
+}
+
+@media (min-width: 900px) {
+  .nav-brand {
+    display: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

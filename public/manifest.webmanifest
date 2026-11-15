@@ -1,7 +1,7 @@
 {
-  "name": "ESN Natation — Performances des nageurs",
-  "short_name": "ESN Natation",
-  "description": "Le carnet de performances gratuit des parents de nageurs de l’Ecole Seraing Natation : temps, records, progression, compétitions et objectifs.",
+  "name": "ESN Compétition",
+  "short_name": "ESN Compét",
+  "description": "L’application compétition gratuite des nageurs de l’Ecole Seraing Natation : résultats officiels, records, progression, programme des compétitions et objectifs.",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "./",

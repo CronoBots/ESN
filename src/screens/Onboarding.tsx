@@ -5,11 +5,11 @@ import { BrandLogo } from '../components/ui';
 import { openSwimmerForm } from './forms';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
+  { icon: 'download', title: 'Résultats officiels automatiques', text: 'Ajoutez votre enfant : ses résultats de compétition arrivent tout seuls.' },
+  { icon: 'chart', title: 'Progression compétition après compétition', text: 'Points, records battus et courbes nage par nage, saison par saison.' },
   { icon: 'trophy', title: 'Records et classements', text: 'Meilleurs temps à vie ou de la saison, en 25 m et en 50 m.' },
-  { icon: 'chart', title: 'Progression nage par nage', text: 'Courbes, tendances, saison par saison, comparaison entre nageurs.' },
   { icon: 'calendar', title: 'Programme des compétitions', text: 'Épreuves, séries, lignes, rappels dans le calendrier.' },
-  { icon: 'target', title: 'Objectifs & trophées', text: 'Temps limites, estimation de la date d’atteinte, badges à débloquer.' },
-  { icon: 'download', title: 'Résultats récupérés automatiquement', text: 'Ajoutez votre enfant : ses résultats de compétition arrivent tout seuls.' },
+  { icon: 'target', title: 'Objectifs & temps limites', text: 'Estimation de la date d’atteinte, badges à débloquer.' },
 ];
 
 export function Onboarding() {
@@ -21,7 +21,7 @@ export function Onboarding() {
         <br />
         <span>compte.</span>
       </h1>
-      <p className="lead">L’application des parents de nageurs de l’ESN Seraing : temps, records et progression de vos enfants.</p>
+      <p className="lead">L’application compétition des nageurs de l’ESN Seraing : résultats officiels, records et progression.</p>
       <div style={{ marginTop: 14 }}>
         <span className="free-tag">✓ Gratuit · sans pub · sans compte</span>
       </div>

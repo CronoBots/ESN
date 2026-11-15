@@ -428,7 +428,7 @@ var u=A+'#/import?data='+encodeURIComponent(D);
 var o=document.getElementById('nageo-box');if(o)o.remove();
 var b=document.createElement('div');b.id='nageo-box';
 b.style.cssText='position:fixed;z-index:2147483647;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;font:15px -apple-system,system-ui,sans-serif;padding:16px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.4);width:min(92vw,360px);text-align:center';
-b.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:4px">ESN Natation</div><div style="opacity:.75;margin-bottom:12px">Données de la page prêtes à être importées.</div>';
+b.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:4px">ESN Compétition</div><div style="opacity:.75;margin-bottom:12px">Données de la page prêtes à être importées.</div>';
 function btn(l,p,f){var e=document.createElement('button');e.textContent=l;e.style.cssText='display:block;width:100%;margin-top:8px;padding:12px;border-radius:12px;border:0;font:600 15px -apple-system,system-ui,sans-serif;cursor:pointer;'+(p?'background:#0A84FF;color:#fff':'background:#2c2c2e;color:#fff');e.onclick=f;b.appendChild(e);return e;}
 btn('Ouvrir dans l\u2019app ESN',1,function(){window.open(u,'_blank');b.remove();});
 var cp=btn('Copier les données',0,function(){var ok=function(){cp.textContent='Copié ✓ — collez-le dans l\u2019app ESN';};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(D).then(ok,function(){fb();ok();});}else{fb();ok();}});

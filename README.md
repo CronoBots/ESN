@@ -1,6 +1,6 @@
-# ESN Natation 🏊
+# ESN Compétition 🏊
 
-**Le carnet de performances gratuit des parents de nageurs de l'[Ecole Seraing Natation](https://www.esn-seraing.be/).**
+**L'application compétition gratuite des nageurs de l'[Ecole Seraing Natation](https://www.esn-seraing.be/)** : résultats officiels, records, progression et programme des compétitions.
 Application web progressive (PWA) : s'installe sur iPhone et Android, fonctionne aussi dans un navigateur d'ordinateur, et marche hors-ligne au bord du bassin.
 
 Gratuit, sans publicité, sans compte : les données restent sur l'appareil du parent.
@@ -23,7 +23,7 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | 📸 **Photos des résultats affichés** | Les feuilles affichées à la piscine, photographiées, sont lues sur le téléphone. |
 | 🔄 **Import swimrankings.net** | Capture d'écran lue sur le téléphone, copier-coller ou bouton-favori (ordinateur). |
 | 💾 **Sauvegarde** | Export / restauration JSON (transfert vers un autre téléphone, partage avec l'autre parent), export CSV pour Excel. |
-| 🌗 **Design** | Aux couleurs et avec le logo du club (vert ESN et bleu du « S »), style iOS natif, mode sombre et clair, onglets sur mobile et barre latérale sur ordinateur. |
+| 🌗 **Design** | Logo officiel du club décliné en « ESN Compétition », couleurs du club (vert ESN et bleu du « S »), style iOS natif, mode sombre et clair, onglets sur mobile et barre latérale sur ordinateur. |
 
 ## Résultats en direct des compétitions (LENEX)
 
@@ -51,10 +51,10 @@ npm install
 npm run dev       # serveur de développement
 npm test          # tests unitaires (temps, points, import swimrankings)
 npm run build     # build de production dans dist/
-npm run icons     # régénère les icônes depuis le logo du club (Playwright requis)
+npm run icons     # régénère le logo « ESN Compétition » et les icônes depuis brand/ (Playwright requis)
 ```
 
-Identité du club : logos dans `public/brand/` (versions claire et sombre, avec ou sans « NATATION »), couleurs `--brand-green` / `--brand-blue` dans `src/styles/global.css`. Club par défaut, fiche « Le club » (Réglages › À propos) et pays des compétitions suivies : `src/club.ts`.
+Identité du club : logo officiel d'origine dans `brand/` (versions claire et sombre, avec ou sans « NATATION »), logo « ESN Compétition » et icônes générés dans `public/brand/` et `public/icons/` par `npm run icons`, couleurs `--brand-green` / `--brand-blue` dans `src/styles/global.css`. Club par défaut, fiche « Le club » (Réglages › À propos) et pays des compétitions suivies : `src/club.ts`.
 
 Stack : React 19, TypeScript, Vite. Aucune dépendance d'exécution en dehors de React. Le service worker (`src/sw-template.js`) est généré au build avec la liste des fichiers à précharger.
 
@@ -77,4 +77,4 @@ Le dossier `dist/` peut aussi être déposé tel quel sur n'importe quel héberg
 
 ## Skill Claude « swimrankings-esn »
 
-`claude-skill/swimrankings-esn.zip` : une skill pour Claude (app de bureau avec navigateur intégré, ou Claude in Chrome). Donnez à Claude le lien swimrankings d'un nageur : il ouvre la page **dans votre navigateur**, relève les temps et renvoie un lien d'import vers l'application ESN Natation prêt à l'emploi (plus le texte à coller). Aucune connexion ni mot de passe swimrankings ; une vérification anti-robot éventuelle est validée par vous.
+`claude-skill/swimrankings-esn.zip` : une skill pour Claude (app de bureau avec navigateur intégré, ou Claude in Chrome). Donnez à Claude le lien swimrankings d'un nageur : il ouvre la page **dans votre navigateur**, relève les temps et renvoie un lien d'import vers l'application ESN Compétition prêt à l'emploi (plus le texte à coller). Aucune connexion ni mot de passe swimrankings ; une vérification anti-robot éventuelle est validée par vous.

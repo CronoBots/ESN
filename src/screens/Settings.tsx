@@ -34,8 +34,8 @@ async function shareOrDownload(name: string, content: string, type: string) {
 
 export function exportBackup() {
   const data = getState();
-  const name = `esn-natation-sauvegarde-${todayISO()}.json`;
-  shareOrDownload(name, JSON.stringify({ app: 'esn-natation', exportedAt: new Date().toISOString(), ...data }, null, 2), 'application/json').then(
+  const name = `esn-competition-sauvegarde-${todayISO()}.json`;
+  shareOrDownload(name, JSON.stringify({ app: 'esn-competition', exportedAt: new Date().toISOString(), ...data }, null, 2), 'application/json').then(
     (ok) => {
       if (ok) {
         actions.updateSettings({ lastBackupAt: Date.now() });
@@ -79,7 +79,7 @@ function exportCsv() {
         .join(';');
     });
   const csv = '﻿' + [header.join(';'), ...rows].join('\n');
-  shareOrDownload(`esn-natation-resultats-${todayISO()}.csv`, csv, 'text/csv').then((ok) => ok && overlay.toast('Export CSV prêt', '📊'));
+  shareOrDownload(`esn-competition-resultats-${todayISO()}.csv`, csv, 'text/csv').then((ok) => ok && overlay.toast('Export CSV prêt', '📊'));
 }
 
 export function Settings() {
@@ -274,7 +274,7 @@ export function Settings() {
           </div>
         </Section>
         <div className="section-foot center" style={{ marginTop: 18 }}>
-          ESN Natation {APP_VERSION} · gratuit, sans publicité, sans compte
+          ESN Compétition {APP_VERSION} · gratuit, sans publicité, sans compte
           <br />
           {data.swims.length} courses · {data.meets.length} compétitions · {formatDate(todayISO())}
         </div>
@@ -291,7 +291,7 @@ export function About() {
         <div className="center" style={{ padding: '8px 0 6px' }}>
           <BrandLogo height={120} />
           <div className="muted" style={{ marginTop: 14 }}>
-            Le carnet de performances des parents de nageurs de l’Ecole Seraing Natation
+            L’application compétition des nageurs de l’Ecole Seraing Natation
           </div>
           <div style={{ marginTop: 10 }}>
             <span className="free-tag">✓ 100 % gratuit · toutes les fonctions</span>
@@ -322,7 +322,7 @@ export function About() {
         </Section>
         <Section title="swimrankings.net">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
-            L’application ESN Natation n’est pas affiliée à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
+            L’application ESN Compétition n’est pas affiliée à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
             aucune donnée n’est envoyée à un tiers.
           </div>
         </Section>

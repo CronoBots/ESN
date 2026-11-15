@@ -46,11 +46,11 @@ export async function promptInstall() {
 function InstallHelp({ close }: { close: () => void }) {
   const ios = isIOS();
   return (
-    <SheetLayout title="Installer ESN Natation" onCancel={close} cancelLabel="Fermer">
+    <SheetLayout title="Installer ESN Compétition" onCancel={close} cancelLabel="Fermer">
       <div className="center" style={{ padding: '10px 0 18px' }}>
         <img src="./icons/icon-192.png" alt="" width={72} height={72} style={{ borderRadius: 18, boxShadow: '0 10px 30px rgba(1,91,28,.25)' }} />
         <p className="muted" style={{ margin: '12px auto 0', maxWidth: 360 }}>
-          Ajoutez ESN Natation sur votre écran d’accueil : l’application s’ouvre en plein écran, fonctionne sans connexion et vos
+          Ajoutez ESN Compétition sur votre écran d’accueil : l’application s’ouvre en plein écran, fonctionne sans connexion et vos
           données restent sur votre appareil.
         </p>
       </div>
@@ -75,7 +75,7 @@ function InstallHelp({ close }: { close: () => void }) {
             <li>
               Choisissez <b>« Installer l’application »</b> ou <b>« Ajouter à l’écran d’accueil »</b>.
             </li>
-            <li>Confirmez : ESN Natation apparaît avec vos autres applications.</li>
+            <li>Confirmez : ESN Compétition apparaît avec vos autres applications.</li>
           </ol>
         )}
       </div>
@@ -116,7 +116,7 @@ export function InstallBanner() {
     <div className="install-banner">
       <img src="./icons/icon-192.png" alt="" />
       <div className="grow">
-        <div style={{ fontWeight: 600, fontSize: 15 }}>Installer ESN Natation</div>
+        <div style={{ fontWeight: 600, fontSize: 15 }}>Installer ESN Compétition</div>
         <div className="muted small">Plein écran et hors-ligne</div>
       </div>
       <button className="btn small" onClick={promptInstall}>

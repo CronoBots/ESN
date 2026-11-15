@@ -578,7 +578,8 @@ function Confetti() {
 }
 
 /* ------------------------------------------------------------------------ */
-/* Logo du club (couleurs en thème clair, version claire en thème sombre)    */
+/* Logo « ESN Compétition » (couleurs officielles en thème clair, version     */
+/* éclaircie en thème sombre)                                                 */
 /* ------------------------------------------------------------------------ */
 
 export function BrandLogo({
@@ -587,13 +588,13 @@ export function BrandLogo({
   className = '',
 }: {
   height?: number;
-  /** full = logo officiel « ESN Natation » ; mark = « ESN Seraing » seul */
+  /** full = logo du club + « COMPÉTITION » ; mark = logo du club seul (petites tailles) */
   variant?: 'full' | 'mark';
   className?: string;
 }) {
-  const base = variant === 'full' ? 'esn-logo' : 'esn-mark';
+  const base = variant === 'full' ? 'esn-competition' : 'esn-mark';
   return (
-    <span className={`brand-logo ${className}`} style={{ height }} role="img" aria-label="ESN Seraing Natation">
+    <span className={`brand-logo ${className}`} style={{ height }} role="img" aria-label={variant === 'full' ? 'ESN Compétition' : 'ESN Seraing'}>
       <img className="on-light" src={`./brand/${base}.png`} alt="" height={height} />
       <img className="on-dark" src={`./brand/${base}-dark.png`} alt="" height={height} />
     </span>

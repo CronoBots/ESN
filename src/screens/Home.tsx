@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
 import { fullName, sortSwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
-import { Avatar, Empty, NavBar, Section, StrokeTag } from '../components/ui';
+import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { StrokeBars } from '../components/Chart';
@@ -28,7 +28,7 @@ export function Home() {
   if (!swimmer) {
     return (
       <>
-        <NavBar title="Accueil" />
+        <NavBar title="Accueil" left={<BrandLogo variant="mark" height={30} className="nav-brand" />} />
         <main className="page">
           <Empty
             icon="person"
@@ -50,6 +50,7 @@ export function Home() {
       <NavBar
         title="Accueil"
         wide
+        left={<BrandLogo variant="mark" height={30} className="nav-brand" />}
         right={
           <button className="icon-btn" aria-label="Ajouter un nageur" onClick={() => openSwimmerForm()}>
             <Icon name="plus" />

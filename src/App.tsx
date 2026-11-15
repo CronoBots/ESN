@@ -142,7 +142,7 @@ export function App() {
           </button>
         ))}
         <div className="sidebar-foot">
-          ESN Natation {APP_VERSION}
+          ESN Compétition {APP_VERSION}
           <br />
           Gratuit · données sur votre appareil
         </div>

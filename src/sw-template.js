@@ -1,4 +1,4 @@
-/* Service worker ESN Natation — généré au build (voir vite.config.ts). */
+/* Service worker ESN Compétition — généré au build (voir vite.config.ts). */
 const CACHE = 'nageo-__CACHE_VERSION__';
 const PRECACHE = __PRECACHE_FILES__;
 

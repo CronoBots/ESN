@@ -1,8 +1,8 @@
 {
-  "name": "esn-natation",
+  "name": "esn-competition",
   "private": true,
   "version": "1.0.0",
-  "description": "ESN Natation — le carnet de performances des parents de nageurs de l’Ecole Seraing Natation (PWA)",
+  "description": "ESN Compétition — l’application compétition des nageurs de l’Ecole Seraing Natation (PWA)",
   "type": "module",
   "scripts": {
     "dev": "vite",
