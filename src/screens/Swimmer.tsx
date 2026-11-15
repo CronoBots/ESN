@@ -5,6 +5,7 @@ import { Avatar, Empty, NavBar, Row, Section } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { SwimRow } from '../components/SwimRow';
 import { navigate } from '../router';
+import { groupName } from './Club';
 import { sportAge, seasonLabel, seasonOf } from '../lib/dates';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { achievements, chronoCompare } from '../lib/stats';
@@ -66,6 +67,11 @@ export function SwimmerProfile({ id }: { id: string }) {
           <div style={{ fontWeight: 500 }}>
             {[swimmer.nation, swimmer.club].filter(Boolean).join(' - ') || (swimmer.relation === 'child' ? 'Mon enfant' : 'Nageur suivi')}
           </div>
+          {swimmer.group && (
+            <div style={{ marginTop: 8 }}>
+              <span className="badge first">{groupName(data.settings.club?.groups ?? [], swimmer.group)}</span>
+            </div>
+          )}
         </div>
 
         <Section>

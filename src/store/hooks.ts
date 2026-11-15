@@ -23,11 +23,24 @@ export function sortSwimmers(list: Swimmer[]): Swimmer[] {
   });
 }
 
+/** Vrai quand la liste des membres du club est dans l'application. */
+export const hasClubMembers = (list: Swimmer[]) => list.some((s) => s.member);
+
+/**
+ * Mes nageurs : mes enfants et mes favoris. Sans liste du club (quelques nageurs
+ * seulement), tous les nageurs. `current` est ajouté s'il n'en fait pas partie.
+ */
+export function mySwimmers(list: Swimmer[], current?: Swimmer): Swimmer[] {
+  const mine = hasClubMembers(list) ? list.filter((s) => s.relation === 'child' || s.favorite) : list;
+  const out = sortSwimmers(mine);
+  return current && !out.some((s) => s.id === current.id) ? [...out, current] : out;
+}
+
 export function useSelectedSwimmer(): Swimmer | undefined {
   const data = useData();
   return useMemo(() => {
     const id = data.settings.selectedSwimmerId;
-    return data.swimmers.find((s) => s.id === id) ?? sortSwimmers(data.swimmers)[0];
+    return data.swimmers.find((s) => s.id === id) ?? mySwimmers(data.swimmers)[0] ?? sortSwimmers(data.swimmers)[0];
   }, [data.swimmers, data.settings.selectedSwimmerId]);
 }
 

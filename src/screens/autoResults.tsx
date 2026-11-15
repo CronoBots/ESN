@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { overlay } from '../components/ui';
+import { getState } from '../store/store';
+import type { LiveSyncResult } from '../lib/liveResults';
 import { syncLive, syncStatus } from '../lib/liveResults';
 import { deName } from '../lib/text';
 
@@ -10,14 +12,29 @@ export function useSyncStatus() {
   );
 }
 
+/**
+ * « 12 nouveaux résultats pour Emma et 18 nageurs du club » : les prénoms de mes
+ * nageurs d'abord, les autres nageurs du club comptés.
+ */
+export function resultsMessage(r: Pick<LiveSyncResult, 'added' | 'swimmers'>, word: 'nouveau' | 'trouvé'): string {
+  const ids = new Set(getState().swimmers.filter((s) => s.relation === 'child' || s.favorite).map((s) => s.id));
+  const mine = [...new Set(r.swimmers.filter((x) => ids.has(x.swimmer.id) || !x.swimmer.member).map((x) => x.swimmer.firstName))];
+  const others = r.swimmers.filter((x) => !ids.has(x.swimmer.id) && x.swimmer.member).length;
+  const s = r.added > 1 ? 's' : '';
+  const head = word === 'nouveau' ? `${r.added} nouveau${r.added > 1 ? 'x' : ''} résultat${s}` : `${r.added} résultat${s} trouvé${s}`;
+  const club = others ? `${others} nageur${others > 1 ? 's' : ''} du club` : '';
+  const who = mine.length > 3 ? [...mine.slice(0, 3), `${mine.length - 3} autres`] : mine;
+  const parts = [...who, club].filter(Boolean);
+  return `${head} pour ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}` : parts[0]}`;
+}
+
 /** Lance tout de suite la recherche des résultats (nageur ajouté, bouton « Rechercher »). */
 export async function findResultsNow(firstName?: string) {
   overlay.toast(firstName ? `Recherche des résultats ${deName(firstName)}…` : 'Recherche des résultats…', '🔎');
   try {
     const r = await syncLive({ force: true });
     if (r.added) {
-      const who = [...new Set(r.swimmers.map((x) => x.swimmer.firstName))].join(', ');
-      overlay.toast(`${r.added} résultat${r.added > 1 ? 's' : ''} trouvé${r.added > 1 ? 's' : ''} pour ${who}`, '🎉');
+      overlay.toast(resultsMessage(r, 'trouvé'), '🎉');
       if (r.pbs) overlay.celebrate();
     } else {
       overlay.toast(firstName ? `Pas de nouveau résultat pour ${firstName} : ils arriveront après sa prochaine compétition` : 'Tout est à jour', '✓');

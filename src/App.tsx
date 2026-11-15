@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { BrandLogo, UiHost, overlay } from './components/ui';
-import { isSyncing, shouldAutoSyncLive, syncLive } from './lib/liveResults';
+import { isSyncing, shouldAutoSyncLive, syncLive, type LiveSyncResult } from './lib/liveResults';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
@@ -14,6 +14,8 @@ import { SwimmerHistory, SwimmerProfile } from './screens/Swimmer';
 import { ImportScreen } from './screens/Import';
 import { About, Settings, APP_VERSION } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
+import { ClubScreen, refreshClubRoster } from './screens/Club';
+import { resultsMessage } from './screens/autoResults';
 import type { Course, Stroke } from './store/types';
 
 const TABS: { id: string; path: string; label: string; icon: IconName }[] = [
@@ -30,6 +32,7 @@ function activeTab(path: string[]): string {
   if (p === 'records' || p === 'rankings' || p === 'event') return 'records';
   if (p === 'progress') return 'progress';
   if (p === 'settings' || p === 'import' || p === 'about') return 'settings';
+  if (p === 'club') return 'home';
   return 'home';
 }
 
@@ -60,6 +63,8 @@ function Screen({ path }: { path: string[] }) {
       return <Settings />;
     case 'about':
       return <About />;
+    case 'club':
+      return <ClubScreen />;
     default:
       return <Home />;
   }
@@ -85,14 +90,17 @@ export function App() {
   }, [theme]);
 
   const showOnboarding =
-    data.swimmers.length === 0 && !data.settings.onboarded && route.path[0] !== 'import' && route.path[0] !== 'about';
+    data.swimmers.length === 0 &&
+    !data.settings.onboarded &&
+    route.path[0] !== 'import' &&
+    route.path[0] !== 'about' &&
+    !(route.path[0] === 'club' && route.query.has('code'));
 
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
-    const notify = (r: { added: number; pbs: number; swimmers: { swimmer: { firstName: string } }[] }) => {
+    const notify = (r: LiveSyncResult) => {
       if (!r.added) return;
-      const who = [...new Set(r.swimmers.map((x) => x.swimmer.firstName))].join(', ');
-      overlay.toast(`${r.added} nouveau${r.added > 1 ? 'x' : ''} résultat${r.added > 1 ? 's' : ''} pour ${who}`, '🏊');
+      overlay.toast(resultsMessage(r, 'nouveau'), '🏊');
       if (r.pbs) overlay.celebrate();
     };
     const run = () => {
@@ -112,6 +120,16 @@ export function App() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [data.swimmers.length]);
+
+  // Liste des membres du club : nouvelle version publiée par le club → mise à jour
+  useEffect(() => {
+    const t = setTimeout(() => {
+      refreshClubRoster()
+        .then((n) => n && overlay.toast(`${n} nouveau${n > 1 ? 'x' : ''} nageur${n > 1 ? 's' : ''} dans la liste du club`, '🏊'))
+        .catch(() => {});
+    }, 800);
+    return () => clearTimeout(t);
+  }, []);
 
   // Fin de l'écran de bienvenue : on repart du haut de la page
   useEffect(() => {

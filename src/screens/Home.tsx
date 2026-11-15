@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
-import { fullName, sortSwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
+import { fullName, hasClubMembers, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
@@ -14,6 +14,7 @@ import { openGoalForm, openSwimmerForm } from './forms';
 import { InstallBanner } from './Install';
 import { findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
+import { groupsLabel, openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
 import type { Goal, Swimmer } from '../store/types';
 
 const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -23,7 +24,34 @@ export function Home() {
   const data = useData();
   const swimmer = useSelectedSwimmer();
   const pbFlags = usePbFlags();
-  const swimmers = sortSwimmers(data.swimmers);
+  const swimmers = mySwimmers(data.swimmers, swimmer);
+  const clubMode = hasClubMembers(data.swimmers);
+  const noChild = clubMode && !data.swimmers.some((s) => s.relation === 'child' || s.favorite);
+
+  if (noChild) {
+    return (
+      <>
+        <NavBar title="Accueil" left={<BrandLogo variant="mark" height={30} className="nav-brand" />} />
+        <main className="page">
+          <Empty
+            icon="person"
+            title="Qui sont vos enfants ?"
+            text="Choisissez vos enfants dans la liste du club : leurs résultats, records et progression s’afficheront ici."
+            action={
+              <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
+                <button className="btn block" onClick={() => openChildrenPicker()}>
+                  <Icon name="person" /> Choisir mes enfants
+                </button>
+                <button className="btn ghost block" onClick={() => navigate('/club')}>
+                  <Icon name="users" /> Voir les nageurs du club
+                </button>
+              </div>
+            }
+          />
+        </main>
+      </>
+    );
+  }
 
   if (!swimmer) {
     return (
@@ -424,9 +452,59 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               )}
             </Section>
           )}
+
+          <ClubCard />
         </div>
       </div>
     </>
+  );
+}
+
+/** Accès aux nageurs du club (ou au code du club s'il n'est pas encore saisi). */
+function ClubCard() {
+  const data = useData();
+  const available = useRosterAvailable();
+  const club = data.settings.club;
+  if (!club && !available) return null;
+  const members = data.swimmers.filter((s) => s.member).length;
+  return (
+    <Section title="Le club">
+      {club ? (
+        <div className="list">
+          <button className="row" onClick={() => navigate('/club')}>
+            <span className="row-icon" style={{ background: 'var(--brand-green)' }}>
+              <Icon name="users" />
+            </span>
+            <div className="row-body">
+              <div className="row-title">Nageurs de l’ESN</div>
+              <div className="row-sub">
+                {members} nageurs · {groupsLabel(club.groups)}
+              </div>
+            </div>
+            <Icon name="chevronRight" className="chev" />
+          </button>
+          <button className="row" onClick={() => navigate('/rankings')}>
+            <span className="row-icon" style={{ background: 'var(--brand-blue)' }}>
+              <Icon name="ranking" />
+            </span>
+            <div className="row-body">
+              <div className="row-title">Classements du club</div>
+              <div className="row-sub">Meilleurs temps par épreuve et par groupe</div>
+            </div>
+            <Icon name="chevronRight" className="chev" />
+          </button>
+        </div>
+      ) : (
+        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openClubCode(() => openChildrenPicker())}>
+          <BrandLogo variant="mark" height={34} />
+          <div className="grow">
+            <div style={{ fontWeight: 600 }}>Membre de l’ESN ?</div>
+            <div className="muted small">Entrez le code du club pour retrouver tous les nageurs des groupes et leurs résultats.</div>
+          </div>
+          <Icon name="chevronRight" className="chev" />
+        </button>
+      )}
+    </Section>
   );
 }
 

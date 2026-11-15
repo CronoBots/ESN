@@ -3,6 +3,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { navigate } from '../router';
 import { BrandLogo } from '../components/ui';
 import { openSwimmerForm } from './forms';
+import { openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
   { icon: 'download', title: 'Résultats officiels automatiques', text: 'Ajoutez votre enfant : ses résultats de compétition arrivent tout seuls.' },
@@ -13,6 +14,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
 ];
 
 export function Onboarding() {
+  const club = useRosterAvailable();
   return (
     <main className="onboard">
       <BrandLogo height={110} />
@@ -39,7 +41,15 @@ export function Onboarding() {
         ))}
       </div>
       <div className="onboard-actions">
-        <button className="btn block" onClick={() => openSwimmerForm(undefined, () => navigate('/', { replace: true }))}>
+        {club && (
+          <button className="btn block" onClick={() => openClubCode(() => openChildrenPicker(() => navigate('/', { replace: true })))}>
+            <Icon name="shield" /> Je suis membre de l’ESN
+          </button>
+        )}
+        <button
+          className={`btn block${club ? ' secondary' : ''}`}
+          onClick={() => openSwimmerForm(undefined, () => navigate('/', { replace: true }))}
+        >
           <Icon name="plus" /> Ajouter mon enfant
         </button>
         <button

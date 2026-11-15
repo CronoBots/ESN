@@ -19,6 +19,7 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | 🏊 **Entraînements** | Chronos d'entraînement séparés (inclus ou non dans les records). |
 | 👨‍👩‍👧 **Plusieurs nageurs** | Frères et sœurs, nageurs suivis, favoris. |
+| 👥 **Nageurs du club** | Liste des membres par groupe (A, B, C), réservée aux membres (code du club) : chaque parent choisit ses enfants, résultats de tout le club, classements par groupe. |
 | ⚡ **Résultats automatiques** | Dès qu'un enfant est ajouté, ses résultats officiels de compétition (LENEX, live.swimrankings.net) arrivent tout seuls. |
 | 📸 **Photos des résultats affichés** | Les feuilles affichées à la piscine, photographiées, sont lues sur le téléphone. |
 | 🔄 **Import swimrankings.net** | Capture d'écran lue sur le téléphone, copier-coller ou bouton-favori (ordinateur). |
@@ -39,6 +40,19 @@ swimrankings.net est protégé contre les accès automatisés et n'autorise pas 
 2. **Copier-coller** : on copie la page « Meilleurs temps » (ou « Tous les résultats » d'une nage) et on la colle dans l'application.
 
 Le nageur, les compétitions et les performances sont créés automatiquement, sans doublons. Aucun identifiant ni mot de passe swimrankings n'est nécessaire.
+
+## Liste des membres du club (groupes A, B, C)
+
+Le site et le dépôt sont **publics** : la liste des nageurs n'y est jamais en clair. Elle est publiée **chiffrée** (`public/data/club-roster.json`, AES-GCM 256 bits, clé dérivée du code du club par PBKDF2-SHA-256, 310 000 itérations) et ne s'ouvre qu'avec le **code du club**, donné aux membres. Le code n'est jamais versionné.
+
+Préparer ou mettre à jour la liste :
+
+1. Un fichier `membres.csv` **hors du dépôt** (ou à la racine : il est ignoré par git), une ligne par nageur : `groupe;nom;prénom;année de naissance;sexe` (F ou M), par exemple `A;DUPONT;Emma;2012;F`.
+2. `npm run roster -- code` propose un code (ex. `ESN-7KQ4-M2XP`), à garder et à transmettre aux membres.
+3. `npm run roster -- chiffrer membres.csv ESN-7KQ4-M2XP` écrit le fichier chiffré ; `npm run roster -- verifier ESN-7KQ4-M2XP` le relit.
+4. Seul `public/data/club-roster.json` est ajouté au dépôt.
+
+Les parents entrent le code une fois (écran de bienvenue, Réglages › Le club) ou ouvrent le lien `https://cronobots.github.io/ESN/#/club?code=ESN-7KQ4-M2XP` partagé par le club. Une nouvelle liste publiée avec le même code est appliquée automatiquement (nouveaux nageurs, changements de groupe) ; avec un nouveau code, l'application le redemande. Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.
 
 ## Points World Aquatics
 

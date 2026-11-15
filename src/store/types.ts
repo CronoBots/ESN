@@ -1,3 +1,5 @@
+import type { RosterGroup } from '../lib/roster';
+
 export type Stroke = 'FREE' | 'BACK' | 'BREAST' | 'FLY' | 'IM';
 /** SCM = petit bassin (25 m), LCM = grand bassin (50 m). */
 export type Course = 'SCM' | 'LCM';
@@ -21,6 +23,10 @@ export interface Swimmer {
   /** Mon enfant (child) ou nageur suivi (followed : coéquipier, ami…). */
   relation: Relation;
   favorite: boolean;
+  /** Groupe d'entraînement au club (liste des membres : A, B, C…). */
+  group?: string;
+  /** Ajouté depuis la liste des membres du club. */
+  member?: boolean;
   createdAt: number;
 }
 
@@ -99,6 +105,20 @@ export interface Settings {
   celebrate: boolean;
   /** Récupération automatique des résultats en direct (live.swimrankings.net). */
   liveSync: LiveSyncSettings;
+  /** Liste des membres du club, déverrouillée avec le code du club. */
+  club?: ClubAccess;
+}
+
+export interface ClubAccess {
+  code: string;
+  /** Version du fichier chiffré déjà appliquée (son vecteur d'initialisation). */
+  version: string;
+  /** Date de la liste (AAAA-MM-JJ). */
+  updated: string;
+  groups: RosterGroup[];
+  count: number;
+  /** Nouvelle liste publiée avec un autre code : à redemander. */
+  expired?: boolean;
 }
 
 export interface LiveSyncSettings {

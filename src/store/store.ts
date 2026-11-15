@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { AppData, Goal, LiveSyncSettings, Meet, Settings, Swim, Swimmer } from './types';
-import type { ReportMeet, ReportSwim } from '../lib/results';
+import { sameSwimmer, type ReportMeet, type ReportSwim } from '../lib/results';
+import type { Roster } from '../lib/roster';
 import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
 import { uid } from '../lib/id';
 
@@ -50,6 +51,8 @@ function load(): AppData {
 let state: AppData = load();
 const listeners = new Set<() => void>();
 let saveError: string | null = null;
+let batching = 0;
+let dirty = false;
 
 function persist() {
   try {
@@ -62,8 +65,26 @@ function persist() {
 
 function setState(updater: (s: AppData) => AppData) {
   state = updater(state);
+  if (batching) {
+    dirty = true;
+    return;
+  }
   persist();
   listeners.forEach((l) => l());
+}
+
+/** Regroupe plusieurs modifications en un seul enregistrement (nombreux nageurs du club). */
+export function batch<T>(fn: () => T): T {
+  batching++;
+  try {
+    return fn();
+  } finally {
+    if (--batching === 0 && dirty) {
+      dirty = false;
+      persist();
+      listeners.forEach((l) => l());
+    }
+  }
 }
 
 export function getState(): AppData {
@@ -288,6 +309,85 @@ export const actions = {
 
   resetAll() {
     setState(() => emptyData());
+  },
+
+  /**
+   * Liste des membres du club : ajoute les nouveaux nageurs (suivis, avec leur
+   * groupe), met à jour les groupes, et retire les anciens membres sans
+   * résultat (ceux qui ont des résultats restent, sans groupe).
+   */
+  applyRoster(roster: Roster, code: string, version: string): { added: number; total: number } {
+    let added = 0;
+    setState((s) => {
+      const now = Date.now();
+      const swimmers = [...s.swimmers];
+      const kept = new Set<string>();
+      for (const m of roster.members) {
+        const i = swimmers.findIndex((sw) => !kept.has(sw.id) && sameSwimmer(m, sw));
+        if (i >= 0) {
+          const sw = swimmers[i];
+          swimmers[i] = { ...sw, group: m.group, member: true, birthYear: sw.birthYear ?? m.birthYear, club: sw.club || roster.club };
+          kept.add(sw.id);
+        } else {
+          const sw: Swimmer = {
+            id: uid(),
+            firstName: m.firstName,
+            lastName: m.lastName,
+            gender: m.gender,
+            birthYear: m.birthYear,
+            club: roster.club,
+            nation: 'BEL',
+            color: swimmers.length % 8,
+            relation: 'followed',
+            favorite: false,
+            group: m.group,
+            member: true,
+            createdAt: now,
+          };
+          swimmers.push(sw);
+          kept.add(sw.id);
+          added++;
+        }
+      }
+      const used = new Set([...s.swims.map((x) => x.swimmerId), ...s.goals.map((g) => g.swimmerId)]);
+      const next = swimmers
+        .filter((sw) => !sw.member || kept.has(sw.id) || used.has(sw.id) || sw.relation === 'child' || sw.favorite)
+        .map((sw) => (sw.member && !kept.has(sw.id) ? { ...sw, member: false, group: undefined } : sw));
+      return {
+        ...s,
+        swimmers: next,
+        settings: {
+          ...s.settings,
+          onboarded: true,
+          club: { code, version, updated: roster.updated, groups: roster.groups, count: roster.members.length },
+        },
+      };
+    });
+    return { added, total: roster.members.length };
+  },
+
+  /** Mes enfants parmi les nageurs (les autres restent suivis). */
+  setChildren(ids: string[]) {
+    setState((s) => ({
+      ...s,
+      swimmers: s.swimmers.map((sw) =>
+        ids.includes(sw.id)
+          ? { ...sw, relation: 'child', favorite: true }
+          : sw.relation === 'child'
+            ? { ...sw, relation: 'followed', favorite: false }
+            : sw,
+      ),
+      settings: {
+        ...s.settings,
+        onboarded: true,
+        selectedSwimmerId: ids.includes(s.settings.selectedSwimmerId ?? '') ? s.settings.selectedSwimmerId : ids[0] ?? s.settings.selectedSwimmerId,
+      },
+    }));
+  },
+
+  /** Oublie le code du club (les nageurs et leurs résultats restent). */
+  forgetClub() {
+    setState((s) => ({ ...s, settings: { ...s.settings, club: undefined } }));
   },
 
   updateLiveSync(patch: Partial<LiveSyncSettings>) {

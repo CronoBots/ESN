@@ -1,24 +1,16 @@
 import { CLUB } from '../club';
-import { actions, getState } from '../store/store';
+import { actions, batch, getState } from '../store/store';
 import type { Swim, Swimmer } from '../store/types';
 import { makeISO, monthFromToken, todayISO } from './dates';
 import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './lenex';
 import { computePbFlags } from './stats';
-import { normName } from './results';
+import { nameKeys, sameSwimmer } from './results';
+
+export { sameSwimmer };
 
 export interface Progress {
   done: number;
   total: number;
-}
-
-/** Même nageur : nom et prénom (dans un sens ou dans l'autre) et année de naissance si connue. */
-export function sameSwimmer(
-  a: { firstName: string; lastName: string; birthYear?: number },
-  sw: Pick<Swimmer, 'firstName' | 'lastName' | 'birthYear'>,
-): boolean {
-  const x = `${normName(a.lastName)}|${normName(a.firstName)}`;
-  if (x !== `${normName(sw.lastName)}|${normName(sw.firstName)}` && x !== `${normName(sw.firstName)}|${normName(sw.lastName)}`) return false;
-  return !(sw.birthYear && a.birthYear && sw.birthYear !== a.birthYear);
 }
 
 /**
@@ -214,8 +206,11 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       const l = await fetchLiveResults(m.id, m.status === 'live');
       if (!l) return; // pas encore publié : on réessaiera
       const pending = m.status === 'live' ? swimmers : swimmers.filter((s) => !processed[m.id]?.includes(s.id));
+      // Index des nageurs de la compétition (des centaines) : recherche directe par nom
+      const index = new Map<string, LenexAthlete[]>();
+      for (const x of l.athletes) for (const k of nameKeys(x)) index.set(k, [...(index.get(k) ?? []), x]);
       for (const sw of pending) {
-        const a = l.athletes.find((x) => sameSwimmer(x, sw));
+        const a = (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw));
         if (!a) continue;
         found.set(sw.id, [...(found.get(sw.id) ?? []), toImport(l, a)]);
         const patch: Partial<Swimmer> = { ...profile.get(sw.id) };
@@ -229,18 +224,21 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   );
 
   const added: Swim[] = [];
-  for (const sw of swimmers) {
-    if (profile.has(sw.id)) actions.updateSwimmer(sw.id, profile.get(sw.id)!);
-    const reports = found.get(sw.id);
-    if (!reports?.length) continue;
-    const r = actions.importClubResults(sw.id, reports);
-    if (r.added) {
-      result.added += r.added;
-      result.swimmers.push({ swimmer: sw, added: r.added });
-      added.push(...r.swims);
+  // Un seul enregistrement pour tous les nageurs du club
+  batch(() => {
+    for (const sw of swimmers) {
+      if (profile.has(sw.id)) actions.updateSwimmer(sw.id, profile.get(sw.id)!);
+      const reports = found.get(sw.id);
+      if (!reports?.length) continue;
+      const r = actions.importClubResults(sw.id, reports);
+      if (r.added) {
+        result.added += r.added;
+        result.swimmers.push({ swimmer: sw, added: r.added });
+        added.push(...r.swims);
+      }
     }
-  }
-  actions.updateLiveSync({ processed, lastCheck: Date.now() });
+    actions.updateLiveSync({ processed, lastCheck: Date.now() });
+  });
   if (added.length) {
     const flags = computePbFlags(getState().swims, getState().settings.includeTraining);
     result.pbs = added.filter((s) => flags.get(s.id)?.isPB).length;

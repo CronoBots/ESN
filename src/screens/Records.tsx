@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { actions, useData } from '../store/store';
-import { fullName, sortSwimmers, useSelectedSwimmer } from '../store/hooks';
+import { fullName, hasClubMembers, mySwimmers, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, Segmented, StrokeDot, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
@@ -11,10 +11,11 @@ import { formatTime } from '../lib/time';
 import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
 import { findResultsNow } from './autoResults';
 import { deName } from '../lib/text';
+import { groupName } from './Club';
 
 export function SwimmerChips({ swimmer }: { swimmer: Swimmer }) {
   const data = useData();
-  const swimmers = sortSwimmers(data.swimmers);
+  const swimmers = mySwimmers(data.swimmers, swimmer);
   if (swimmers.length < 2) return null;
   return (
     <div className="chips" style={{ marginBottom: 12 }}>
@@ -180,6 +181,9 @@ export function Rankings() {
   const [course, setCourse] = useState<Course>(data.settings.defaultCourse);
   const [gender, setGender] = useState<'all' | Gender>('all');
   const [sameYear, setSameYear] = useState(false);
+  const groups = data.settings.club?.groups ?? [];
+  const club = hasClubMembers(data.swimmers) && groups.length > 0;
+  const [group, setGroup] = useState<string>(() => (club && selected?.group ? selected.group : 'all'));
   const include = data.settings.includeTraining;
   const distances = distancesFor(stroke, course);
   const dist = distances.includes(distance) ? distance : distances[0];
@@ -189,6 +193,7 @@ export function Rankings() {
     for (const sw of data.swimmers) {
       if (gender !== 'all' && sw.gender !== gender) continue;
       if (sameYear && selected?.birthYear && sw.birthYear !== selected.birthYear) continue;
+      if (club && group !== 'all' && sw.group !== group) continue;
       let best: Swim | undefined;
       for (const s of data.swims) {
         if (s.swimmerId !== sw.id || s.course !== course || s.distance !== dist || s.stroke !== stroke) continue;
@@ -198,15 +203,28 @@ export function Rankings() {
       if (best) rows.push({ swimmer: sw, best });
     }
     return rows.sort((a, b) => a.best.timeCs! - b.best.timeCs!);
-  }, [data.swimmers, data.swims, gender, sameYear, selected, course, dist, stroke, include]);
+  }, [data.swimmers, data.swims, gender, sameYear, selected, course, dist, stroke, include, club, group]);
 
   const leader = ranking[0]?.best.timeCs;
 
   return (
     <>
-      <NavBar title="Classements" subtitle="Entre vos nageurs et les nageurs suivis" back="/records" />
+      <NavBar
+        title="Classements"
+        subtitle={club ? 'Meilleurs temps des nageurs du club, par groupe' : 'Entre vos nageurs et les nageurs suivis'}
+        back="/records"
+      />
       <main className="page">
         <div className="card" style={{ padding: '12px 12px 8px' }}>
+          {club && (
+            <div style={{ marginBottom: 10 }}>
+              <Segmented
+                value={group}
+                onChange={setGroup}
+                options={[{ id: 'all', label: 'Club' }, ...groups.map((g) => ({ id: g.id, label: g.name }))]}
+              />
+            </div>
+          )}
           <div className="chips">
             {STROKES.map((s) => (
               <button key={s.id} className={`chip${stroke === s.id ? ' active' : ''}`} onClick={() => setStroke(s.id)}>
@@ -254,7 +272,11 @@ export function Rankings() {
               <Empty
                 icon="ranking"
                 title="Pas encore de classement"
-                text="Ajoutez des nageurs suivis (coéquipiers, amis) dans Réglages pour comparer les meilleurs temps."
+                text={
+                  club
+                    ? 'Aucun nageur de cette sélection n’a encore de temps sur cette épreuve.'
+                    : 'Ajoutez des nageurs suivis (coéquipiers, amis) dans Réglages pour comparer les meilleurs temps.'
+                }
               />
             </div>
           ) : (
@@ -271,7 +293,11 @@ export function Rankings() {
                       <div className="row-title" style={{ fontWeight: r.swimmer.relation === 'child' ? 700 : 400 }}>
                         {fullName(r.swimmer)}
                       </div>
-                      <div className="row-sub">{[age != null ? `${age} ans` : null, r.swimmer.club].filter(Boolean).join(' · ')}</div>
+                      <div className="row-sub">
+                        {[age != null ? `${age}\u00a0ans` : null, club ? groupName(groups, r.swimmer.group) : r.swimmer.club]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
                       <div className="row-sub">{formatDate(r.best.date)}</div>
                     </div>
                     <div className="row-end" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
@@ -284,7 +310,7 @@ export function Rankings() {
             </div>
           )}
         </Section>
-        {STROKE_BY_ID[stroke] && (
+        {STROKE_BY_ID[stroke] && !club && (
           <div className="section-foot">
             Astuce : importez la page swimrankings.net d’un coéquipier en tant que « nageur suivi » pour l’ajouter au classement.
           </div>

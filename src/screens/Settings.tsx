@@ -1,9 +1,10 @@
 import { useRef } from 'react';
 import { actions, getState, loadDemo, normalizeData, useData } from '../store/store';
-import { fullName, sortSwimmers } from '../store/hooks';
+import { fullName, hasClubMembers, mySwimmers } from '../store/hooks';
 import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
+import { groupName, openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
 import { downloadFile } from '../lib/ics';
 import { formatDate, relativeDay, toISO, todayISO } from '../lib/dates';
 import { COURSES, eventLabel, ROUND_LABEL, STATUS_LABEL } from '../lib/events';
@@ -85,7 +86,10 @@ function exportCsv() {
 export function Settings() {
   const data = useData();
   const fileRef = useRef<HTMLInputElement>(null);
-  const swimmers = sortSwimmers(data.swimmers);
+  const swimmers = mySwimmers(data.swimmers);
+  const clubMode = hasClubMembers(data.swimmers);
+  const club = data.settings.club;
+  const rosterAvailable = useRosterAvailable();
   const s = data.settings;
   const lastBackup = s.lastBackupAt ? toISO(new Date(s.lastBackupAt)) : null;
   const daysSince = s.lastBackupAt ? Math.floor((Date.now() - s.lastBackupAt) / 86400000) : null;
@@ -125,7 +129,7 @@ export function Settings() {
     <>
       <NavBar title="Réglages" />
       <main className="page">
-        <Section title="Nageurs">
+        <Section title={clubMode ? 'Mes nageurs' : 'Nageurs'}>
           <div className="list">
             {swimmers.map((sw) => (
               <button key={sw.id} className="row" onClick={() => navigate(`/swimmer/${sw.id}`)}>
@@ -135,16 +139,46 @@ export function Settings() {
                     {fullName(sw)} {sw.favorite && <Icon name="heartFill" style={{ width: 14, height: 14, color: '#ff375f', verticalAlign: '-1px' }} />}
                   </div>
                   <div className="row-sub">
-                    {[sw.relation === 'child' ? 'Mon enfant' : 'Suivi', sw.birthYear, sw.club].filter(Boolean).join(' · ')}
+                    {[sw.relation === 'child' ? 'Mon enfant' : 'Suivi', sw.birthYear, groupName(club?.groups ?? [], sw.group) ?? sw.club].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <Icon name="chevronRight" className="chev" />
               </button>
             ))}
+            {clubMode && <Row icon="person" title="Choisir mes enfants" accent onClick={() => openChildrenPicker()} />}
             <Row icon="plus" title="Ajouter un nageur" accent onClick={() => openSwimmerForm()} />
           </div>
-          <div className="section-foot">Ajoutez vos enfants, mais aussi des coéquipiers « suivis » pour les classements et les comparaisons.</div>
+          <div className="section-foot">
+            {clubMode
+              ? 'Vos enfants et vos favoris (cœur sur la fiche d’un nageur) apparaissent sur l’accueil et dans les sélecteurs.'
+              : 'Ajoutez vos enfants, mais aussi des coéquipiers « suivis » pour les classements et les comparaisons.'}
+          </div>
         </Section>
+
+        {(club || rosterAvailable) && (
+          <Section title="Le club">
+            <div className="list">
+              {club ? (
+                <>
+                  <Row
+                    icon="users"
+                    iconBg="var(--brand-green)"
+                    title="Nageurs de l’ESN"
+                    value={`${data.swimmers.filter((s) => s.member).length}`}
+                    chevron
+                    onClick={() => navigate('/club')}
+                  />
+                  <Row icon="ranking" iconBg="var(--brand-blue)" title="Classements du club" chevron onClick={() => navigate('/rankings')} />
+                  {club.expired && <Row icon="shield" iconBg="#ff9f0a" title="Entrer le nouveau code du club" chevron onClick={() => openClubCode()} />}
+                </>
+              ) : (
+                <Row icon="shield" iconBg="var(--brand-green)" title="Entrer le code du club" chevron onClick={() => openClubCode(() => openChildrenPicker())} />
+              )}
+              <Row icon="info" iconBg="#8e8e93" title="Infos du club" chevron onClick={() => navigate('/about')} />
+            </div>
+            {club && <div className="section-foot">Liste du {formatDate(club.updated)}, mise à jour automatiquement quand le club en publie une nouvelle.</div>}
+          </Section>
+        )}
 
         <Section title="Résultats automatiques">
           <div className="list">
@@ -247,7 +281,6 @@ export function Settings() {
                 }
               }}
             />
-            <Row icon="shield" iconBg="var(--brand-green)" title="Le club ESN Seraing" chevron onClick={() => navigate('/about')} />
             <Row icon="info" iconBg="#8e8e93" title="À propos" chevron onClick={() => navigate('/about')} />
           </div>
         </Section>

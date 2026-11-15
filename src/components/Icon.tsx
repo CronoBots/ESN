@@ -180,6 +180,12 @@ const PATHS: Record<string, JSX.Element> = {
       <rect x="15.5" y="13" width="6" height="7" rx="1.5" fill="currentColor" opacity=".5" />
     </>
   ),
+  search: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2.2" />
+      <path d="m15.5 15.5 5 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </>
+  ),
   shield: (
     <path d="M12 2.5 4.5 5.5V11c0 5 3.2 8.6 7.5 10.5 4.3-1.9 7.5-5.5 7.5-10.5V5.5z" fill="currentColor" />
   ),
