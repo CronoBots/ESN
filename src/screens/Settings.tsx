@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { actions, getState, loadDemo, normalizeData, useData } from '../store/store';
 import { fullName, sortSwimmers } from '../store/hooks';
-import { Avatar, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
+import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { downloadFile } from '../lib/ics';
@@ -34,8 +34,8 @@ async function shareOrDownload(name: string, content: string, type: string) {
 
 export function exportBackup() {
   const data = getState();
-  const name = `nageo-sauvegarde-${todayISO()}.json`;
-  shareOrDownload(name, JSON.stringify({ app: 'nageo', exportedAt: new Date().toISOString(), ...data }, null, 2), 'application/json').then(
+  const name = `esn-natation-sauvegarde-${todayISO()}.json`;
+  shareOrDownload(name, JSON.stringify({ app: 'esn-natation', exportedAt: new Date().toISOString(), ...data }, null, 2), 'application/json').then(
     (ok) => {
       if (ok) {
         actions.updateSettings({ lastBackupAt: Date.now() });
@@ -79,7 +79,7 @@ function exportCsv() {
         .join(';');
     });
   const csv = '﻿' + [header.join(';'), ...rows].join('\n');
-  shareOrDownload(`nageo-resultats-${todayISO()}.csv`, csv, 'text/csv').then((ok) => ok && overlay.toast('Export CSV prêt', '📊'));
+  shareOrDownload(`esn-natation-resultats-${todayISO()}.csv`, csv, 'text/csv').then((ok) => ok && overlay.toast('Export CSV prêt', '📊'));
 }
 
 export function Settings() {
@@ -155,7 +155,7 @@ export function Settings() {
             <SyncNowRow />
           </div>
           <div className="section-foot">
-            Les organisateurs publient les résultats officiels des compétitions sur live.swimrankings.net (format LENEX). Nageo y retrouve
+            Les organisateurs publient les résultats officiels des compétitions sur live.swimrankings.net (format LENEX). L’application y retrouve
             vos nageurs (nom, prénom, année de naissance) et ajoute leurs résultats sans doublon : dès qu’un nageur est ajouté, à chaque
             ouverture, et toutes les 15 min pendant une compétition.
           </div>
@@ -247,6 +247,7 @@ export function Settings() {
                 }
               }}
             />
+            <Row icon="shield" iconBg="var(--brand-green)" title="Le club ESN Seraing" chevron onClick={() => navigate('/about')} />
             <Row icon="info" iconBg="#8e8e93" title="À propos" chevron onClick={() => navigate('/about')} />
           </div>
         </Section>
@@ -273,7 +274,7 @@ export function Settings() {
           </div>
         </Section>
         <div className="section-foot center" style={{ marginTop: 18 }}>
-          Nageo {APP_VERSION} · gratuit, sans publicité, sans compte
+          ESN Natation {APP_VERSION} · gratuit, sans publicité, sans compte
           <br />
           {data.swims.length} courses · {data.meets.length} compétitions · {formatDate(todayISO())}
         </div>
@@ -288,14 +289,15 @@ export function About() {
       <NavBar title="À propos" back="/settings" />
       <main className="page">
         <div className="center" style={{ padding: '8px 0 6px' }}>
-          <img src="./icons/icon-192.png" alt="" width={84} height={84} style={{ borderRadius: 20, boxShadow: '0 12px 30px rgba(10,132,255,.35)' }} />
-          <h2 style={{ margin: '14px 0 2px', fontSize: 26, fontWeight: 800 }}>Nageo</h2>
-          <div className="muted">Le carnet de performances des parents de nageurs</div>
+          <BrandLogo height={120} />
+          <div className="muted" style={{ marginTop: 14 }}>
+            Le carnet de performances des parents de nageurs de l’Ecole Seraing Natation
+          </div>
           <div style={{ marginTop: 10 }}>
             <span className="free-tag">✓ 100 % gratuit · toutes les fonctions</span>
           </div>
         </div>
-        <Section title="Club : ESN Seraing">
+        <Section title="Le club">
           <div className="list">
             <Row title={CLUB.legal} sub={`Fondé en ${CLUB.founded} · ${CLUB.pool}`} />
             <Row title={CLUB.address} sub="Adresse" />
@@ -320,7 +322,7 @@ export function About() {
         </Section>
         <Section title="swimrankings.net">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
-            Nageo n’est pas affilié à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
+            L’application ESN Natation n’est pas affiliée à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
             aucune donnée n’est envoyée à un tiers.
           </div>
         </Section>

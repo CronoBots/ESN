@@ -1,8 +1,8 @@
 {
-  "name": "nageo",
+  "name": "esn-natation",
   "private": true,
   "version": "1.0.0",
-  "description": "Nageo — le carnet de performances des parents de nageurs (PWA)",
+  "description": "ESN Natation — le carnet de performances des parents de nageurs de l’Ecole Seraing Natation (PWA)",
   "type": "module",
   "scripts": {
     "dev": "vite",

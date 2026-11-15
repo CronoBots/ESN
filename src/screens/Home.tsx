@@ -346,7 +346,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                 </span>
                 <div className="grow">
                   <div style={{ fontWeight: 600 }}>Fixez un objectif</div>
-                  <div className="muted small">Un temps limite, un chrono à battre… Nageo estime quand il sera atteint.</div>
+                  <div className="muted small">Un temps limite, un chrono à battre… l’application estime quand il sera atteint.</div>
                 </div>
               </button>
             ) : (

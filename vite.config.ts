@@ -11,7 +11,7 @@ import { join, relative } from 'node:path';
  */
 function serviceWorkerPlugin(): Plugin {
   return {
-    name: 'nageo-service-worker',
+    name: 'esn-service-worker',
     apply: (_config, env) => env.command === 'build' && !env.isSsrBuild,
     generateBundle(_options, bundle) {
       const publicDir = join(process.cwd(), 'public');

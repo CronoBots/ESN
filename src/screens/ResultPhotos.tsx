@@ -162,7 +162,7 @@ function ResultPhotos({ close, meetId: initialMeet, swimmerId }: { close: () => 
       <div className="callout" style={{ marginBottom: 14 }}>
         <Icon name="sparkles" />
         <div>
-          À la piscine, prenez en photo les feuilles de résultats de vos enfants (une photo par épreuve). Nageo les lit sur votre téléphone et
+          À la piscine, prenez en photo les feuilles de résultats de vos enfants (une photo par épreuve). L’application les lit sur votre téléphone et
           ne garde que leurs lignes.
         </div>
       </div>

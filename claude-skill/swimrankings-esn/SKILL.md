@@ -1,16 +1,16 @@
 ---
-name: swimrankings-nageo
-description: Récupère les temps d'un nageur sur swimrankings.net (meilleurs temps et, si demandé, tout l'historique d'une nage) en ouvrant sa page dans le navigateur de l'utilisateur (navigateur intégré de l'app Claude ou Claude in Chrome), puis prépare l'import dans l'application Nageo (lien d'import + texte à coller). À utiliser quand l'utilisateur demande de récupérer, mettre à jour ou importer les temps, records ou statistiques d'un nageur depuis swimrankings, ou partage un lien swimrankings.net « athleteDetail ».
+name: swimrankings-esn
+description: Récupère les temps d'un nageur sur swimrankings.net (meilleurs temps et, si demandé, tout l'historique d'une nage) en ouvrant sa page dans le navigateur de l'utilisateur (navigateur intégré de l'app Claude ou Claude in Chrome), puis prépare l'import dans l'application ESN Natation (lien d'import + texte à coller). À utiliser quand l'utilisateur demande de récupérer, mettre à jour ou importer les temps, records ou statistiques d'un nageur depuis swimrankings, ou partage un lien swimrankings.net « athleteDetail ».
 ---
 
-# swimrankings.net → Nageo
+# swimrankings.net → ESN Natation
 
-Nageo (https://cronobots.github.io/ESN/) est l'application des parents pour suivre les temps de leurs enfants. Cette skill lit la page publique d'un nageur sur swimrankings.net **dans le navigateur de l'utilisateur** et produit un import prêt à l'emploi.
+ESN Natation (https://cronobots.github.io/ESN/) est l'application des parents de l'Ecole Seraing Natation pour suivre les temps de leurs enfants. Cette skill lit la page publique d'un nageur sur swimrankings.net **dans le navigateur de l'utilisateur** et produit un import prêt à l'emploi.
 
 ## Prérequis
 
 - Un navigateur que tu pilotes dans la session de l'utilisateur : le navigateur intégré de l'app Claude (bureau) ou Claude in Chrome. Lis d'abord la skill du navigateur concerné (`built-in-browser` ou `chrome-browser`) et suis ses règles.
-- Si aucun navigateur n'est disponible (session dans le cloud, app mobile…) : dis-le en une phrase et propose l'import par capture d'écran dans Nageo (Réglages › Importer › onglet « Capture »). N'invente jamais de temps.
+- Si aucun navigateur n'est disponible (session dans le cloud, app mobile…) : dis-le en une phrase et propose l'import par capture d'écran dans ESN Natation (Réglages › Importer › onglet « Capture »). N'invente jamais de temps.
 
 ## Règles
 
@@ -27,9 +27,9 @@ Nageo (https://cronobots.github.io/ESN/) est l'application des parents pour suiv
    - tableau « Meilleurs temps » : épreuve, bassin, temps, points, date, ville, compétition. Si le nom de la compétition est tronqué (« … »), récupère le nom complet (infobulle ou texte du lien).
 4. **Historique complet (si demandé) :** sur la page du nageur, menu « Tous les résultats » → choisis chaque nage proposée, une par une, et relève toutes les lignes (bassin, temps, points, date, ville, compétition).
 5. **Construire le texte d'import** (format ci-dessous), puis le **lien d'import**.
-6. **Répondre** avec : un résumé (nombre de temps, période couverte), le lien « Ouvrir dans Nageo », et le texte dans un bloc de code à copier. Signale toute ligne illisible plutôt que de la deviner.
+6. **Répondre** avec : un résumé (nombre de temps, période couverte), le lien « Ouvrir dans ESN Natation », et le texte dans un bloc de code à copier. Signale toute ligne illisible plutôt que de la deviner.
 
-## Format d'import Nageo
+## Format d'import ESN Natation
 
 ```
 @@URL:https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=<ID>
@@ -58,6 +58,6 @@ BEL - Club Exemple Natation
 
 `https://cronobots.github.io/ESN/#/import?data=` suivi du texte d'import encodé avec `encodeURIComponent` (tabulations → `%09`, retours à la ligne → `%0A`, espaces → `%20`). Si tu ne peux pas encoder le texte de façon fiable, ne donne pas de lien : le texte suffit.
 
-Ouvert sur le téléphone ou l'ordinateur, Nageo affiche les temps à vérifier, puis l'utilisateur touche « Importer » (les doublons sont ignorés).
+Ouvert sur le téléphone ou l'ordinateur, ESN Natation affiche les temps à vérifier, puis l'utilisateur touche « Importer » (les doublons sont ignorés).
 
-Rappelle à l'utilisateur : si Nageo est installé sur l'écran d'accueil d'un iPhone, le lien s'ouvre dans le navigateur et non dans l'app installée ; dans ce cas, qu'il copie le texte puis, dans Nageo : Réglages › Importer des temps › onglet « Copier » › « Coller ».
+Rappelle à l'utilisateur : si ESN Natation est installée sur l'écran d'accueil d'un iPhone, le lien s'ouvre dans le navigateur et non dans l'app installée ; dans ce cas, qu'il copie le texte puis, dans ESN Natation : Réglages › Importer des temps › onglet « Copier » › « Coller ».

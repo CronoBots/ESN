@@ -180,7 +180,7 @@ export function ImportScreen() {
             <b>Rien à faire</b>
           </div>
           <div className="muted small" style={{ marginBottom: 12 }}>
-            Les résultats des compétitions publiés par les organisateurs sont ajoutés tout seuls pour chaque nageur enregistré dans Nageo
+            Les résultats des compétitions publiés par les organisateurs sont ajoutés tout seuls pour chaque nageur enregistré dans l’application
             (nom, prénom et année de naissance). Les imports ci-dessous servent pour l’historique plus ancien.
           </div>
           <button className="btn block" onClick={() => findResultsNow(preselected?.firstName)}>
@@ -194,7 +194,7 @@ export function ImportScreen() {
             <b>Résultats affichés</b>
           </div>
           <div className="muted small" style={{ marginBottom: 12 }}>
-            Prenez en photo les feuilles de résultats affichées : Nageo y retrouve votre enfant et importe ses temps, places, points et
+            Prenez en photo les feuilles de résultats affichées : l’application y retrouve votre enfant et importe ses temps, places, points et
             passages.
           </div>
           <button className="btn secondary block" onClick={() => openResultPhotos({ swimmerId: preselected?.id })}>
@@ -382,7 +382,7 @@ export function ImportScreen() {
                 </>
               )}
               <details style={{ marginTop: 16 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Encore plus rapide : le bouton « Envoyer vers Nageo »</summary>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Encore plus rapide : le bouton « Envoyer vers ESN »</summary>
                 <ol className="steps" style={{ marginTop: 12 }}>
                   <li>
                     Affichez la barre de favoris (<span className="kbd">Ctrl</span>+<span className="kbd">Maj</span>+<span className="kbd">B</span>).
@@ -390,7 +390,7 @@ export function ImportScreen() {
                   <li>
                     Glissez ce bouton dans la barre de favoris : <BookmarkletLink code={code} />
                   </li>
-                  <li>Sur la page du nageur, cliquez sur ce favori puis sur « Ouvrir dans Nageo ».</li>
+                  <li>Sur la page du nageur, cliquez sur ce favori puis sur « Ouvrir dans l’app ESN ».</li>
                 </ol>
               </details>
             </div>
@@ -611,7 +611,7 @@ function BookmarkletLink({ code }: { code: string }) {
         overlay.toast('Glissez le bouton dans vos favoris', '👆');
       }}
     >
-      <Icon name="download" style={{ width: 18, height: 18 }} /> Envoyer vers Nageo
+      <Icon name="download" style={{ width: 18, height: 18 }} /> Envoyer vers ESN
     </a>
   );
 }
