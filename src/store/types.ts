@@ -99,6 +99,8 @@ export interface Settings {
   celebrate: boolean;
   /** Récupération automatique des résultats publiés par le club. */
   clubSync: ClubSyncSettings;
+  /** Récupération automatique des résultats en direct (live.swimrankings.net). */
+  liveSync: ClubSyncSettings;
 }
 
 export interface ClubSyncSettings {

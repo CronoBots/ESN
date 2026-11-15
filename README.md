@@ -20,10 +20,17 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | 🏊 **Entraînements** | Chronos d'entraînement séparés (inclus ou non dans les records). |
 | 👨‍👩‍👧 **Plusieurs nageurs** | Frères et sœurs, nageurs suivis, favoris. |
-| ⚡ **Résultats du club automatiques** | Les résultats publiés par l'ESN Seraing sont récupérés et ajoutés tout seuls (voir plus bas). |
+| ⚡ **Résultats automatiques** | Résultats en direct des compétitions (LENEX, live.swimrankings.net) et résultats publiés par l'ESN Seraing, ajoutés tout seuls. |
+| 📸 **Photos des résultats affichés** | Les feuilles affichées à la piscine, photographiées, sont lues sur le téléphone. |
 | 🔄 **Import swimrankings.net** | Capture d'écran lue sur le téléphone, copier-coller ou bouton-favori (ordinateur). |
 | 💾 **Sauvegarde** | Export / restauration JSON (transfert vers un autre téléphone, partage avec l'autre parent), export CSV pour Excel. |
 | 🌗 **Design** | Style iOS natif, mode sombre et clair, onglets sur mobile et barre latérale sur ordinateur. |
+
+## Résultats en direct des compétitions (LENEX)
+
+Les organisateurs utilisent Splash Meet Manager, qui publie les résultats de chaque compétition sur **live.swimrankings.net** (les mêmes feuilles que celles affichées à la piscine, et le fichier officiel `results.lxf` au format **LENEX**). Ce site autorise la lecture par d'autres applications (CORS) et son `robots.txt` permet l'accès aux pages de compétitions et aux fichiers `.lxf`.
+
+Nageo lit la liste des compétitions belges (`?nation=BEL`), télécharge le fichier LENEX de chacune (~50 Ko) et y retrouve vos nageurs (nom + année de naissance) : temps, place dans la catégorie d'âge, points, série et ligne, temps d'engagement, temps de passage, disqualification avec sa raison. Vérification à chaque ouverture, toutes les 15 min pendant une compétition. Code : `src/lib/lenex.ts`, `src/lib/liveResults.ts`.
 
 ## Résultats du club, automatiquement
 

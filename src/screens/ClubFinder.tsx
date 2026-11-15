@@ -5,6 +5,8 @@ import { Icon } from '../components/Icon';
 import { CLUB } from '../club';
 import { formatDate } from '../lib/dates';
 import { loadIndex, sameSwimmer, searchClub, type ClubMatch } from '../lib/clubSync';
+import { searchLive, syncLive } from '../lib/liveResults';
+import { normName } from '../lib/clubReport';
 import { navigate } from '../router';
 import type { Gender, Swimmer } from '../store/types';
 import { fullName } from '../store/hooks';
@@ -30,9 +32,37 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
     setChosen(null);
     setProgress({ done: 0, total: 0 });
     try {
-      const res = await searchClub({ firstName, lastName }, setProgress);
+      // Deux sources en parallèle : résultats en direct (organisateurs) et rapports du club
+      const prog = { club: { done: 0, total: 0 }, live: { done: 0, total: 0 } };
+      const tick = () => setProgress({ done: prog.club.done + prog.live.done, total: prog.club.total + prog.live.total });
+      const q = { firstName, lastName };
+      const [club, live] = await Promise.all([
+        searchClub(q, (p) => ((prog.club = p), tick())).catch(() => [] as ClubMatch[]),
+        searchLive(q, (p) => ((prog.live = p), tick())).catch(() => [] as ClubMatch[]),
+      ]);
+      const merged = new Map<string, ClubMatch>();
+      for (const m of [...live, ...club]) {
+        const key = `${normName(m.lastName)}|${normName(m.firstName)}|${m.birthYear ?? ''}`;
+        const cur = merged.get(key);
+        const meetKey = (r: ClubMatch['reports'][number]) => `${normName(r.meet.name).slice(0, 18)}|${r.meet.startDate}`;
+        if (!cur) merged.set(key, { ...m, reports: [...m.reports] });
+        else {
+          // Même compétition dans les deux sources : on garde la version en direct (plus complète)
+          const known = new Set(cur.reports.map(meetKey));
+          const extra = m.reports.filter((r) => !known.has(meetKey(r)));
+          cur.reports.push(...extra);
+          cur.swimCount += extra.reduce((a, r) => a + r.swims.length, 0);
+          cur.gender = cur.gender ?? m.gender;
+          cur.club = cur.club ?? m.club;
+          if (m.lastMeet && (!cur.lastMeet || m.lastMeet > cur.lastMeet)) cur.lastMeet = m.lastMeet;
+        }
+      }
+      const res = [...merged.values()].sort((a, b) => b.swimCount - a.swimCount).slice(0, 12);
       setMatches(res);
-      if (res.length === 1) setChosen(res[0]);
+      if (res.length === 1) {
+        setChosen(res[0]);
+        if (res[0].gender) setGender(res[0].gender);
+      }
     } catch (e) {
       setError(navigator.onLine ? `Résultats du club indisponibles pour le moment (${(e as Error).message}).` : 'Pas de connexion internet.');
     } finally {
@@ -47,9 +77,9 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
       target = actions.addSwimmer({
         firstName: m.firstName,
         lastName: m.lastName,
-        gender,
+        gender: m.gender ?? gender,
         birthYear: m.birthYear,
-        club: CLUB.name,
+        club: m.club ?? CLUB.name,
         relation: 'child',
       });
     } else {
@@ -68,6 +98,8 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
     } catch {
       /* le catalogue sera relu à la prochaine synchronisation */
     }
+    // Les résultats en direct déjà téléchargés sont marqués comme lus pour ce nageur
+    syncLive({ force: true }).catch(() => {});
     actions.selectSwimmer(target.id);
     actions.updateSettings({ onboarded: true });
     close();
@@ -86,8 +118,8 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
       <div className="callout" style={{ marginBottom: 14 }}>
         <Icon name="sparkles" />
         <div>
-          Nageo parcourt les résultats publiés par l’<b>{CLUB.short}</b> sur son site et récupère automatiquement ceux de votre enfant.
-          Ensuite, chaque nouvelle compétition publiée par le club est ajoutée toute seule.
+          Nageo parcourt les résultats publiés en ligne (résultats en direct des compétitions en Belgique et résultats de l’
+          <b>{CLUB.short}</b>) et récupère ceux de votre enfant. Ensuite, chaque nouvelle compétition est ajoutée toute seule.
         </div>
       </div>
 
@@ -109,7 +141,7 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
         </div>
       </div>
       <button className="btn block" style={{ marginTop: 14 }} onClick={search} disabled={!!progress || (!lastName.trim() && !firstName.trim())}>
-        <Icon name="sparkles" /> {progress ? 'Recherche…' : 'Rechercher dans les résultats du club'}
+        <Icon name="sparkles" /> {progress ? 'Recherche…' : 'Rechercher ses résultats'}
       </button>
 
       {progress && (
@@ -118,7 +150,7 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
             <div style={{ width: `${pct}%` }} />
           </div>
           <div className="muted small center" style={{ marginTop: 6 }}>
-            {progress.total ? `Lecture des résultats du club… ${progress.done}/${progress.total} compétitions` : 'Chargement du catalogue…'}
+            {progress.total ? `Lecture des résultats… ${progress.done}/${progress.total} compétitions` : 'Recherche des compétitions…'}
           </div>
         </div>
       )}
@@ -135,7 +167,8 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
           <Icon name="info" />
           <div>
             Aucun résultat trouvé pour « {[firstName, lastName].filter(Boolean).join(' ')} ». Vérifiez l’orthographe (comme sur la licence), ou
-            importez depuis swimrankings.net : le club ne publie pas toutes les compétitions.
+            utilisez la photo des résultats affichés ou l’import swimrankings.net : seules les compétitions récentes publiées en direct
+            et celles publiées par le club sont consultées.
           </div>
         </div>
       )}
@@ -153,7 +186,9 @@ function ClubFinder({ close, swimmer }: { close: () => void; swimmer?: Swimmer }
                   <div className="row-body">
                     <div className="row-title">{fullName(m)}</div>
                     <div className="row-sub">
-                      {[m.birthYear ? `né(e) en ${m.birthYear}` : null, `${m.swimCount} courses`, `${m.reports.length} compétitions`].filter(Boolean).join(' · ')}
+                      {[m.birthYear ? `né(e) en ${m.birthYear}` : null, m.club, `${m.swimCount} courses`, `${new Set(m.reports.map((r) => r.meet.name + r.meet.startDate)).size} compétitions`]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </div>
                     {m.lastMeet && <div className="row-sub">Dernière : {formatDate(m.lastMeet)}</div>}
                   </div>

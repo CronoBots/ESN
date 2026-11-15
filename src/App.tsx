@@ -3,6 +3,7 @@ import { useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { UiHost, overlay } from './components/ui';
 import { shouldAutoSync, syncClub } from './lib/clubSync';
+import { shouldAutoSyncLive, syncLive } from './lib/liveResults';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
@@ -89,25 +90,26 @@ export function App() {
 
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
+    const notify = (r: { added: number; pbs: number; swimmers: { swimmer: { firstName: string } }[] }) => {
+      if (!r.added) return;
+      const who = [...new Set(r.swimmers.map((x) => x.swimmer.firstName))].join(', ');
+      overlay.toast(`${r.added} nouveau${r.added > 1 ? 'x' : ''} résultat${r.added > 1 ? 's' : ''} pour ${who}`, '🏊');
+      if (r.pbs) overlay.celebrate();
+    };
     const run = () => {
-      if (!shouldAutoSync()) return;
-      syncClub()
-        .then((r) => {
-          if (!r.added) return;
-          const who = r.swimmers.map((x) => x.swimmer.firstName).join(', ');
-          overlay.toast(`${r.added} nouveau${r.added > 1 ? 'x' : ''} résultat${r.added > 1 ? 's' : ''} du club pour ${who}`, '🏊');
-          if (r.pbs) overlay.celebrate();
-        })
-        .catch(() => {
-          /* hors-ligne ou site du club indisponible : nouvel essai plus tard */
-        });
+      // hors-ligne ou site indisponible : nouvel essai à la prochaine ouverture
+      if (shouldAutoSyncLive()) syncLive().then(notify).catch(() => {});
+      if (shouldAutoSync()) syncClub().then(notify).catch(() => {});
     };
     const t = setTimeout(run, 1500);
+    // Pendant une compétition, vérification régulière tant que l'app est ouverte
+    const every = setInterval(run, 5 * 60 * 1000);
     const onVisible = () => document.visibilityState === 'visible' && run();
     window.addEventListener('online', run);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearTimeout(t);
+      clearInterval(every);
       window.removeEventListener('online', run);
       document.removeEventListener('visibilitychange', onVisible);
     };

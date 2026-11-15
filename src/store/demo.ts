@@ -216,6 +216,7 @@ export function buildDemo(): AppData {
       onboarded: true,
       celebrate: true,
       clubSync: { enabled: true, processed: {} },
+      liveSync: { enabled: true, processed: {} },
       selectedSwimmerId: swimmer.id,
     },
   };

@@ -1,5 +1,5 @@
 import { CLUB } from '../club';
-import { actions, getState } from '../store/store';
+import { actions, getState, type ImportReport } from '../store/store';
 import type { Swim, Swimmer } from '../store/types';
 import { normName, parseClubReport, type ClubReport, type ReportSwimmer } from './clubReport';
 import { computePbFlags } from './stats';
@@ -101,7 +101,9 @@ export interface ClubMatch {
   firstName: string;
   lastName: string;
   birthYear?: number;
-  reports: { meet: ClubReport['meet']; swims: ReportSwimmer['swims'] }[];
+  gender?: Swimmer['gender'];
+  club?: string;
+  reports: ImportReport[];
   swimCount: number;
   lastMeet?: string;
 }

@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   celebrate: true,
   clubSync: { enabled: true, processed: {} },
+  liveSync: { enabled: true, processed: {} },
 };
 
 function emptyData(): AppData {
@@ -33,6 +34,7 @@ export function normalizeData(raw: unknown): AppData {
       ...DEFAULT_SETTINGS,
       ...(d.settings ?? {}),
       clubSync: { ...DEFAULT_SETTINGS.clubSync, ...(d.settings?.clubSync ?? {}) },
+      liveSync: { ...DEFAULT_SETTINGS.liveSync, ...(d.settings?.liveSync ?? {}) },
     },
   };
 }
@@ -95,6 +97,14 @@ export function useStore<T>(selector: (s: AppData) => T): T {
 
 export function useData(): AppData {
   return useSyncExternalStore(subscribe, () => state);
+}
+
+/** Résultats d'une compétition à importer (rapport du club, LENEX, photo…). */
+export interface ImportReport {
+  meet: ReportMeet;
+  /** Compétition existante choisie par l'utilisateur. */
+  meetId?: string;
+  swims: (ReportSwim & { date?: string; startTime?: string; points?: number; heat?: number; lane?: number; notes?: string })[];
 }
 
 /* ------------------------------------------------------------------------ */
@@ -285,19 +295,15 @@ export const actions = {
     setState((s) => ({ ...s, settings: { ...s.settings, clubSync: { ...s.settings.clubSync, ...patch } } }));
   },
 
+  updateLiveSync(patch: Partial<ClubSyncSettings>) {
+    setState((s) => ({ ...s, settings: { ...s.settings, liveSync: { ...s.settings.liveSync, ...patch } } }));
+  },
+
   /**
    * Import des résultats publiés par le club (rapports PDF « résultats par
    * club ») : crée les compétitions manquantes, ignore les doublons.
    */
-  importClubResults(
-    swimmerId: string,
-    reports: {
-      meet: ReportMeet;
-      /** Compétition existante choisie par l'utilisateur. */
-      meetId?: string;
-      swims: (ReportSwim & { date?: string; startTime?: string; points?: number })[];
-    }[],
-  ): { added: number; swims: Swim[] } {
+  importClubResults(swimmerId: string, reports: ImportReport[]): { added: number; swims: Swim[] } {
     const addedSwims: Swim[] = [];
     setState((s) => {
       const meets = [...s.meets];
@@ -350,6 +356,9 @@ export const actions = {
               eventNo: planned.eventNo ?? rs.eventNo,
               entryCs: planned.entryCs ?? rs.entryCs,
               points: rs.points ?? planned.points,
+              heat: rs.heat ?? planned.heat,
+              lane: rs.lane ?? planned.lane,
+              notes: planned.notes ?? rs.notes,
               course: rs.course,
               date: rs.date ?? planned.date,
               startTime: planned.startTime ?? rs.startTime,
@@ -370,6 +379,9 @@ export const actions = {
             course: rs.course,
             timeCs: rs.timeCs ?? null,
             points: rs.points,
+            heat: rs.heat,
+            lane: rs.lane,
+            notes: rs.notes,
             entryCs: rs.entryCs,
             status: rs.status,
             round: rs.round,

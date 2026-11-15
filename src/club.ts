@@ -24,6 +24,8 @@ export const CLUB = {
     'https://www.esn-seraing.be/r%C3%A9sultats-saison-es-2024-2025',
     'https://www.esn-seraing.be/copie-de-r%C3%A9sultats-m',
   ],
+  /** Pays des compétitions suivies sur live.swimrankings.net. */
+  liveNation: 'BEL',
   /** Catalogue des rapports de résultats, généré chaque jour (scripts/club-index.ts). */
   indexUrl: './data/club-results.json',
 };
