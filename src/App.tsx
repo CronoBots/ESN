@@ -71,8 +71,14 @@ export function App() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'auto') root.removeAttribute('data-theme');
-    else root.setAttribute('data-theme', theme);
+    // En mode « auto », on ne touche pas à un thème posé par l'environnement d'accueil
+    if (theme !== 'auto') {
+      root.setAttribute('data-theme', theme);
+      root.dataset.nageoTheme = '1';
+    } else if (root.dataset.nageoTheme) {
+      root.removeAttribute('data-theme');
+      delete root.dataset.nageoTheme;
+    }
     const dark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#000000' : '#f2f2f7'));
   }, [theme]);
