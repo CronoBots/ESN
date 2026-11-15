@@ -106,7 +106,7 @@ export function App() {
     <div className="app">
       <nav className="sidebar" aria-label="Navigation principale">
         <div className="sidebar-brand">
-          <BrandLogo height={38} />
+          <BrandLogo height={84} />
         </div>
         {TABS.map((t) => (
           <button key={t.id} className={`side-item${tab === t.id ? ' active' : ''}`} onClick={() => navigate(t.path)} aria-current={tab === t.id ? 'page' : undefined}>

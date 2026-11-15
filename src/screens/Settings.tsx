@@ -272,9 +272,8 @@ export function About() {
       <NavBar title="À propos" back="/settings" />
       <main className="page">
         <div className="center" style={{ padding: '8px 0 6px' }}>
-          <BrandLogo height={72} />
-          <h2 style={{ margin: '16px 0 2px', fontSize: 26, fontWeight: 800 }}>ESN Natation</h2>
-          <div className="muted">Le carnet de performances des parents de nageurs de l’Ecole Seraing Natation</div>
+          <BrandLogo height={120} />
+          <div className="muted" style={{ marginTop: 14 }}>Le carnet de performances des parents de nageurs de l’Ecole Seraing Natation</div>
           <div style={{ marginTop: 10 }}>
             <span className="free-tag">✓ 100 % gratuit · toutes les fonctions</span>
           </div>

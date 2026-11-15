@@ -36,9 +36,9 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.18);
   /* Identité ESN Seraing : vert du club + bleu du « S » */
-  --brand-green: #2e7d52;
-  --brand-blue: #1e5faf;
-  --hero: linear-gradient(140deg, #1b5b3f 0%, #2e7d52 38%, #1e5faf 100%);
+  --brand-green: #015b1c;
+  --brand-blue: #002ca4;
+  --hero: linear-gradient(140deg, #014716 0%, #015b1c 34%, #002ca4 100%);
 
   /* Couleurs d'identité des nages (palette validée daltonisme) */
   --stroke-free: #2a78d6;
@@ -90,9 +90,9 @@
     --bar-bg: rgba(22, 22, 24, 0.8);
     --shadow: none;
     --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
-    --brand-green: #4cb57a;
-    --brand-blue: #4a93e6;
-    --hero: linear-gradient(140deg, #164a33 0%, #226343 40%, #1a4f92 100%);
+    --brand-green: #4caf6a;
+    --brand-blue: #628cf0;
+    --hero: linear-gradient(140deg, #013d13 0%, #024f19 36%, #0a2a8a 100%);
     --stroke-free: #3987e5;
     --stroke-fly: #d95926;
     --stroke-back: #199e70;
@@ -129,9 +129,9 @@
   --bar-bg: rgba(22, 22, 24, 0.8);
   --shadow: none;
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
-  --brand-green: #4cb57a;
-  --brand-blue: #4a93e6;
-  --hero: linear-gradient(140deg, #164a33 0%, #226343 40%, #1a4f92 100%);
+  --brand-green: #4caf6a;
+  --brand-blue: #628cf0;
+  --hero: linear-gradient(140deg, #013d13 0%, #024f19 36%, #0a2a8a 100%);
   --stroke-free: #3987e5;
   --stroke-fly: #d95926;
   --stroke-back: #199e70;
@@ -1449,7 +1449,7 @@ textarea.textinput {
   border-radius: var(--radius-lg);
   background: var(--hero);
   color: #fff;
-  box-shadow: 0 14px 40px rgba(27, 91, 63, 0.28);
+  box-shadow: 0 14px 40px rgba(1, 91, 28, 0.25);
 }
 
 .hero::after {

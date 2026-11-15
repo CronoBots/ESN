@@ -15,7 +15,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
 export function Onboarding() {
   return (
     <main className="onboard">
-      <BrandLogo height={64} />
+      <BrandLogo height={110} />
       <h1>
         Chaque centième
         <br />
