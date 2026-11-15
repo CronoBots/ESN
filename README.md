@@ -78,3 +78,7 @@ Activation, une seule fois : dépôt GitHub › **Settings › Pages › Build a
 L'application est alors disponible sur `https://<organisation>.github.io/<dépôt>/`.
 
 Le dossier `dist/` peut aussi être déposé tel quel sur n'importe quel hébergement statique (Netlify, Vercel, OVH…). HTTPS est requis pour l'installation et le mode hors-ligne.
+
+## Skill Claude « swimrankings-nageo »
+
+`claude-skill/swimrankings-nageo.zip` : une skill pour Claude (app de bureau avec navigateur intégré, ou Claude in Chrome). Donnez à Claude le lien swimrankings d'un nageur : il ouvre la page **dans votre navigateur**, relève les temps et renvoie un lien d'import Nageo prêt à l'emploi (plus le texte à coller). Aucune connexion ni mot de passe swimrankings ; une vérification anti-robot éventuelle est validée par vous.
