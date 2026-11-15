@@ -68,7 +68,7 @@ export interface Swim {
   points?: number;
   timing?: 'electronic' | 'manual';
   notes?: string;
-  source: 'manual' | 'swimrankings';
+  source: 'manual' | 'swimrankings' | 'club';
   createdAt: number;
   updatedAt: number;
 }
@@ -97,6 +97,15 @@ export interface Settings {
   defaultCourse: Course;
   onboarded: boolean;
   celebrate: boolean;
+  /** Récupération automatique des résultats publiés par le club. */
+  clubSync: ClubSyncSettings;
+}
+
+export interface ClubSyncSettings {
+  enabled: boolean;
+  /** Rapports déjà lus : adresse du PDF → nageurs déjà traités. */
+  processed: Record<string, string[]>;
+  lastCheck?: number;
 }
 
 export interface AppData {

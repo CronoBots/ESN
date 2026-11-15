@@ -12,6 +12,7 @@ import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { openGoalForm, openResultForm, openSwimmerForm } from './forms';
 import { InstallBanner } from './Install';
+import { openClubFinder } from './ClubFinder';
 import type { Goal, Swimmer } from '../store/types';
 
 export function Home() {
@@ -178,10 +179,13 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               text="Saisissez un temps à la main ou importez l’historique depuis swimrankings.net."
               action={
                 <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
-                  <button className="btn block" onClick={() => openResultForm({ swimmerId: swimmer.id })}>
+                  <button className="btn block" onClick={() => openClubFinder({ swimmer })}>
+                    <Icon name="sparkles" /> Récupérer les résultats du club
+                  </button>
+                  <button className="btn secondary block" onClick={() => openResultForm({ swimmerId: swimmer.id })}>
                     <Icon name="stopwatch" /> Saisir un temps
                   </button>
-                  <button className="btn secondary block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>
+                  <button className="btn ghost block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>
                     <Icon name="download" /> Importer depuis swimrankings
                   </button>
                 </div>

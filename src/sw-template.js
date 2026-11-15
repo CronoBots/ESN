@@ -30,6 +30,20 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // Données (catalogue des résultats du club) : toujours le réseau d'abord.
+  if (url.pathname.includes('/data/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          if (res.ok) caches.open(CACHE).then((c) => c.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req)),
+    );
+    return;
+  }
+
   // Navigation : réseau d'abord (pour recevoir les mises à jour), cache en secours.
   if (req.mode === 'navigate') {
     event.respondWith(

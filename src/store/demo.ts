@@ -215,6 +215,7 @@ export function buildDemo(): AppData {
       defaultCourse: 'SCM',
       onboarded: true,
       celebrate: true,
+      clubSync: { enabled: true, processed: {} },
       selectedSwimmerId: swimmer.id,
     },
   };

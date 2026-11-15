@@ -12,6 +12,9 @@ import { openSwimmerForm } from './forms';
 import { isStandalone, promptInstall } from './Install';
 import type { AppData } from '../store/types';
 import { CLUB } from '../club';
+import { syncClub } from '../lib/clubSync';
+import { openClubFinder } from './ClubFinder';
+import { useState } from 'react';
 
 export const APP_VERSION = '1.0.0';
 
@@ -142,6 +145,25 @@ export function Settings() {
             <Row icon="plus" title="Ajouter un nageur" accent onClick={() => openSwimmerForm()} />
           </div>
           <div className="section-foot">Ajoutez vos enfants, mais aussi des coéquipiers « suivis » pour les classements et les comparaisons.</div>
+        </Section>
+
+        <Section title={`Résultats de l’${CLUB.short}`}>
+          <div className="list">
+            <div className="field">
+              <span className="label grow">Ajout automatique des résultats publiés par le club</span>
+              <Toggle
+                on={s.clubSync.enabled}
+                onChange={(v) => actions.updateClubSync({ enabled: v })}
+                label="Ajout automatique des résultats du club"
+              />
+            </div>
+            <SyncNowRow />
+            <Row icon="sparkles" iconBg="#bf5af2" title="Retrouver un nageur dans les résultats du club" chevron onClick={() => openClubFinder()} />
+          </div>
+          <div className="section-foot">
+            Le club publie sur {CLUB.website.replace(/^https?:\/\/(www\.)?|\/$/g, '')} les résultats de ses nageurs (PDF). Nageo les lit sur votre
+            appareil et ajoute ceux de vos nageurs, sans doublon. Vérification à chaque ouverture (au plus toutes les 6 h).
+          </div>
         </Section>
 
         <Section title="Données">
@@ -314,5 +336,38 @@ export function About() {
         </Section>
       </main>
     </>
+  );
+}
+
+function SyncNowRow() {
+  const data = useData();
+  const [busy, setBusy] = useState<string | null>(null);
+  const last = data.settings.clubSync.lastCheck;
+  return (
+    <Row
+      icon="download"
+      iconBg="#34c759"
+      title={busy ?? 'Vérifier maintenant'}
+      sub={last ? `Dernière vérification : ${relativeDay(toISO(new Date(last)))}` : 'Jamais vérifié'}
+      chevron={!busy}
+      onClick={
+        busy
+          ? undefined
+          : async () => {
+              setBusy('Recherche des nouveaux résultats…');
+              try {
+                const r = await syncClub({ force: true, onProgress: (p) => p.total && setBusy(`Lecture des résultats… ${p.done}/${p.total}`) });
+                if (r.added) {
+                  overlay.toast(`${r.added} nouveaux résultats ajoutés`, '🏊');
+                  if (r.pbs) overlay.celebrate();
+                } else overlay.toast(r.errors ? 'Certains résultats sont indisponibles, réessayez plus tard' : 'Tout est à jour', r.errors ? '⚠️' : '✓');
+              } catch {
+                overlay.toast(navigator.onLine ? 'Résultats du club indisponibles pour le moment' : 'Pas de connexion internet', '⚠️');
+              } finally {
+                setBusy(null);
+              }
+            }
+      }
+    />
   );
 }

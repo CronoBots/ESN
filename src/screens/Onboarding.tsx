@@ -2,13 +2,14 @@ import { actions, loadDemo } from '../store/store';
 import { Icon, type IconName } from '../components/Icon';
 import { navigate } from '../router';
 import { openSwimmerForm } from './forms';
+import { openClubFinder } from './ClubFinder';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
   { icon: 'stopwatch', title: 'Saisie éclair au bord du bassin', text: 'Tapez 1 2 4 6 2 → 1:24.62. Record détecté instantanément.' },
   { icon: 'chart', title: 'Progression nage par nage', text: 'Courbes, tendances, saison par saison, comparaison entre nageurs.' },
   { icon: 'calendar', title: 'Programme des compétitions', text: 'Épreuves, séries, lignes, rappels dans le calendrier.' },
   { icon: 'target', title: 'Objectifs & trophées', text: 'Temps limites, estimation de la date d’atteinte, badges à débloquer.' },
-  { icon: 'download', title: 'Import swimrankings.net', text: 'Récupérez l’historique en deux gestes.' },
+  { icon: 'download', title: 'Résultats récupérés automatiquement', text: 'Depuis les résultats publiés par l’ESN Seraing, ou swimrankings.net.' },
 ];
 
 export function Onboarding() {
@@ -38,11 +39,14 @@ export function Onboarding() {
         ))}
       </div>
       <div className="onboard-actions">
-        <button className="btn block" onClick={() => openSwimmerForm(undefined, () => navigate('/', { replace: true }))}>
+        <button className="btn block" onClick={() => openClubFinder()}>
+          <Icon name="sparkles" /> Mon enfant nage à l’ESN Seraing
+        </button>
+        <button className="btn secondary block" onClick={() => openSwimmerForm(undefined, () => navigate('/', { replace: true }))}>
           <Icon name="plus" /> Ajouter mon enfant
         </button>
         <button
-          className="btn secondary block"
+          className="btn ghost block"
           onClick={() => {
             actions.updateSettings({ onboarded: true });
             navigate('/import');

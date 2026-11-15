@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { AppData, Goal, Meet, Settings, Swim, Swimmer } from './types';
+import type { AppData, ClubSyncSettings, Goal, Meet, Settings, Swim, Swimmer } from './types';
+import type { ReportMeet, ReportSwim } from '../lib/clubReport';
 import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
 import { uid } from '../lib/id';
 
@@ -11,6 +12,7 @@ const DEFAULT_SETTINGS: Settings = {
   defaultCourse: 'SCM',
   onboarded: false,
   celebrate: true,
+  clubSync: { enabled: true, processed: {} },
 };
 
 function emptyData(): AppData {
@@ -27,7 +29,11 @@ export function normalizeData(raw: unknown): AppData {
     meets: arr<Meet>(d.meets).filter((m) => m && m.id),
     swims: arr<Swim>(d.swims).filter((s) => s && s.id && s.swimmerId),
     goals: arr<Goal>(d.goals).filter((g) => g && g.id),
-    settings: { ...DEFAULT_SETTINGS, ...(d.settings ?? {}) },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...(d.settings ?? {}),
+      clubSync: { ...DEFAULT_SETTINGS.clubSync, ...(d.settings?.clubSync ?? {}) },
+    },
   };
 }
 
@@ -92,6 +98,40 @@ export function useData(): AppData {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Outils d'import                                                           */
+/* ------------------------------------------------------------------------ */
+
+const normMeet = (t?: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9à-ÿ]/g, '');
+const dayMs = 86400000;
+
+/** Retrouve une compétition existante (même nom, dates proches, même bassin). */
+function findMeet(meets: Meet[], name: string, date: string, course: Meet['course']): Meet | undefined {
+  const n = normMeet(name);
+  const sameName = (m: Meet) => {
+    const mn = normMeet(m.name);
+    return mn && n && (mn.startsWith(n) || n.startsWith(mn));
+  };
+  const t = new Date(date).getTime();
+  return (
+    meets.find((m) => sameName(m) && m.course === course && date >= m.startDate && date <= (m.endDate ?? m.startDate)) ??
+    meets.find((m) => sameName(m) && m.course === course && Math.abs(t - new Date(m.startDate).getTime()) <= 4 * dayMs)
+  );
+}
+
+/** Vrai si une course identique (même épreuve, même temps, dates proches) existe déjà. */
+function isDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId'>): boolean {
+  const t = new Date(s.date).getTime();
+  return existing.some(
+    (x) =>
+      x.course === s.course &&
+      x.distance === s.distance &&
+      x.stroke === s.stroke &&
+      (s.timeCs != null ? x.timeCs === s.timeCs : x.status === s.status && x.meetId === s.meetId) &&
+      Math.abs(new Date(x.date).getTime() - t) <= 4 * dayMs,
+  );
+}
+
+/* ------------------------------------------------------------------------ */
 /* Actions                                                                   */
 /* ------------------------------------------------------------------------ */
 
@@ -121,7 +161,23 @@ export const actions = {
   },
 
   updateSwimmer(id: string, patch: Partial<Swimmer>) {
-    setState((s) => ({ ...s, swimmers: s.swimmers.map((x) => (x.id === id ? { ...x, ...patch, id } : x)) }));
+    setState((s) => {
+      const before = s.swimmers.find((x) => x.id === id);
+      const renamed =
+        before &&
+        ((patch.firstName != null && patch.firstName !== before.firstName) ||
+          (patch.lastName != null && patch.lastName !== before.lastName) ||
+          (patch.birthYear !== undefined && patch.birthYear !== before.birthYear && before.birthYear != null));
+      // Nom modifié : les résultats du club seront recherchés à nouveau
+      const processed = renamed
+        ? Object.fromEntries(Object.entries(s.settings.clubSync.processed).map(([u, ids]) => [u, ids.filter((x) => x !== id)]))
+        : s.settings.clubSync.processed;
+      return {
+        ...s,
+        swimmers: s.swimmers.map((x) => (x.id === id ? { ...x, ...patch, id } : x)),
+        settings: { ...s.settings, clubSync: { ...s.settings.clubSync, processed } },
+      };
+    });
   },
 
   deleteSwimmer(id: string) {
@@ -225,6 +281,104 @@ export const actions = {
     setState(() => emptyData());
   },
 
+  updateClubSync(patch: Partial<ClubSyncSettings>) {
+    setState((s) => ({ ...s, settings: { ...s.settings, clubSync: { ...s.settings.clubSync, ...patch } } }));
+  },
+
+  /**
+   * Import des résultats publiés par le club (rapports PDF « résultats par
+   * club ») : crée les compétitions manquantes, ignore les doublons.
+   */
+  importClubResults(swimmerId: string, reports: { meet: ReportMeet; swims: ReportSwim[] }[]): { added: number; swims: Swim[] } {
+    const addedSwims: Swim[] = [];
+    setState((s) => {
+      const meets = [...s.meets];
+      const mine = s.swims.filter((x) => x.swimmerId === swimmerId);
+      const now = Date.now();
+      let seq = 0;
+      for (const r of reports) {
+        let meet = findMeet(meets, r.meet.name, r.meet.startDate, r.meet.course);
+        if (!meet) {
+          meet = {
+            id: uid(),
+            name: r.meet.name,
+            city: r.meet.city,
+            organizer: r.meet.organizer,
+            startDate: r.meet.startDate,
+            endDate: r.meet.endDate,
+            course: r.meet.course,
+            createdAt: now,
+          };
+          meets.push(meet);
+        } else if (r.meet.endDate && (!meet.endDate || meet.endDate < r.meet.endDate)) {
+          const i = meets.indexOf(meet);
+          meet = { ...meet, endDate: r.meet.endDate, startDate: meet.startDate < r.meet.startDate ? meet.startDate : r.meet.startDate };
+          meets[i] = meet;
+        }
+        // Programme saisi à la main pour cette compétition : on complète les épreuves prévues
+        const sorted = [...r.swims].sort((a, b) => (a.eventNo ?? 0) - (b.eventNo ?? 0));
+        for (const rs of sorted) {
+          const date = r.meet.startDate;
+          const candidate = { course: rs.course, distance: rs.distance, stroke: rs.stroke, timeCs: rs.timeCs ?? null, date, status: rs.status, meetId: meet.id };
+          if (isDuplicate([...mine, ...addedSwims], candidate)) continue;
+          const planned = mine.find(
+            (x) =>
+              x.meetId === meet!.id &&
+              x.timeCs == null &&
+              x.status === 'OK' &&
+              x.distance === rs.distance &&
+              x.stroke === rs.stroke &&
+              !addedSwims.some((a) => a.id === x.id),
+          );
+          if (planned) {
+            addedSwims.push({
+              ...planned,
+              timeCs: rs.timeCs ?? null,
+              status: rs.status,
+              place: rs.place,
+              splits: rs.splits,
+              round: rs.round,
+              eventNo: planned.eventNo ?? rs.eventNo,
+              entryCs: planned.entryCs ?? rs.entryCs,
+              timing: 'electronic',
+              updatedAt: now,
+            });
+            continue;
+          }
+          addedSwims.push({
+            id: uid(),
+            swimmerId,
+            meetId: meet.id,
+            context: 'competition',
+            date,
+            distance: rs.distance,
+            stroke: rs.stroke,
+            course: rs.course,
+            timeCs: rs.timeCs ?? null,
+            entryCs: rs.entryCs,
+            status: rs.status,
+            round: rs.round,
+            eventNo: rs.eventNo,
+            place: rs.place,
+            splits: rs.splits,
+            timing: 'electronic',
+            source: 'club',
+            createdAt: now + seq++,
+            updatedAt: now,
+          });
+        }
+      }
+      const newOnes = addedSwims.filter((a) => !s.swims.some((x) => x.id === a.id));
+      const updatedIds = new Set(addedSwims.map((a) => a.id));
+      return {
+        ...s,
+        meets,
+        swims: [...s.swims.map((x) => (updatedIds.has(x.id) ? { ...x, ...addedSwims.find((a) => a.id === x.id)! } : x)), ...newOnes],
+      };
+    });
+    return { added: addedSwims.length, swims: addedSwims };
+  },
+
   /**
    * Import swimrankings : crée (ou complète) le nageur, crée les compétitions
    * manquantes et ajoute les performances qui n'existent pas encore.
@@ -255,38 +409,23 @@ export const actions = {
     setState((s) => {
       const meets = [...s.meets];
       const newSwims: Swim[] = [];
-      const existing = new Set(
-        s.swims
-          .filter((x) => x.swimmerId === swimmerId && x.timeCs)
-          .map((x) => `${x.course}|${x.distance}|${x.stroke}|${x.timeCs}|${x.date}`),
-      );
-      const norm = (t?: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9à-ÿ]/g, '');
+      const mine = s.swims.filter((x) => x.swimmerId === swimmerId);
       for (const p of swims) {
-        const key = `${p.course}|${p.distance}|${p.stroke}|${p.timeCs}|${p.date}`;
-        if (existing.has(key)) {
+        if (isDuplicate([...mine, ...newSwims], { ...p, timeCs: p.timeCs, status: 'OK', meetId: undefined })) {
           skipped++;
           continue;
         }
-        existing.add(key);
         let meetId: string | undefined;
         const meetName = p.meet || (p.city ? `Compétition à ${p.city.replace(/\s*\([A-Z]{3}\)$/, '')}` : 'Compétition');
-        const found = meets.find(
-          (m) =>
-            (norm(m.name).startsWith(norm(meetName)) || norm(meetName).startsWith(norm(m.name))) &&
-            p.date >= m.startDate &&
-            p.date <= (m.endDate ?? m.startDate) &&
-            m.course === p.course,
-        ) ??
-          meets.find(
-            (m) =>
-              (norm(m.name).startsWith(norm(meetName)) || norm(meetName).startsWith(norm(m.name))) &&
-              Math.abs(new Date(p.date).getTime() - new Date(m.startDate).getTime()) <= 4 * 86400000 &&
-              m.course === p.course,
-          );
+        const found = findMeet(meets, meetName, p.date, p.course);
         if (found) {
           meetId = found.id;
-          if (p.date < found.startDate) found.startDate = p.date;
-          if (p.date > (found.endDate ?? found.startDate)) found.endDate = p.date;
+          const i = meets.indexOf(found);
+          meets[i] = {
+            ...found,
+            startDate: p.date < found.startDate ? p.date : found.startDate,
+            endDate: p.date > (found.endDate ?? found.startDate) ? p.date : found.endDate,
+          };
         } else {
           const cityMatch = /^(.*?)\s*\(([A-Z]{3})\)$/.exec(p.city ?? '');
           const meet: Meet = {

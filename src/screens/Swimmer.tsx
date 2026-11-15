@@ -12,6 +12,7 @@ import { STROKES, courseLabel } from '../lib/events';
 import { openSwimmerForm } from './forms';
 import type { Course, Stroke, Swim } from '../store/types';
 import { TrophyGrid } from './Progression';
+import { openClubFinder } from './ClubFinder';
 
 export function SwimmerProfile({ id }: { id: string }) {
   const data = useData();
@@ -97,6 +98,14 @@ export function SwimmerProfile({ id }: { id: string }) {
             <Row icon="list" title="Toutes les courses" value={count} chevron onClick={() => navigate(`/swimmer/${id}/history`)} />
             <Row icon="trophy" iconBg="#ff9f0a" title="Records" chevron onClick={() => { actions.selectSwimmer(id); navigate('/records'); }} />
             <Row icon="chart" iconBg="#30d158" title="Progression" chevron onClick={() => { actions.selectSwimmer(id); navigate('/progress'); }} />
+            <Row
+              icon="sparkles"
+              iconBg="#bf5af2"
+              title="Résultats du club"
+              sub={data.settings.clubSync.enabled ? 'Ajoutés automatiquement' : 'Mise à jour automatique désactivée'}
+              chevron
+              onClick={() => openClubFinder({ swimmer })}
+            />
             <Row icon="download" iconBg="#5e5ce6" title="Importer depuis swimrankings.net" chevron onClick={() => navigate(`/import?swimmer=${id}`)} />
           </div>
         </Section>

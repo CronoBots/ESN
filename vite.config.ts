@@ -12,7 +12,7 @@ import { join, relative } from 'node:path';
 function serviceWorkerPlugin(): Plugin {
   return {
     name: 'nageo-service-worker',
-    apply: 'build',
+    apply: (_config, env) => env.command === 'build' && !env.isSsrBuild,
     generateBundle(_options, bundle) {
       const publicDir = join(process.cwd(), 'public');
       const publicFiles: string[] = [];
@@ -29,7 +29,8 @@ function serviceWorkerPlugin(): Plugin {
         /* pas de dossier public */
       }
       const files = ['./', ...Object.keys(bundle), ...publicFiles]
-        .filter((f) => !f.endsWith('.map') && f !== 'sw.js')
+        // Les gros modules chargés à la demande (lecture PDF) et les données restent hors précache
+        .filter((f) => !f.endsWith('.map') && f !== 'sw.js' && !/pdf\.|data\//.test(f))
         .map((f) => (f === './' ? f : `./${f}`));
       const hash = createHash('sha256');
       for (const [name, chunk] of Object.entries(bundle)) {

@@ -214,7 +214,7 @@ export function SwimDetail({ id }: { id: string }) {
               }
             />
             <Row title="Chronométrage" value={swim.timing === 'manual' ? 'Manuel' : 'Électronique'} />
-            <Row title="Source" value={swim.source === 'swimrankings' ? 'swimrankings.net' : 'Saisie manuelle'} />
+            <Row title="Source" value={swim.source === 'swimrankings' ? 'swimrankings.net' : swim.source === 'club' ? 'Résultats du club' : 'Saisie manuelle'} />
           </div>
           {swim.notes && (
             <div className="card pad" style={{ marginTop: 10, whiteSpace: 'pre-wrap', fontSize: 15 }}>

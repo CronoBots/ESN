@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useData } from './store/store';
 import { useRoute, navigate } from './router';
-import { UiHost } from './components/ui';
+import { UiHost, overlay } from './components/ui';
+import { shouldAutoSync, syncClub } from './lib/clubSync';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
@@ -85,6 +86,32 @@ export function App() {
 
   const showOnboarding =
     data.swimmers.length === 0 && !data.settings.onboarded && route.path[0] !== 'import' && route.path[0] !== 'about';
+
+  // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
+  useEffect(() => {
+    const run = () => {
+      if (!shouldAutoSync()) return;
+      syncClub()
+        .then((r) => {
+          if (!r.added) return;
+          const who = r.swimmers.map((x) => x.swimmer.firstName).join(', ');
+          overlay.toast(`${r.added} nouveau${r.added > 1 ? 'x' : ''} résultat${r.added > 1 ? 's' : ''} du club pour ${who}`, '🏊');
+          if (r.pbs) overlay.celebrate();
+        })
+        .catch(() => {
+          /* hors-ligne ou site du club indisponible : nouvel essai plus tard */
+        });
+    };
+    const t = setTimeout(run, 1500);
+    const onVisible = () => document.visibilityState === 'visible' && run();
+    window.addEventListener('online', run);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('online', run);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [data.swimmers.length]);
 
   // Fin de l'écran de bienvenue : on repart du haut de la page
   useEffect(() => {

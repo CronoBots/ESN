@@ -20,9 +20,20 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | 🏊 **Entraînements** | Chronos d'entraînement séparés (inclus ou non dans les records). |
 | 👨‍👩‍👧 **Plusieurs nageurs** | Frères et sœurs, nageurs suivis, favoris. |
-| 🔄 **Import swimrankings.net** | Bouton-favori « Envoyer vers Nageo » ou copier-coller de la page du nageur. |
+| ⚡ **Résultats du club automatiques** | Les résultats publiés par l'ESN Seraing sont récupérés et ajoutés tout seuls (voir plus bas). |
+| 🔄 **Import swimrankings.net** | Capture d'écran lue sur le téléphone, copier-coller ou bouton-favori (ordinateur). |
 | 💾 **Sauvegarde** | Export / restauration JSON (transfert vers un autre téléphone, partage avec l'autre parent), export CSV pour Excel. |
 | 🌗 **Design** | Style iOS natif, mode sombre et clair, onglets sur mobile et barre latérale sur ordinateur. |
+
+## Résultats du club, automatiquement
+
+Le club (ESN Seraing) publie sur son site les résultats de ses nageurs : un PDF « résultats par club » par compétition.
+
+1. Chaque jour, la publication GitHub (`npm run club-index`, voir `scripts/club-index.ts`) parcourt les pages « Résultats » du site du club et met à jour `public/data/club-results.json` : la liste des rapports (nom, lieu, bassin, dates, adresse du PDF). **Aucune donnée de nageur** n'y figure.
+2. L'application télécharge ces PDF directement depuis le site du club et les lit **sur le téléphone** (pdf.js). Elle y retrouve les nageurs enregistrés par le parent (nom + année de naissance) et ajoute leurs résultats : temps, place, temps de passage, séries/finales, temps d'engagement, sans doublon.
+3. Vérification à chaque ouverture de l'application (au plus toutes les 6 h) ; « Retrouver mon enfant » parcourt tous les rapports pour un premier import.
+
+Configuration du club (adresse du site, pages de résultats, code de licence) : `src/club.ts`.
 
 ## Import depuis swimrankings.net
 
