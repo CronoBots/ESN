@@ -128,6 +128,7 @@ function ResultPhotos({ close, meetId: initialMeet, swimmerId }: { close: () => 
       const res = actions.importClubResults(sw.id, [
         {
           meet,
+          source: 'manual',
           meetId: chosenMeet?.id,
           swims: mine.map((r) => ({
             eventNo: r.header.eventNo,

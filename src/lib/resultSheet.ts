@@ -2,7 +2,7 @@ import type { Course, Gender, Round, Stroke } from '../store/types';
 import { makeISO } from './dates';
 import { isValidEvent } from './events';
 import { computePoints } from './points';
-import { normName } from './clubReport';
+import { normName } from './results';
 
 /**
  * Lecture d'une feuille de résultats affichée à la piscine (« Liste

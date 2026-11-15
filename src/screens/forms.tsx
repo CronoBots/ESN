@@ -12,6 +12,7 @@ import { computePoints, timeForPoints } from '../lib/points';
 import { extractAthleteId } from '../lib/swimrankings';
 import { fullName, sortSwimmers } from '../store/hooks';
 import { navigate } from '../router';
+import { findResultsNow } from './autoResults';
 
 export const DEFAULT_CLUB = 'Ecole Seraing Natation';
 
@@ -52,15 +53,19 @@ function SwimmerForm({ swimmer, close, onCreated }: { swimmer?: Swimmer; close: 
       color,
     };
     if (swimmer) {
+      const renamed = data.firstName !== swimmer.firstName || data.lastName !== swimmer.lastName || data.birthYear !== swimmer.birthYear;
       actions.updateSwimmer(swimmer.id, data);
-      overlay.toast('Profil mis à jour');
+      close();
+      if (renamed) findResultsNow(data.firstName);
+      else overlay.toast('Profil mis à jour');
     } else {
       const s = actions.addSwimmer(data);
       actions.selectSwimmer(s.id);
-      overlay.toast(`${s.firstName} a été ajouté${gender === 'F' ? 'e' : ''}`);
       onCreated?.(s);
+      close();
+      // Ses résultats de compétition sont recherchés tout de suite
+      findResultsNow(s.firstName);
     }
-    close();
   };
 
   return (
@@ -124,6 +129,10 @@ function SwimmerForm({ swimmer, close, onCreated }: { swimmer?: Swimmer; close: 
           <label htmlFor="sf-club">Club</label>
           <input id="sf-club" value={club} onChange={(e) => setClub(e.target.value)} placeholder="Nom du club" />
         </div>
+      </div>
+
+      <div className="section-foot">
+        Nom, prénom et année de naissance permettent de retrouver automatiquement ses résultats de compétition.
       </div>
 
       <div className="section">

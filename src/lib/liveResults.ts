@@ -3,9 +3,23 @@ import { actions, getState } from '../store/store';
 import type { Swim, Swimmer } from '../store/types';
 import { makeISO, monthFromToken, todayISO } from './dates';
 import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './lenex';
-import { sameSwimmer, type ClubMatch, type Progress } from './clubSync';
 import { computePbFlags } from './stats';
-import { normName } from './clubReport';
+import { normName } from './results';
+
+export interface Progress {
+  done: number;
+  total: number;
+}
+
+/** Même nageur : nom et prénom (dans un sens ou dans l'autre) et année de naissance si connue. */
+export function sameSwimmer(
+  a: { firstName: string; lastName: string; birthYear?: number },
+  sw: Pick<Swimmer, 'firstName' | 'lastName' | 'birthYear'>,
+): boolean {
+  const x = `${normName(a.lastName)}|${normName(a.firstName)}`;
+  if (x !== `${normName(sw.lastName)}|${normName(sw.firstName)}` && x !== `${normName(sw.firstName)}|${normName(sw.lastName)}`) return false;
+  return !(sw.birthYear && a.birthYear && sw.birthYear !== a.birthYear);
+}
 
 /**
  * Résultats publiés en direct par les organisateurs (Splash Meet Manager →
@@ -131,50 +145,6 @@ async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void
 }
 
 /* ------------------------------------------------------------------------ */
-/* Recherche d'un nageur                                                     */
-/* ------------------------------------------------------------------------ */
-
-export async function searchLive(query: { firstName: string; lastName: string }, onProgress?: (p: Progress) => void): Promise<ClubMatch[]> {
-  const meets = (await listLiveMeets()).filter((m) => m.status !== 'upcoming');
-  const qLast = normName(query.lastName);
-  const qFirst = normName(query.firstName);
-  const byKey = new Map<string, ClubMatch>();
-  let done = 0;
-  onProgress?.({ done, total: meets.length });
-  await mapLimit(
-    meets,
-    4,
-    async (m) => {
-      const l = await fetchLiveResults(m.id, m.status === 'live');
-      if (!l) return;
-      for (const a of l.athletes) {
-        const last = normName(a.lastName);
-        const first = normName(a.firstName);
-        const ok = ((!qLast || last.startsWith(qLast)) && (!qFirst || first.startsWith(qFirst))) || (qLast && qFirst && first.startsWith(qLast) && last.startsWith(qFirst));
-        if (!ok) continue;
-        const key = `${last}|${first}|${a.birthYear ?? ''}`;
-        const cur = byKey.get(key) ?? {
-          license: a.license ?? key,
-          firstName: a.firstName,
-          lastName: a.lastName,
-          birthYear: a.birthYear,
-          gender: a.gender,
-          club: a.club,
-          reports: [],
-          swimCount: 0,
-        };
-        cur.reports.push(toImport(l, a));
-        cur.swimCount += a.swims.length;
-        if (!cur.lastMeet || l.meet.startDate > cur.lastMeet) cur.lastMeet = l.meet.startDate;
-        byKey.set(key, cur);
-      }
-    },
-    () => onProgress?.({ done: ++done, total: meets.length }),
-  );
-  return [...byKey.values()];
-}
-
-/* ------------------------------------------------------------------------ */
 /* Synchronisation automatique                                               */
 /* ------------------------------------------------------------------------ */
 
@@ -186,8 +156,38 @@ export interface LiveSyncResult {
 
 let running: Promise<LiveSyncResult> | null = null;
 
+/** État observable de la recherche en cours (bandeau « Recherche des résultats… »). */
+export const syncStatus = {
+  value: null as Progress | null,
+  listeners: new Set<() => void>(),
+  set(v: Progress | null) {
+    this.value = v;
+    this.listeners.forEach((l) => l());
+  },
+  subscribe(l: () => void) {
+    syncStatus.listeners.add(l);
+    return () => {
+      syncStatus.listeners.delete(l);
+    };
+  },
+};
+
+export const isSyncing = () => running != null;
+
 export function syncLive(opts: { force?: boolean; onProgress?: (p: Progress) => void } = {}): Promise<LiveSyncResult> {
-  if (!running) running = doSync(opts).finally(() => (running = null));
+  if (!running) {
+    syncStatus.set({ done: 0, total: 0 });
+    running = doSync({
+      ...opts,
+      onProgress: (p) => {
+        syncStatus.set(p);
+        opts.onProgress?.(p);
+      },
+    }).finally(() => {
+      running = null;
+      syncStatus.set(null);
+    });
+  }
   return running;
 }
 
@@ -253,6 +253,9 @@ export function shouldAutoSyncLive(): boolean {
   const cfg = s.settings.liveSync;
   if (!cfg.enabled || !s.swimmers.length) return false;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  // Nageur ajouté (ou renommé) depuis la dernière recherche : tout de suite
+  const known = new Set(Object.values(cfg.processed).flat());
+  if (s.swimmers.some((sw) => !known.has(sw.id))) return true;
   // Pendant un week-end de compétition, on vérifie plus souvent
   const ongoing = s.meets.some((m) => m.startDate <= todayISO() && (m.endDate ?? m.startDate) >= todayISO());
   return Date.now() - (cfg.lastCheck ?? 0) > (ongoing ? 15 * 60 * 1000 : 3 * 3600 * 1000);

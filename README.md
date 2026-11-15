@@ -20,7 +20,7 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | 🏊 **Entraînements** | Chronos d'entraînement séparés (inclus ou non dans les records). |
 | 👨‍👩‍👧 **Plusieurs nageurs** | Frères et sœurs, nageurs suivis, favoris. |
-| ⚡ **Résultats automatiques** | Résultats en direct des compétitions (LENEX, live.swimrankings.net) et résultats publiés par l'ESN Seraing, ajoutés tout seuls. |
+| ⚡ **Résultats automatiques** | Dès qu'un enfant est ajouté, ses résultats officiels de compétition (LENEX, live.swimrankings.net) arrivent tout seuls. |
 | 📸 **Photos des résultats affichés** | Les feuilles affichées à la piscine, photographiées, sont lues sur le téléphone. |
 | 🔄 **Import swimrankings.net** | Capture d'écran lue sur le téléphone, copier-coller ou bouton-favori (ordinateur). |
 | 💾 **Sauvegarde** | Export / restauration JSON (transfert vers un autre téléphone, partage avec l'autre parent), export CSV pour Excel. |
@@ -30,17 +30,7 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 
 Les organisateurs utilisent Splash Meet Manager, qui publie les résultats de chaque compétition sur **live.swimrankings.net** (les mêmes feuilles que celles affichées à la piscine, et le fichier officiel `results.lxf` au format **LENEX**). Ce site autorise la lecture par d'autres applications (CORS) et son `robots.txt` permet l'accès aux pages de compétitions et aux fichiers `.lxf`.
 
-Nageo lit la liste des compétitions belges (`?nation=BEL`), télécharge le fichier LENEX de chacune (~50 Ko) et y retrouve vos nageurs (nom + année de naissance) : temps, place dans la catégorie d'âge, points, série et ligne, temps d'engagement, temps de passage, disqualification avec sa raison. Vérification à chaque ouverture, toutes les 15 min pendant une compétition. Code : `src/lib/lenex.ts`, `src/lib/liveResults.ts`.
-
-## Résultats du club, automatiquement
-
-Le club (ESN Seraing) publie sur son site les résultats de ses nageurs : un PDF « résultats par club » par compétition.
-
-1. Chaque jour, la publication GitHub (`npm run club-index`, voir `scripts/club-index.ts`) parcourt les pages « Résultats » du site du club et met à jour `public/data/club-results.json` : la liste des rapports (nom, lieu, bassin, dates, adresse du PDF). **Aucune donnée de nageur** n'y figure.
-2. L'application télécharge ces PDF directement depuis le site du club et les lit **sur le téléphone** (pdf.js). Elle y retrouve les nageurs enregistrés par le parent (nom + année de naissance) et ajoute leurs résultats : temps, place, temps de passage, séries/finales, temps d'engagement, sans doublon.
-3. Vérification à chaque ouverture de l'application (au plus toutes les 6 h) ; « Retrouver mon enfant » parcourt tous les rapports pour un premier import.
-
-Configuration du club (adresse du site, pages de résultats, code de licence) : `src/club.ts`.
+Nageo lit la liste des compétitions belges (`?nation=BEL`), télécharge le fichier LENEX de chacune (~50 Ko) et y retrouve vos nageurs (nom + année de naissance) : temps, place dans la catégorie d'âge, points, série et ligne, temps d'engagement, temps de passage, disqualification avec sa raison. Recherche **dès qu'un nageur est ajouté** (ou renommé), puis à chaque ouverture et toutes les 15 min pendant une compétition. Aucune action du parent n'est nécessaire. Code : `src/lib/lenex.ts`, `src/lib/liveResults.ts`.
 
 ## Import depuis swimrankings.net
 
@@ -65,7 +55,7 @@ npm run build     # build de production dans dist/
 npm run icons     # régénère les icônes (Playwright requis)
 ```
 
-Club par défaut et fiche « Club » (Réglages › À propos) : `src/club.ts`.
+Club par défaut, fiche « Club » (Réglages › À propos) et pays des compétitions suivies : `src/club.ts`.
 
 Stack : React 19, TypeScript, Vite. Aucune dépendance d'exécution en dehors de React. Le service worker (`src/sw-template.js`) est généré au build avec la liste des fichiers à précharger.
 

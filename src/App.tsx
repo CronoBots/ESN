@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { UiHost, overlay } from './components/ui';
-import { shouldAutoSync, syncClub } from './lib/clubSync';
-import { shouldAutoSyncLive, syncLive } from './lib/liveResults';
+import { isSyncing, shouldAutoSyncLive, syncLive } from './lib/liveResults';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
@@ -98,8 +97,7 @@ export function App() {
     };
     const run = () => {
       // hors-ligne ou site indisponible : nouvel essai à la prochaine ouverture
-      if (shouldAutoSyncLive()) syncLive().then(notify).catch(() => {});
-      if (shouldAutoSync()) syncClub().then(notify).catch(() => {});
+      if (!isSyncing() && shouldAutoSyncLive()) syncLive().then(notify).catch(() => {});
     };
     const t = setTimeout(run, 1500);
     // Pendant une compétition, vérification régulière tant que l'app est ouverte

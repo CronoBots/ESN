@@ -12,7 +12,7 @@ import { STROKES, courseLabel } from '../lib/events';
 import { openSwimmerForm } from './forms';
 import type { Course, Stroke, Swim } from '../store/types';
 import { TrophyGrid } from './Progression';
-import { openClubFinder } from './ClubFinder';
+import { findResultsNow } from './autoResults';
 
 export function SwimmerProfile({ id }: { id: string }) {
   const data = useData();
@@ -101,10 +101,10 @@ export function SwimmerProfile({ id }: { id: string }) {
             <Row
               icon="sparkles"
               iconBg="#bf5af2"
-              title="Résultats du club"
-              sub={data.settings.clubSync.enabled ? 'Ajoutés automatiquement' : 'Mise à jour automatique désactivée'}
+              title="Résultats des compétitions"
+              sub={data.settings.liveSync.enabled ? 'Ajoutés automatiquement · toucher pour rechercher' : 'Recherche automatique désactivée (Réglages)'}
               chevron
-              onClick={() => openClubFinder({ swimmer })}
+              onClick={() => findResultsNow(swimmer.firstName)}
             />
             <Row icon="download" iconBg="#5e5ce6" title="Importer depuis swimrankings.net" chevron onClick={() => navigate(`/import?swimmer=${id}`)} />
           </div>

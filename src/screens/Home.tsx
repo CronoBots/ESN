@@ -12,7 +12,7 @@ import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { openGoalForm, openResultForm, openSwimmerForm } from './forms';
 import { InstallBanner } from './Install';
-import { openClubFinder } from './ClubFinder';
+import { findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
 import type { Goal, Swimmer } from '../store/types';
 
@@ -130,6 +130,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
     [mine],
   );
   const goals = data.goals.filter((g) => g.swimmerId === swimmer.id);
+  const syncing = useSyncStatus() != null;
   const maxPts = Math.max(400, ...summary.strokePoints.map((s) => s.points ?? 0));
 
   return (
@@ -170,18 +171,19 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
       </button>
 
       <InstallBanner />
+      <SyncBanner />
 
-      {summary.races === 0 && !upcoming && (
+      {summary.races === 0 && !upcoming && !syncing && (
         <Section>
           <div className="card">
             <Empty
               icon="stopwatch"
-              title="Premier chrono ?"
-              text="Saisissez un temps à la main ou importez l’historique depuis swimrankings.net."
+              title="Pas encore de résultat"
+              text={`Les résultats de compétition de ${swimmer.firstName} sont ajoutés automatiquement dès leur publication par les organisateurs. Vous pouvez aussi saisir un temps ou importer l’historique.`}
               action={
                 <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
-                  <button className="btn block" onClick={() => openClubFinder({ swimmer })}>
-                    <Icon name="sparkles" /> Récupérer les résultats du club
+                  <button className="btn block" onClick={() => findResultsNow(swimmer.firstName)}>
+                    <Icon name="sparkles" /> Rechercher ses résultats
                   </button>
                   <button className="btn secondary block" onClick={() => openResultForm({ swimmerId: swimmer.id })}>
                     <Icon name="stopwatch" /> Saisir un temps

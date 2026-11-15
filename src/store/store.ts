@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { AppData, ClubSyncSettings, Goal, Meet, Settings, Swim, Swimmer } from './types';
-import type { ReportMeet, ReportSwim } from '../lib/clubReport';
+import type { AppData, Goal, LiveSyncSettings, Meet, Settings, Swim, Swimmer } from './types';
+import type { ReportMeet, ReportSwim } from '../lib/results';
 import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
 import { uid } from '../lib/id';
 
@@ -12,7 +12,6 @@ const DEFAULT_SETTINGS: Settings = {
   defaultCourse: 'SCM',
   onboarded: false,
   celebrate: true,
-  clubSync: { enabled: true, processed: {} },
   liveSync: { enabled: true, processed: {} },
 };
 
@@ -33,7 +32,6 @@ export function normalizeData(raw: unknown): AppData {
     settings: {
       ...DEFAULT_SETTINGS,
       ...(d.settings ?? {}),
-      clubSync: { ...DEFAULT_SETTINGS.clubSync, ...(d.settings?.clubSync ?? {}) },
       liveSync: { ...DEFAULT_SETTINGS.liveSync, ...(d.settings?.liveSync ?? {}) },
     },
   };
@@ -99,9 +97,10 @@ export function useData(): AppData {
   return useSyncExternalStore(subscribe, () => state);
 }
 
-/** Résultats d'une compétition à importer (rapport du club, LENEX, photo…). */
+/** Résultats d'une compétition à importer (LENEX, photo des feuilles…). */
 export interface ImportReport {
   meet: ReportMeet;
+  source?: Swim['source'];
   /** Compétition existante choisie par l'utilisateur. */
   meetId?: string;
   swims: (ReportSwim & { date?: string; startTime?: string; points?: number; heat?: number; lane?: number; notes?: string })[];
@@ -178,14 +177,14 @@ export const actions = {
         ((patch.firstName != null && patch.firstName !== before.firstName) ||
           (patch.lastName != null && patch.lastName !== before.lastName) ||
           (patch.birthYear !== undefined && patch.birthYear !== before.birthYear && before.birthYear != null));
-      // Nom modifié : les résultats du club seront recherchés à nouveau
+      // Nom ou année modifiés : ses résultats seront recherchés à nouveau
       const processed = renamed
-        ? Object.fromEntries(Object.entries(s.settings.clubSync.processed).map(([u, ids]) => [u, ids.filter((x) => x !== id)]))
-        : s.settings.clubSync.processed;
+        ? Object.fromEntries(Object.entries(s.settings.liveSync.processed).map(([u, ids]) => [u, ids.filter((x) => x !== id)]))
+        : s.settings.liveSync.processed;
       return {
         ...s,
         swimmers: s.swimmers.map((x) => (x.id === id ? { ...x, ...patch, id } : x)),
-        settings: { ...s.settings, clubSync: { ...s.settings.clubSync, processed } },
+        settings: { ...s.settings, liveSync: { ...s.settings.liveSync, processed } },
       };
     });
   },
@@ -291,17 +290,13 @@ export const actions = {
     setState(() => emptyData());
   },
 
-  updateClubSync(patch: Partial<ClubSyncSettings>) {
-    setState((s) => ({ ...s, settings: { ...s.settings, clubSync: { ...s.settings.clubSync, ...patch } } }));
-  },
-
-  updateLiveSync(patch: Partial<ClubSyncSettings>) {
+  updateLiveSync(patch: Partial<LiveSyncSettings>) {
     setState((s) => ({ ...s, settings: { ...s.settings, liveSync: { ...s.settings.liveSync, ...patch } } }));
   },
 
   /**
-   * Import des résultats publiés par le club (rapports PDF « résultats par
-   * club ») : crée les compétitions manquantes, ignore les doublons.
+   * Import de résultats (fichier LENEX en direct, photo des feuilles…) :
+   * crée les compétitions manquantes, complète le programme, ignore les doublons.
    */
   importClubResults(swimmerId: string, reports: ImportReport[]): { added: number; swims: Swim[] } {
     const addedSwims: Swim[] = [];
@@ -389,7 +384,7 @@ export const actions = {
             place: rs.place,
             splits: rs.splits,
             timing: 'electronic',
-            source: 'club',
+            source: r.source ?? 'live',
             createdAt: now + seq++,
             updatedAt: now,
           });

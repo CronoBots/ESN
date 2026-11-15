@@ -1,6 +1,6 @@
 import type { Course, Gender, Round, Stroke } from '../store/types';
 import { isValidEvent } from './events';
-import type { ReportMeet } from './clubReport';
+import type { ReportMeet } from './results';
 
 /**
  * LENEX : format standard d'échange des résultats de natation (fichiers .lxf

@@ -29,8 +29,7 @@ function serviceWorkerPlugin(): Plugin {
         /* pas de dossier public */
       }
       const files = ['./', ...Object.keys(bundle), ...publicFiles]
-        // Les gros modules chargés à la demande (lecture PDF) et les données restent hors précache
-        .filter((f) => !f.endsWith('.map') && f !== 'sw.js' && !/pdf\.|data\//.test(f))
+        .filter((f) => !f.endsWith('.map') && f !== 'sw.js')
         .map((f) => (f === './' ? f : `./${f}`));
       const hash = createHash('sha256');
       for (const [name, chunk] of Object.entries(bundle)) {

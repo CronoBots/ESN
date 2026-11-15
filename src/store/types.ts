@@ -68,7 +68,7 @@ export interface Swim {
   points?: number;
   timing?: 'electronic' | 'manual';
   notes?: string;
-  source: 'manual' | 'swimrankings' | 'club';
+  source: 'manual' | 'swimrankings' | 'club' | 'live';
   createdAt: number;
   updatedAt: number;
 }
@@ -97,15 +97,13 @@ export interface Settings {
   defaultCourse: Course;
   onboarded: boolean;
   celebrate: boolean;
-  /** Récupération automatique des résultats publiés par le club. */
-  clubSync: ClubSyncSettings;
   /** Récupération automatique des résultats en direct (live.swimrankings.net). */
-  liveSync: ClubSyncSettings;
+  liveSync: LiveSyncSettings;
 }
 
-export interface ClubSyncSettings {
+export interface LiveSyncSettings {
   enabled: boolean;
-  /** Rapports déjà lus : adresse du PDF → nageurs déjà traités. */
+  /** Compétitions déjà lues : identifiant → nageurs déjà recherchés. */
   processed: Record<string, string[]>;
   lastCheck?: number;
 }

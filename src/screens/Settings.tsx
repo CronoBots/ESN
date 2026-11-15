@@ -12,9 +12,7 @@ import { openSwimmerForm } from './forms';
 import { isStandalone, promptInstall } from './Install';
 import type { AppData } from '../store/types';
 import { CLUB } from '../club';
-import { syncClub } from '../lib/clubSync';
 import { syncLive } from '../lib/liveResults';
-import { openClubFinder } from './ClubFinder';
 import { useState } from 'react';
 
 export const APP_VERSION = '1.0.0';
@@ -151,20 +149,15 @@ export function Settings() {
         <Section title="Résultats automatiques">
           <div className="list">
             <div className="field">
-              <span className="label grow">Résultats en direct des compétitions (organisateurs)</span>
-              <Toggle on={s.liveSync.enabled} onChange={(v) => actions.updateLiveSync({ enabled: v })} label="Résultats en direct des compétitions" />
-            </div>
-            <div className="field">
-              <span className="label grow">Résultats publiés par l’{CLUB.short}</span>
-              <Toggle on={s.clubSync.enabled} onChange={(v) => actions.updateClubSync({ enabled: v })} label="Résultats publiés par le club" />
+              <span className="label grow">Ajouter automatiquement les résultats des compétitions</span>
+              <Toggle on={s.liveSync.enabled} onChange={(v) => actions.updateLiveSync({ enabled: v })} label="Ajouter automatiquement les résultats des compétitions" />
             </div>
             <SyncNowRow />
-            <Row icon="sparkles" iconBg="#bf5af2" title="Retrouver un nageur dans les résultats" chevron onClick={() => openClubFinder()} />
           </div>
           <div className="section-foot">
-            Les organisateurs publient les résultats des compétitions en direct (live.swimrankings.net, format officiel LENEX) ; le club publie
-            aussi les siens sur {CLUB.website.replace(/^https?:\/\/(www\.)?|\/$/g, '')}. Nageo y retrouve vos nageurs (nom et année de naissance) et
-            ajoute leurs résultats sans doublon : à chaque ouverture, toutes les 15 min pendant une compétition.
+            Les organisateurs publient les résultats officiels des compétitions sur live.swimrankings.net (format LENEX). Nageo y retrouve
+            vos nageurs (nom, prénom, année de naissance) et ajoute leurs résultats sans doublon : dès qu’un nageur est ajouté, à chaque
+            ouverture, et toutes les 15 min pendant une compétition.
           </div>
         </Section>
 
@@ -344,7 +337,7 @@ export function About() {
 function SyncNowRow() {
   const data = useData();
   const [busy, setBusy] = useState<string | null>(null);
-  const last = Math.max(data.settings.clubSync.lastCheck ?? 0, data.settings.liveSync.lastCheck ?? 0) || undefined;
+  const last = data.settings.liveSync.lastCheck;
   return (
     <Row
       icon="download"
@@ -358,18 +351,11 @@ function SyncNowRow() {
           : async () => {
               setBusy('Recherche des nouveaux résultats…');
               try {
-                const p1 = { done: 0, total: 0 };
-                const p2 = { done: 0, total: 0 };
-                const show = () => p1.total + p2.total && setBusy(`Lecture des résultats… ${p1.done + p2.done}/${p1.total + p2.total}`);
-                const [a, b] = await Promise.all([
-                  syncLive({ force: true, onProgress: (p) => (Object.assign(p1, p), show()) }).catch(() => null),
-                  syncClub({ force: true, onProgress: (p) => (Object.assign(p2, p), show()) }).catch(() => null),
-                ]);
-                const added = (a?.added ?? 0) + (b?.added ?? 0);
-                if (added) {
-                  overlay.toast(`${added} nouveaux résultats ajoutés`, '🏊');
-                  if ((a?.pbs ?? 0) + (b?.pbs ?? 0)) overlay.celebrate();
-                } else overlay.toast(!a && !b ? 'Résultats indisponibles pour le moment' : 'Tout est à jour', !a && !b ? '⚠️' : '✓');
+                const r = await syncLive({ force: true, onProgress: (p) => p.total && setBusy(`Lecture des résultats… ${p.done}/${p.total}`) });
+                if (r.added) {
+                  overlay.toast(`${r.added} nouveaux résultats ajoutés`, '🏊');
+                  if (r.pbs) overlay.celebrate();
+                } else overlay.toast('Tout est à jour', '✓');
               } catch {
                 overlay.toast(navigator.onLine ? 'Résultats du club indisponibles pour le moment' : 'Pas de connexion internet', '⚠️');
               } finally {

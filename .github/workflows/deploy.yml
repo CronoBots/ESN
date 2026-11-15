@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Chaque jour : mise à jour du catalogue des résultats publiés par le club
-  schedule:
-    - cron: '23 5 * * *'
 
 permissions:
   contents: read
@@ -28,8 +25,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Catalogue des résultats du club
-        run: npm run club-index || echo "::warning::Catalogue des résultats du club non mis à jour"
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

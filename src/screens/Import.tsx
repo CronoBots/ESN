@@ -10,9 +10,8 @@ import { formatDate } from '../lib/dates';
 import { formatTime, parseTime } from '../lib/time';
 import type { Gender } from '../store/types';
 import { openResultForm } from './forms';
-import { openClubFinder } from './ClubFinder';
+import { findResultsNow } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
-import { CLUB } from '../club';
 
 type Method = 'photo' | 'paste' | 'computer';
 
@@ -174,20 +173,21 @@ export function ImportScreen() {
     <>
       <NavBar title="Importer des temps" subtitle="Depuis swimrankings.net" back="/settings" />
       <main className="page">
-        {/* Résultats publiés par le club : automatique */}
+        {/* Résultats officiels : automatiques */}
         <div className="card pad" style={{ marginBottom: 18, border: '1.5px solid var(--accent)' }}>
           <div className="hstack" style={{ marginBottom: 8 }}>
             <span className="badge first">Automatique</span>
-            <b>Nageur de l’{CLUB.short} ?</b>
+            <b>Rien à faire</b>
           </div>
           <div className="muted small" style={{ marginBottom: 12 }}>
-            Nageo récupère tout seul les résultats que le club publie sur son site (compétitions depuis 2023), puis ajoute chaque nouvelle
-            compétition automatiquement. Rien à copier.
+            Les résultats des compétitions publiés par les organisateurs sont ajoutés tout seuls pour chaque nageur enregistré dans Nageo
+            (nom, prénom et année de naissance). Les imports ci-dessous servent pour l’historique plus ancien.
           </div>
-          <button className="btn block" onClick={() => openClubFinder({ swimmer: preselected })}>
-            <Icon name="sparkles" /> Retrouver {preselected ? preselected.firstName : 'mon enfant'} dans les résultats du club
+          <button className="btn block" onClick={() => findResultsNow(preselected?.firstName)}>
+            <Icon name="sparkles" /> Rechercher les résultats maintenant
           </button>
         </div>
+
         <div className="card pad" style={{ marginBottom: 18 }}>
           <div className="hstack" style={{ marginBottom: 8 }}>
             <span className="badge first">À la piscine</span>
@@ -201,7 +201,7 @@ export function ImportScreen() {
             <Icon name="upload" /> Photographier les résultats
           </button>
         </div>
-        <p className="section-caption" style={{ padding: '0 4px 8px' }}>Autre club ou compétitions non publiées : depuis swimrankings.net</p>
+        <p className="section-caption" style={{ padding: '0 4px 8px' }}>Historique plus ancien : depuis swimrankings.net</p>
 
         {/* 1. Le nageur et sa page */}
         <div className="card pad">

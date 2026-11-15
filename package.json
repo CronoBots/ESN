@@ -9,11 +9,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "icons": "node scripts/generate-icons.mjs",
-    "club-index": "vite build --ssr scripts/club-index.ts --outDir node_modules/.cache/club-index --emptyOutDir --logLevel warn && node node_modules/.cache/club-index/club-index.js"
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tesseract.js": "^7.0.0"
