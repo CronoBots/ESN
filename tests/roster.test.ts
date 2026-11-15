@@ -24,9 +24,11 @@ describe('liste des membres', () => {
     expect(roster.groups.map((g) => g.name)).toEqual(['Groupe A', 'Groupe B', 'Groupe C']);
   });
 
-  it('refuse un membre sans sexe ou sans groupe', () => {
+  it('refuse un membre sans sexe ; le groupe est facultatif', () => {
     expect(() => validateRoster({ members: parseRosterCsv('A;DUPONT;Emma;2012;') })).toThrow(/Sexe/);
-    expect(() => validateRoster({ members: parseRosterCsv(';DUPONT;Emma;2012;F') })).toThrow(/Groupe/);
+    const r = validateRoster({ members: parseRosterCsv(';DUPONT;Emma;2012;F') });
+    expect(r.members[0].group).toBeUndefined();
+    expect(r.groups).toEqual([]);
   });
 
   it('chiffre et déchiffre avec le code du club', async () => {

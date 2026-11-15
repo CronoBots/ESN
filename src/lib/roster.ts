@@ -18,7 +18,8 @@ export interface RosterMember {
   firstName: string;
   birthYear?: number;
   gender: 'F' | 'M';
-  group: string;
+  /** Groupe d'entraînement (A, B, C…), facultatif : sans groupe, les nageurs sont classés par année. */
+  group?: string;
 }
 
 export interface Roster {
@@ -129,10 +130,9 @@ export function validateRoster(raw: unknown): Roster {
   for (const m of r.members) {
     const lastName = clean(m.lastName);
     const firstName = clean(m.firstName);
-    const group = clean(m.group).toUpperCase();
+    const group = clean(m.group).toUpperCase() || undefined;
     const gender = clean(m.gender).toUpperCase();
     if (!lastName || !firstName) throw new Error(`Nom ou prénom manquant : ${JSON.stringify(m)}`);
-    if (!group) throw new Error(`Groupe manquant pour ${firstName} ${lastName}`);
     if (gender !== 'F' && gender !== 'M') throw new Error(`Sexe (F ou M) manquant pour ${firstName} ${lastName}`);
     const birthYear = m.birthYear ? Number(m.birthYear) : undefined;
     if (birthYear != null && !(birthYear > 1900 && birthYear < 2100)) throw new Error(`Année de naissance invalide pour ${firstName} ${lastName}`);
@@ -141,7 +141,7 @@ export function validateRoster(raw: unknown): Roster {
     seen.add(key);
     members.push({ lastName, firstName, birthYear, gender, group });
   }
-  const ids = [...new Set(members.map((m) => m.group))].sort();
+  const ids = [...new Set(members.map((m) => m.group).filter((g): g is string => !!g))].sort();
   const named = new Map((r.groups ?? []).map((g) => [clean(g.id).toUpperCase(), clean(g.name)]));
   return {
     club: clean(r.club) || 'Ecole Seraing Natation',

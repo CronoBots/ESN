@@ -14,10 +14,11 @@ const OUT = new URL('../public/data/club-roster.json', import.meta.url);
 const [cmd, ...args] = process.argv.slice(2);
 
 function summary(roster) {
-  const lines = roster.groups.map((g) => {
-    const n = roster.members.filter((m) => m.group === g.id).length;
-    return `  ${g.name} : ${n} nageur${n > 1 ? 's' : ''}`;
-  });
+  const count = (n) => `${n} nageur${n > 1 ? 's' : ''}`;
+  const years = [...new Set(roster.members.map((m) => m.birthYear ?? '?'))].sort();
+  const lines = roster.groups.length
+    ? roster.groups.map((g) => `  ${g.name} : ${count(roster.members.filter((m) => m.group === g.id).length)}`)
+    : years.map((y) => `  ${y} : ${count(roster.members.filter((m) => (m.birthYear ?? '?') === y).length)}`);
   return `${roster.members.length} nageurs (liste du ${roster.updated})\n${lines.join('\n')}`;
 }
 

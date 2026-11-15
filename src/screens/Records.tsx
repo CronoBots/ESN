@@ -182,7 +182,8 @@ export function Rankings() {
   const [gender, setGender] = useState<'all' | Gender>('all');
   const [sameYear, setSameYear] = useState(false);
   const groups = data.settings.club?.groups ?? [];
-  const club = hasClubMembers(data.swimmers) && groups.length > 0;
+  const clubMode = hasClubMembers(data.swimmers);
+  const club = clubMode && groups.length > 0;
   const [group, setGroup] = useState<string>(() => (club && selected?.group ? selected.group : 'all'));
   const include = data.settings.includeTraining;
   const distances = distancesFor(stroke, course);
@@ -211,7 +212,7 @@ export function Rankings() {
     <>
       <NavBar
         title="Classements"
-        subtitle={club ? 'Meilleurs temps des nageurs du club, par groupe' : 'Entre vos nageurs et les nageurs suivis'}
+        subtitle={club ? 'Meilleurs temps des nageurs du club, par groupe' : clubMode ? 'Meilleurs temps des nageurs du club' : 'Entre vos nageurs et les nageurs suivis'}
         back="/records"
       />
       <main className="page">
@@ -273,7 +274,7 @@ export function Rankings() {
                 icon="ranking"
                 title="Pas encore de classement"
                 text={
-                  club
+                  clubMode
                     ? 'Aucun nageur de cette sélection n’a encore de temps sur cette épreuve.'
                     : 'Ajoutez des nageurs suivis (coéquipiers, amis) dans Réglages pour comparer les meilleurs temps.'
                 }
@@ -294,7 +295,7 @@ export function Rankings() {
                         {fullName(r.swimmer)}
                       </div>
                       <div className="row-sub">
-                        {[age != null ? `${age}\u00a0ans` : null, club ? groupName(groups, r.swimmer.group) : r.swimmer.club]
+                        {[age != null ? `${age}\u00a0ans` : null, club ? groupName(groups, r.swimmer.group) : clubMode ? r.swimmer.birthYear : r.swimmer.club]
                           .filter(Boolean)
                           .join(' · ')}
                       </div>
@@ -310,7 +311,7 @@ export function Rankings() {
             </div>
           )}
         </Section>
-        {STROKE_BY_ID[stroke] && !club && (
+        {STROKE_BY_ID[stroke] && !clubMode && (
           <div className="section-foot">
             Astuce : importez la page swimrankings.net d’un coéquipier en tant que « nageur suivi » pour l’ajouter au classement.
           </div>

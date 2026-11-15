@@ -21,6 +21,22 @@ export function groupsLabel(groups: RosterGroup[]): string {
   return letters ? `${names.length > 1 ? 'groupes' : 'groupe'}\u00a0${list}` : list;
 }
 
+/** « années 2008 à 2016 » */
+export function yearsLabel(swimmers: Swimmer[]): string {
+  const years = swimmers.map((s) => s.birthYear).filter((y): y is number => !!y);
+  if (!years.length) return '';
+  const min = Math.min(...years);
+  const max = Math.max(...years);
+  return min === max ? `année\u00a0${min}` : `années ${min} à\u00a0${max}`;
+}
+
+/** Résumé de la liste du club : groupes s'il y en a, sinon années de naissance. */
+export function clubSummary(groups: RosterGroup[], members: Swimmer[]): string {
+  return [`${members.length}\u00a0nageur${members.length > 1 ? 's' : ''}`, groups.length ? groupsLabel(groups) : yearsLabel(members)]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 export function groupName(groups: RosterGroup[], id?: string): string | undefined {
   if (!id) return undefined;
   return groups.find((g) => g.id === id)?.name ?? `Groupe ${id}`;
@@ -109,7 +125,7 @@ function ClubCodeSheet({ close, onUnlocked, initial }: { close: () => void; onUn
       <div className="center" style={{ padding: '4px 0 18px' }}>
         <BrandLogo height={72} />
         <p className="muted" style={{ margin: '14px auto 0', maxWidth: 380 }}>
-          Entrez le code donné par le club : les nageurs des groupes apparaissent dans l’application, avec leurs résultats.
+          Entrez le code donné par le club : les nageurs du club apparaissent dans l’application, avec leurs résultats.
         </p>
       </div>
       <form
@@ -163,7 +179,9 @@ export function openChildrenPicker(onDone?: () => void) {
   overlay.sheet((close) => <ChildrenPicker close={close} onDone={onDone} />);
 }
 
-const byName = (a: Swimmer, b: Swimmer) =>
+/** Par année de naissance, puis par nom. */
+const byYearName = (a: Swimmer, b: Swimmer) =>
+  (a.birthYear ?? 9999) - (b.birthYear ?? 9999) ||
   `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'fr', { sensitivity: 'base' });
 
 function matches(sw: Swimmer, q: string) {
@@ -174,14 +192,25 @@ function matches(sw: Swimmer, q: string) {
     .every((t) => hay.includes(t));
 }
 
-/** Membres regroupés par groupe (puis les autres nageurs). */
-function groupSections(swimmers: Swimmer[], groups: RosterGroup[], filter: string, q: string) {
-  const list = swimmers.filter((s) => matches(s, q)).sort(byName);
-  const sections = groups
-    .filter((g) => filter === 'all' || g.id === filter)
-    .map((g) => ({ id: g.id, title: g.name, items: list.filter((s) => s.member && s.group === g.id) }));
+/** Années de naissance des membres, de la plus ancienne à la plus récente. */
+const memberYears = (swimmers: Swimmer[]) =>
+  [...new Set(swimmers.filter((s) => s.member).map((s) => String(s.birthYear ?? '')))].sort((a, b) => (a || '9999').localeCompare(b || '9999'));
+
+/**
+ * Membres par groupe (A, B, C…) ou, sans groupes, par année de naissance ;
+ * chaque section triée par année puis par nom. Puis les autres nageurs.
+ */
+function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: string, q: string) {
+  const list = swimmers.filter((s) => matches(s, q)).sort(byYearName);
+  const sections = groups.length
+    ? groups
+        .filter((g) => filter === 'all' || g.id === filter)
+        .map((g) => ({ id: g.id, title: g.name, items: list.filter((s) => s.member && s.group === g.id) }))
+    : memberYears(swimmers)
+        .filter((y) => filter === 'all' || y === filter)
+        .map((y) => ({ id: y || 'na', title: y || 'Année inconnue', items: list.filter((s) => s.member && String(s.birthYear ?? '') === y) }));
   if (filter === 'all') {
-    const others = list.filter((s) => !s.member || !groups.some((g) => g.id === s.group));
+    const others = list.filter((s) => !s.member || (groups.length > 0 && !groups.some((g) => g.id === s.group)));
     if (others.length) sections.push({ id: 'others', title: 'Autres nageurs', items: others });
   }
   return sections.filter((s) => s.items.length);
@@ -201,7 +230,7 @@ function ChildrenPicker({ close, onDone }: { close: () => void; onDone?: () => v
   const groups = data.settings.club?.groups ?? [];
   const [sel, setSel] = useState<Set<string>>(() => new Set(data.swimmers.filter((s) => s.relation === 'child').map((s) => s.id)));
   const [q, setQ] = useState('');
-  const sections = useMemo(() => groupSections(data.swimmers, groups, 'all', q), [data.swimmers, groups, q]);
+  const sections = useMemo(() => clubSections(data.swimmers, groups, 'all', q), [data.swimmers, groups, q]);
 
   const toggle = (id: string) =>
     setSel((s) => {
@@ -293,11 +322,21 @@ export function ClubScreen() {
   }, [data.swims]);
 
   const members = data.swimmers.filter((s) => s.member);
-  const active = filter === 'all' || groups.some((g) => g.id === filter) ? filter : 'all';
+  const years = memberYears(data.swimmers).filter(Boolean);
+  const choices = groups.length ? groups.map((g) => g.id) : years;
+  const active = filter === 'all' || choices.includes(filter) ? filter : 'all';
   const sections = useMemo(
-    () => groupSections(members, groups, active, q).filter((s) => s.id !== 'others'),
+    () => clubSections(members, groups, active, q).filter((s) => s.id !== 'others'),
     [data.swimmers, groups, active, q],
   );
+  const choose = (v: string) => {
+    setFilter(v);
+    try {
+      localStorage.setItem(GROUP_KEY, v);
+    } catch {
+      /* ignore */
+    }
+  };
 
   if (!club) {
     return (
@@ -308,7 +347,7 @@ export function ClubScreen() {
             <BrandLogo height={96} />
             <h2>Les nageurs de l’ESN</h2>
             <p className="muted">
-              Retrouvez tous les nageurs des groupes du club et leurs résultats de compétition. La liste est réservée aux membres :
+              Retrouvez tous les nageurs du club et leurs résultats de compétition. La liste est réservée aux membres :
               elle s’ouvre avec le code donné par le club.
             </p>
             {available ? (
@@ -329,7 +368,7 @@ export function ClubScreen() {
     <>
       <NavBar
         title="Le club"
-        subtitle={`${members.length}\u00a0nageurs · ${groupsLabel(groups)}`}
+        subtitle={clubSummary(groups, members)}
         back="/"
         right={
           <button className="icon-btn" onClick={() => openChildrenPicker()}>
@@ -349,20 +388,21 @@ export function ClubScreen() {
             </div>
           </div>
         )}
-        <div style={{ marginTop: 8 }}>
-          <Segmented
-            value={active}
-            onChange={(v) => {
-              setFilter(v);
-              try {
-                localStorage.setItem(GROUP_KEY, v);
-              } catch {
-                /* ignore */
-              }
-            }}
-            options={[{ id: 'all', label: 'Tous' }, ...groups.map((g) => ({ id: g.id, label: g.name }))]}
-          />
-        </div>
+        {groups.length > 0 ? (
+          <div style={{ marginTop: 8 }}>
+            <Segmented value={active} onChange={choose} options={[{ id: 'all', label: 'Tous' }, ...groups.map((g) => ({ id: g.id, label: g.name }))]} />
+          </div>
+        ) : (
+          years.length > 1 && (
+            <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Année de naissance">
+              {['all', ...years].map((y) => (
+                <button key={y} className={`chip${active === y ? ' active' : ''}`} aria-pressed={active === y} onClick={() => choose(y)}>
+                  {y === 'all' ? 'Toutes les années' : y}
+                </button>
+              ))}
+            </div>
+          )
+        )}
         <div style={{ marginTop: 10 }}>
           <SearchField value={q} onChange={setQ} label="Rechercher un nageur" />
         </div>
@@ -378,7 +418,7 @@ export function ClubScreen() {
               {sec.items.map((sw) => {
                 const st = stats.get(sw.id);
                 const sub = [
-                  sw.birthYear,
+                  groups.length ? sw.birthYear : null, // sans groupes, l'année est déjà le titre de la section
                   st ? `${st.count} course${st.count > 1 ? 's' : ''}` : 'Pas encore de résultat',
                   st?.last ? `dernière le ${formatDate(st.last)}` : null,
                 ].filter(Boolean);

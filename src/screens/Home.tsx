@@ -14,7 +14,7 @@ import { openGoalForm, openSwimmerForm } from './forms';
 import { InstallBanner } from './Install';
 import { findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
-import { groupsLabel, openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
+import { clubSummary, openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
 import type { Goal, Swimmer } from '../store/types';
 
 const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -466,7 +466,7 @@ function ClubCard() {
   const available = useRosterAvailable();
   const club = data.settings.club;
   if (!club && !available) return null;
-  const members = data.swimmers.filter((s) => s.member).length;
+  const members = data.swimmers.filter((s) => s.member);
   return (
     <Section title="Le club">
       {club ? (
@@ -478,7 +478,7 @@ function ClubCard() {
             <div className="row-body">
               <div className="row-title">Nageurs de l’ESN</div>
               <div className="row-sub">
-                {members} nageurs · {groupsLabel(club.groups)}
+                {clubSummary(club.groups, members)}
               </div>
             </div>
             <Icon name="chevronRight" className="chev" />
@@ -489,7 +489,7 @@ function ClubCard() {
             </span>
             <div className="row-body">
               <div className="row-title">Classements du club</div>
-              <div className="row-sub">Meilleurs temps par épreuve et par groupe</div>
+              <div className="row-sub">Meilleurs temps par épreuve{club.groups.length ? ' et par groupe' : ', par âge'}</div>
             </div>
             <Icon name="chevronRight" className="chev" />
           </button>
@@ -499,7 +499,7 @@ function ClubCard() {
           <BrandLogo variant="mark" height={34} />
           <div className="grow">
             <div style={{ fontWeight: 600 }}>Membre de l’ESN ?</div>
-            <div className="muted small">Entrez le code du club pour retrouver tous les nageurs des groupes et leurs résultats.</div>
+            <div className="muted small">Entrez le code du club pour retrouver tous les nageurs du club et leurs résultats.</div>
           </div>
           <Icon name="chevronRight" className="chev" />
         </button>
