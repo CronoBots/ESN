@@ -539,9 +539,9 @@ export function ImportScreen() {
 /** Petite illustration : sélectionner le tableau du premier au dernier temps. */
 function SelectionDemo() {
   const rows = [
-    ['100m Libre', '25m', '1:24.62', '11 oct 2026'],
-    ['400m Libre', '25m', '6:29.33', '10 oct 2026'],
-    ['100m Brasse', '25m', '1:56.61', '10 oct 2026'],
+    ['100m Libre', '25m', '1:12.40', '12 oct 2026'],
+    ['400m Libre', '25m', '5:58.17', '11 oct 2026'],
+    ['100m Brasse', '25m', '1:31.05', '11 oct 2026'],
   ];
   return (
     <div className="sel-demo" aria-hidden="true">

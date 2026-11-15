@@ -332,7 +332,7 @@ export function parseAthlete(text: string): ParsedAthlete {
     if (id) a.swimrankingsId = id;
   }
 
-  // "DUPONT, Emma" puis "(2015 ♀)" — ou "DUPONT, Emma (2015)".
+  // "DUPONT, Emma" puis "(2014 ♀)" — ou "DUPONT, Emma (2014)".
   // Une ligne peut contenir plusieurs zones (menu du site à gauche, capture
   // d'écran lue ligne par ligne) : on examine chaque zone séparément.
   const segs = (l: string | undefined) =>
@@ -365,7 +365,7 @@ export function parseAthlete(text: string): ParsedAthlete {
         if (/♀|female|femme|dame|vrouw/i.test(around)) a.gender = 'F';
         else if (/♂|\bmale\b|homme|herr|man\b/i.test(around)) a.gender = 'M';
       }
-      // Nation + club : "BEL - Belgique" puis "Ecole Seraing Natation" (ou "BEL - Club")
+      // Nation + club : "BEL - Belgique" puis "Nom du club" (ou "BEL - Club")
       for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
         const n = segs(lines[j])
           .map((x) => /^([A-Z]{3})\s*-\s*(.+)$/.exec(x))

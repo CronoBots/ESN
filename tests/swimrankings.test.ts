@@ -9,37 +9,37 @@ Recherche
 Meilleurs 50 athlètes (courant)
 Meilleurs 100 hommes (courant)
 DUPONT, Emma
-(2015 )
+(2014 )
 BEL - Belgique
-Ecole Seraing Natation
+Club Exemple Natation
 Meilleurs temps	Records	Compétitions	Biographie	swimstats
 Meilleurs temps: 	Meilleurs à vie	Classements personnels: 	Sélectionner...
 Meilleurs temps, Meilleurs à vie
 Compétition	Bassin	Temps	Pts.	Date	Ville (Pays)	Compétition
-100m Libre	25m	1:24.62	205	11 oct 2026	Liège	Marie Petit & Challenge Jules ...
-400m Libre	25m	6:29.33	206	10 oct 2026	Liège	Marie Petit & Challenge Jules ...
-100m Brasse	25m	1:56.61	152	10 oct 2026	Liège	Marie Petit & Challenge Jules ...
+100m Libre	25m	1:31.08	205	11 oct 2026	Liège	Meeting d’automne & Trophée des jeunes ...
+400m Libre	25m	6:41.20	206	10 oct 2026	Liège	Meeting d’automne & Trophée des jeunes ...
+100m Brasse	25m	1:49.95	152	10 oct 2026	Liège	Meeting d’automne & Trophée des jeunes ...
 Records
 Classements
 We use cookies to analyze traffic to our website`;
 
 // Copie sur mobile : une cellule par ligne
-const MOBILE_COPY = `DUPONT, Emma (2015)
-BEL - Ecole Seraing Natation
+const MOBILE_COPY = `DUPONT, Emma (2014)
+BEL - Club Exemple Natation
 50m Dos
 25m
 45.12
 180
 14 nov. 2026
-Crisnée
-Meeting Liège Natation Invite
+Namur
+Meeting de Namur
 100m 4 nages
 25m
 1:38.20
 -
 14 nov. 2026
-Crisnée
-Meeting Liège Natation Invite`;
+Namur
+Meeting de Namur`;
 
 describe('parseSwimrankings', () => {
   it('lit le tableau des meilleurs temps (copie bureau)', () => {
@@ -47,38 +47,38 @@ describe('parseSwimrankings', () => {
     expect(r.athlete).toMatchObject({
       lastName: 'Dupont',
       firstName: 'Emma',
-      birthYear: 2015,
+      birthYear: 2014,
       nation: 'BEL',
-      club: 'Ecole Seraing Natation',
+      club: 'Club Exemple Natation',
     });
     expect(r.swims).toHaveLength(3);
     const free100 = r.swims.find((s) => s.distance === 100 && s.stroke === 'FREE')!;
     expect(free100).toMatchObject({
       course: 'SCM',
-      timeCs: 8462,
+      timeCs: 9108,
       points: 205,
       date: '2026-10-11',
       city: 'Liège',
-      meet: 'Marie Petit & Challenge Jules',
+      meet: 'Meeting d’automne & Trophée des jeunes',
     });
     const free400 = r.swims.find((s) => s.distance === 400)!;
-    expect(free400.timeCs).toBe(38933);
+    expect(free400.timeCs).toBe(40120);
     const breast = r.swims.find((s) => s.stroke === 'BREAST')!;
-    expect(breast).toMatchObject({ timeCs: 11661, points: 152, date: '2026-10-10' });
+    expect(breast).toMatchObject({ timeCs: 10995, points: 152, date: '2026-10-10' });
   });
 
   it('lit une copie « une cellule par ligne » (mobile)', () => {
     const r = parseSwimrankings(MOBILE_COPY);
-    expect(r.athlete).toMatchObject({ lastName: 'Dupont', firstName: 'Emma', birthYear: 2015, club: 'Ecole Seraing Natation' });
+    expect(r.athlete).toMatchObject({ lastName: 'Dupont', firstName: 'Emma', birthYear: 2014, club: 'Club Exemple Natation' });
     expect(r.swims).toHaveLength(2);
-    expect(r.swims[0]).toMatchObject({ distance: 50, stroke: 'BACK', timeCs: 4512, points: 180, city: 'Crisnée' });
-    expect(r.swims[1]).toMatchObject({ distance: 100, stroke: 'IM', timeCs: 9820, meet: 'Meeting Liège Natation Invite' });
+    expect(r.swims[0]).toMatchObject({ distance: 50, stroke: 'BACK', timeCs: 4512, points: 180, city: 'Namur' });
+    expect(r.swims[1]).toMatchObject({ distance: 100, stroke: 'IM', timeCs: 9820, meet: 'Meeting de Namur' });
   });
 
   it("lit l'historique d'une épreuve (épreuve en en-tête, plusieurs lignes)", () => {
     const text = `100m Libre (25m)
 Temps	Pts.	Date	Ville	Compétition
-1:24.62	205	11 oct 2026	Liège	Marie Petit
+1:31.08	205	11 oct 2026	Liège	Coupe d’hiver
 1:29.10	176	15 Mar 2026	Seraing	Championnat provincial
 1:35.44	143	07.12.2025	Huy (BEL)	Critérium d'hiver`;
     const r = parseSwimrankings(text);
@@ -134,19 +134,19 @@ describe('bookmarkletCode', () => {
 describe('capture d’écran (texte reconnu)', () => {
   it('lit le texte d’une capture avec le menu sur les mêmes lignes', () => {
     const ocr = `Accueil                                             DUPONT,  Emma
-(2015)
+(2014)
 SplashMe
 BEL - Belgique
 Records                                         Meilleurs temps, Meilleurs a vie
 Classements                                   Compétition             Bassin        Temps         Pts.      Date                    Ville (Pays)          Compétition
-Compétitions                              100m Libre             25m          1:24.62       205      11 oct 2026          Liège                Marie Petit & Challenge Jules …
-.                                      400m Libre              25m           6:29.33       206      10 oct 2026          Liege                 Marie Petit & Challenge Jules ...
+Compétitions                              100m Libre             25m          1:31.08       205      11 oct 2026          Liège                Meeting d’automne & Trophée des jeunes …
+.                                      400m Libre              25m           6:41.20       206      10 oct 2026          Liege                 Meeting d’automne & Trophée des jeunes ...
 Calendrier
-100m Brasse           25m           1:56.61       152      10 oct 2026          Liège                 Marie Petit & Challenge Jules …
-50m Dos              25m         48.07        139     14 nov 2026        Crisnée            Meeting Liege Natation Invite`;
+100m Brasse           25m           1:49.95       152      10 oct 2026          Liège                 Meeting d’automne & Trophée des jeunes …
+50m Dos              25m         48.07        139     14 nov 2026        Namur            Meeting de Namur`;
     const r = parseSwimrankings(ocr);
-    expect(r.athlete).toMatchObject({ lastName: 'Dupont', firstName: 'Emma', birthYear: 2015, nation: 'BEL' });
+    expect(r.athlete).toMatchObject({ lastName: 'Dupont', firstName: 'Emma', birthYear: 2014, nation: 'BEL' });
     expect(r.swims).toHaveLength(4);
-    expect(r.swims.find((s) => s.stroke === 'BACK')).toMatchObject({ timeCs: 4807, points: 139, city: 'Crisnée', meet: 'Meeting Liege Natation Invite' });
+    expect(r.swims.find((s) => s.stroke === 'BACK')).toMatchObject({ timeCs: 4807, points: 139, city: 'Namur', meet: 'Meeting de Namur' });
   });
 });
