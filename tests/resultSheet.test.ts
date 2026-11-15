@@ -69,3 +69,16 @@ describe('nom partiellement lu', () => {
     expect(findSwimmerResult([t], { firstName: 'Emma', lastName: 'Dupont', birthYear: 2012, gender: 'F' })).toBeNull();
   });
 });
+
+describe('place illisible', () => {
+  it('déduit la place des lignes voisines', () => {
+    const t = `Epreuve 27 14-11-26 - 15:30 Dames, 50m Dos
+5 MARTIN, Léa 15 Club Exemple 38.48 281
+:. DUPONT, Emma 15 Esn 42.42 210
+3. DURAND, Zoé 15 Club 42.92 203
+4. PETIT, Ana 15 Club 45.14 174
+5. ROBERT, Lou 15 Club 45.64 168`;
+    const r = findSwimmerResult([t], { firstName: 'Emma', lastName: 'Dupont', birthYear: 2015, gender: 'F' })!;
+    expect(r).toMatchObject({ place: 2, timeCs: 4242 });
+  });
+});

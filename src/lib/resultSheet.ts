@@ -107,7 +107,7 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
       const m = /[ÉE]preuve\s+(\d{1,3})\b/i.exec(l);
       if (m) h.eventNo = +m[1];
     }
-    if (!h.date) {
+    if (!h.startTime) {
       const m = /\b(\d{1,2})-(\d{1,2})-(\d{2,4})\s*-\s*(\d{1,2})[:.](\d{2})/.exec(l);
       if (m) {
         const y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
@@ -116,6 +116,14 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
           h.date = d;
           h.startTime = `${m[4].padStart(2, '0')}:${m[5]}`;
         }
+      }
+    }
+    if (!h.date) {
+      // Heure tronquée (« 14-11-26 - 15:3 ») : on garde au moins le jour
+      const m = /\b(\d{1,2})-(\d{1,2})-(\d{2})\s*-\s*\d/.exec(l);
+      if (m) {
+        const d = makeISO(2000 + +m[3], +m[2], +m[1]);
+        if (d) h.date = d;
       }
     }
     if (!h.distance) {
@@ -259,11 +267,39 @@ function score(r: SheetResult | null): number {
  * Cherche le résultat d'un nageur dans les lectures d'une même photo et
  * garde la plus fiable.
  */
+/** Rang imprimé en début de ligne (« 3. NOM, Prénom »), sinon null. */
+function lineRank(line: string): number | null {
+  const m = /^\s*(\d{1,3})\s*[.,]\s+[A-ZÀ-Ý]/.exec(line);
+  return m ? +m[1] : null;
+}
+
+/**
+ * Place illisible : on la déduit des lignes voisines (« 3. » juste après →
+ * 2e ; « 1. » juste avant → 2e). Chaque voisin vote ; il faut deux votes
+ * concordants.
+ */
+function inferPlace(lines: string[], idx: number): number | undefined {
+  const votes = new Map<number, number>();
+  for (let k = 1; k <= 3; k++) {
+    const after = lines[idx + k] != null ? lineRank(lines[idx + k]) : null;
+    if (after != null && after - k >= 1) votes.set(after - k, (votes.get(after - k) ?? 0) + 1);
+    const before = idx - k >= 0 ? lineRank(lines[idx - k]) : null;
+    if (before != null) votes.set(before + k, (votes.get(before + k) ?? 0) + 1);
+  }
+  let best: number | undefined;
+  let n = 0;
+  for (const [place, c] of votes) if (c > n) [best, n] = [place, c];
+  return n >= 2 ? best : undefined;
+}
+
 export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = parseSheetHeader(texts)): SheetResult | null {
   let best: SheetResult | null = null;
+  let bestAt: { lines: string[]; idx: number } | null = null;
   const yy = sw.birthYear ? String(sw.birthYear % 100).padStart(2, '0') : null;
   for (const t of texts) {
-    for (const line of t.split('\n')) {
+    const lines = t.split('\n').filter((l) => l.trim());
+    for (let idx = 0; idx < lines.length; idx++) {
+      const line = lines[idx];
       if (nameOnLine(line, sw) < 0) continue;
       const r = readLine(line, sw, header);
       if (!r) continue;
@@ -272,7 +308,24 @@ export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = pa
         const years = [...` ${r.line} `.matchAll(/\s(\d{2})\s/g)].map((m) => m[1]);
         if (years.length && !years.includes(yy) && r.verified === false && r.timeCs == null) continue;
       }
-      if (score(r) > score(best)) best = r;
+      if (score(r) > score(best)) {
+        best = r;
+        bestAt = { lines, idx };
+      }
+    }
+  }
+  if (best && best.place == null && best.status === 'OK' && bestAt) {
+    best.place = inferPlace(bestAt.lines, bestAt.idx);
+    // Une autre lecture de la même photo peut avoir le rang lisible
+    if (best.place == null) {
+      for (const t of texts) {
+        const lines = t.split('\n').filter((l) => l.trim());
+        const i = lines.findIndex((l) => nameOnLine(l, sw) >= 0);
+        if (i < 0) continue;
+        const r = readLine(lines[i], sw, header);
+        best.place = r?.place ?? inferPlace(lines, i);
+        if (best.place != null) break;
+      }
     }
   }
   // Passages à garder seulement s'ils sont cohérents
