@@ -1,7 +1,6 @@
 import { actions, loadDemo } from '../store/store';
 import { Icon, type IconName } from '../components/Icon';
 import { navigate } from '../router';
-import { BrandLogo } from '../components/ui';
 import { openSwimmerForm } from './forms';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
@@ -15,13 +14,13 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
 export function Onboarding() {
   return (
     <main className="onboard">
-      <BrandLogo height={110} />
+      <img className="onboard-logo" src="./icons/icon-192.png" alt="Nageo" width={88} height={88} />
       <h1>
         Chaque centième
         <br />
         <span>compte.</span>
       </h1>
-      <p className="lead">L’application des parents de nageurs de l’ESN Seraing : temps, records et progression de vos enfants.</p>
+      <p className="lead">Le carnet de performances des parents de nageurs.</p>
       <div style={{ marginTop: 14 }}>
         <span className="free-tag">✓ Gratuit · sans pub · sans compte</span>
       </div>

@@ -137,7 +137,7 @@ export function ImportScreen() {
         <div className="callout">
           <Icon name="info" />
           <div>
-            swimrankings.net ne permet pas aux applications de lire ses pages directement. ESN Natation récupère donc les temps
+            swimrankings.net ne permet pas aux applications de lire ses pages directement. Nageo récupère donc les temps
             <b> depuis votre navigateur</b>, en deux gestes. Aucun mot de passe n’est nécessaire : les pages des nageurs sont publiques.
           </div>
         </div>
@@ -184,7 +184,7 @@ export function ImportScreen() {
           </div>
         </Section>
 
-        <Section title="2. Envoyer les données vers ESN Natation">
+        <Section title="2. Envoyer les données vers Nageo">
           <div style={{ marginBottom: 10 }}>
             <Segmented
               value={device}
@@ -200,7 +200,7 @@ export function ImportScreen() {
           <div className="card pad">
             <div className="hstack" style={{ marginBottom: 12 }}>
               <span className="badge first">Recommandé</span>
-              <b>Le bouton « Envoyer vers ESN »</b>
+              <b>Le bouton « Envoyer vers Nageo »</b>
             </div>
             {device === 'desktop' ? (
               <ol className="steps">
@@ -212,7 +212,7 @@ export function ImportScreen() {
                   Glissez ce bouton dans la barre de favoris :{' '}
                   <BookmarkletLink code={code} />
                 </li>
-                <li>Sur la page swimrankings du nageur, cliquez sur ce favori puis sur « Ouvrir dans l’app ESN ».</li>
+                <li>Sur la page swimrankings du nageur, cliquez sur ce favori puis sur « Ouvrir dans Nageo ».</li>
               </ol>
             ) : (
               <ol className="steps">
@@ -235,19 +235,19 @@ export function ImportScreen() {
                 </li>
                 {device === 'ios' ? (
                   <>
-                    <li>Dans Safari, ajoutez n’importe quelle page en favori (bouton Partager › Ajouter un signet), nommez-le « Envoyer vers ESN ».</li>
+                    <li>Dans Safari, ajoutez n’importe quelle page en favori (bouton Partager › Ajouter un signet), nommez-le « Envoyer vers Nageo ».</li>
                     <li>Ouvrez vos signets, touchez « Modifier », choisissez ce signet et remplacez son adresse par le code copié.</li>
                     <li>
-                      Sur la page swimrankings du nageur, ouvrez vos signets et touchez « Envoyer vers ESN », puis
-                      « Copier les données ». Revenez dans l’app ESN et touchez « Coller » ci-dessous.
+                      Sur la page swimrankings du nageur, ouvrez vos signets et touchez « Envoyer vers Nageo », puis
+                      « Copier les données ». Revenez dans Nageo et touchez « Coller » ci-dessous.
                     </li>
                   </>
                 ) : (
                   <>
-                    <li>Dans Chrome, ajoutez la page actuelle aux favoris (☆), puis modifiez-le : nom « Envoyer vers ESN », adresse = le code copié.</li>
+                    <li>Dans Chrome, ajoutez la page actuelle aux favoris (☆), puis modifiez-le : nom « Envoyer vers Nageo », adresse = le code copié.</li>
                     <li>
-                      Sur la page swimrankings du nageur, tapez « Envoyer vers ESN » dans la barre d’adresse et choisissez le favori,
-                      puis « Ouvrir dans l’app ESN » (ou « Copier les données » et « Coller » ci-dessous).
+                      Sur la page swimrankings du nageur, tapez « Envoyer vers Nageo » dans la barre d’adresse et choisissez le favori,
+                      puis « Ouvrir dans Nageo » (ou « Copier les données » et « Coller » ci-dessous).
                     </li>
                   </>
                 )}
@@ -431,7 +431,7 @@ function BookmarkletLink({ code }: { code: string }) {
         overlay.toast('Glissez le bouton dans vos favoris', '👆');
       }}
     >
-      <Icon name="download" style={{ width: 18, height: 18 }} /> Envoyer vers ESN
+      <Icon name="download" style={{ width: 18, height: 18 }} /> Envoyer vers Nageo
     </a>
   );
 }
