@@ -301,10 +301,22 @@ a {
   justify-content: flex-end;
 }
 
-.large-title {
+.large-head {
+  width: 100%;
   max-width: 760px;
-  margin: 2px auto 0;
+  margin: 0 auto;
+  padding: 0 calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left));
+}
+
+.large-head.wide {
+  max-width: 1080px;
+}
+
+.large-title {
+  margin: 2px 0 0;
   padding: 0 4px;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
   font-family: var(--font-display);
   font-size: 34px;
   font-weight: 800;
@@ -313,8 +325,7 @@ a {
 }
 
 .large-subtitle {
-  max-width: 760px;
-  margin: 2px auto 0;
+  margin: 2px 0 0;
   padding: 0 4px 6px;
   color: var(--text-2);
   font-size: 15px;
@@ -613,9 +624,13 @@ a.row:active {
 
 .row-title {
   font-size: 17px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .row-title.wrap {
@@ -623,18 +638,25 @@ a.row:active {
 }
 
 .row-sub {
-  margin-top: 1px;
+  margin-top: 2px;
   color: var(--text-2);
   font-size: 14px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .row-value {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 62%;
   color: var(--text-2);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .row-end {
@@ -1615,7 +1637,7 @@ textarea.textinput {
 .tile-value {
   margin-top: 4px;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: clamp(21px, 6.6vw, 26px);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.1;
@@ -1647,7 +1669,7 @@ textarea.textinput {
 }
 
 .tiles.three .tile-value {
-  font-size: 22px;
+  font-size: clamp(17px, 5.4vw, 22px);
 }
 
 .tile-sub.good {
@@ -2371,4 +2393,354 @@ textarea.textinput {
   font-size: 12px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.chart-tip.wrap {
+  width: max-content;
+  max-width: 190px;
+  white-space: normal;
+}
+
+.chart-tip .t {
+  margin-top: 2px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.chart-note {
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 12px;
+  text-align: right;
+}
+
+/* ------------------------------------------------------------ Chronologie des compétitions */
+.date-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 48px;
+  border-radius: 11px;
+  background: var(--fill);
+  color: var(--text);
+}
+
+.date-block.accent {
+  background: var(--accent);
+  color: #fff;
+}
+
+.date-block .m {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+.date-block .d {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 22px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--separator);
+}
+
+.tl-season {
+  position: relative;
+  margin: 22px 0 10px;
+  padding: 0 4px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.tl-season:first-child {
+  margin-top: 4px;
+}
+
+.tl-season::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -21px;
+  width: 12px;
+  height: 2px;
+  background: var(--separator);
+}
+
+.tl-item {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.tl-item::before {
+  content: '';
+  position: absolute;
+  top: 30px;
+  left: -21px;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 2.5px solid var(--accent);
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.tl-item.pb::before {
+  border-color: var(--gold);
+  background: var(--gold);
+}
+
+.tl-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.tl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.tl-head:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.tl-title {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tl-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.tl-results {
+  border-top: 0.5px solid var(--separator);
+}
+
+.tl-swim {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 7px 16px 7px 74px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.tl-swim + .tl-swim::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 114px;
+  height: 0.5px;
+  background: var(--separator);
+}
+
+.tl-swim:active,
+button.tl-head:not(:disabled):active {
+  background: var(--fill);
+}
+
+@media (hover: hover) {
+  .tl-swim:hover,
+  button.tl-head:not(:disabled):hover {
+    background: var(--fill);
+  }
+}
+
+.tl-event {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.tl-sub {
+  margin-top: 1px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.tl-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+  .tl-swim {
+    padding-left: 16px;
+  }
+  .tl-swim + .tl-swim::before {
+    left: 56px;
+  }
+}
+
+/* Carte d'évolution */
+.evo-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 10px;
+}
+
+.evo-label {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.evo-value {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.evo-value small {
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.evo-delta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 0;
+  text-align: right;
+}
+
+.evo-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.evo-chip.good {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.evo-chip.bad {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.evo-foot {
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Accueil sur deux colonnes (grand écran) */
+@media (min-width: 1100px) {
+  .home-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 24px;
+    align-items: start;
+  }
+}
+
+.home-cols > .col > .section:first-child {
+  margin-top: 26px;
+}
+
+/* Compétition précédente / suivante */
+.meet-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.meet-nav-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-align: left;
+}
+
+.meet-nav-btn.r {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.meet-nav-btn.empty {
+  justify-content: center;
+  color: var(--text-2);
+  font-size: 14px;
+  background: var(--fill);
+  box-shadow: none;
+}
+
+.meet-nav-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+button.meet-nav-btn:active {
+  background: var(--fill);
 }

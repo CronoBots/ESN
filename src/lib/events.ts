@@ -48,8 +48,9 @@ export function isValidEvent(distance: number, stroke: Stroke, course: Course): 
   return distancesFor(stroke, course).includes(distance);
 }
 
+/** « 100 m Brasse » — espaces insécables : jamais « 100 » / « m » ni « 4 » / « nages » sur deux lignes. */
 export function eventLabel(distance: number, stroke: Stroke): string {
-  return `${distance}m ${STROKE_BY_ID[stroke].label}`;
+  return `${distance}\u00a0m ${STROKE_BY_ID[stroke].label.replace(' ', '\u00a0')}`;
 }
 
 /** Clé d'épreuve indépendante du bassin : "100-FREE". */

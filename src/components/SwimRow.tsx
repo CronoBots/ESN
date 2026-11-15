@@ -6,6 +6,7 @@ import { formatDate, todayISO } from '../lib/dates';
 import { StrokeTag } from './ui';
 import { Icon } from './Icon';
 import { navigate } from '../router';
+import { placeLabel } from '../lib/text';
 
 export function SwimBadges({ swim, pb }: { swim: Swim; pb?: PbInfo }) {
   if (swim.status !== 'OK') return <span className="badge bad">{STATUS_SHORT[swim.status]}</span>;
@@ -34,18 +35,18 @@ export function SwimRow({
   showCourse?: boolean;
   onClick?: () => void;
 }) {
-  const subParts: string[] = [];
-  if (showMeet) subParts.push(meet?.name ?? (swim.context === 'training' ? 'Entraînement' : 'Compétition'));
-  subParts.push(formatDate(swim.date));
-  if (showCourse) subParts.push(courseLabel(swim.course));
-  if (swim.round !== 'TIM' && swim.context === 'competition') subParts.push(ROUND_LABEL[swim.round]);
-  if (swim.place) subParts.push(`${swim.place}${swim.place === 1 ? 're' : 'e'} place`);
+  const where = showMeet ? meet?.name ?? (swim.context === 'training' ? 'Entraînement' : 'Compétition') : null;
+  const details: string[] = [formatDate(swim.date)];
+  if (showCourse) details.push(courseLabel(swim.course));
+  if (swim.round !== 'TIM' && swim.context === 'competition') details.push(ROUND_LABEL[swim.round]);
+  if (swim.place) details.push(placeLabel(swim.place));
   return (
     <button className="row" type="button" onClick={onClick ?? (() => navigate(`/swim/${swim.id}`))}>
       <StrokeTag stroke={swim.stroke} distance={swim.distance} />
       <div className="row-body">
         <div className="row-title">{eventLabel(swim.distance, swim.stroke)}</div>
-        <div className="row-sub">{subParts.join(' · ')}</div>
+        {where && <div className="row-sub">{where}</div>}
+        <div className="row-sub">{details.join(' · ')}</div>
       </div>
       <div className="row-end">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>

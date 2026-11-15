@@ -11,6 +11,7 @@ import { formatTime, parseTime } from '../lib/time';
 import type { Gender } from '../store/types';
 import { findResultsNow } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
+import { deName } from '../lib/text';
 
 type Method = 'photo' | 'paste' | 'computer';
 
@@ -230,7 +231,7 @@ export function ImportScreen() {
             rel="noopener noreferrer"
           >
             <Icon name="external" />
-            {srId ? `Ouvrir la page${preselected ? ` de ${preselected.firstName}` : ''}` : 'Ouvrir swimrankings.net'}
+            {srId ? `Ouvrir la page${preselected ? ` ${deName(preselected.firstName)}` : ''}` : 'Ouvrir swimrankings.net'}
           </a>
           {!srId && <div className="muted small center" style={{ marginTop: 8 }}>Sur le site : Nageurs › Recherche, puis le nom du nageur.</div>}
         </div>

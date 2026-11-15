@@ -294,15 +294,9 @@ export function NavBar({
         </div>
       </header>
       {large && (
-        <div style={{ padding: '0 calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left))' }}>
-          <h1 className="large-title" style={wide ? { maxWidth: 1080 } : undefined}>
-            {title}
-          </h1>
-          {subtitle && (
-            <div className="large-subtitle" style={wide ? { maxWidth: 1080 } : undefined}>
-              {subtitle}
-            </div>
-          )}
+        <div className={`large-head${wide ? ' wide' : ''}`}>
+          <h1 className="large-title">{title}</h1>
+          {subtitle && <div className="large-subtitle">{subtitle}</div>}
         </div>
       )}
     </>

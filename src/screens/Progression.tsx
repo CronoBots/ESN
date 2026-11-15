@@ -11,6 +11,8 @@ import { formatDelta, formatTime } from '../lib/time';
 import type { Course, Swim } from '../store/types';
 import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
+import { EvolutionCard, useTimeline } from '../components/MeetTimeline';
+import { deName } from '../lib/text';
 
 function Sparkline({ swims, color }: { swims: Swim[]; color: string }) {
   if (swims.length < 2) return <div style={{ height: 36 }} />;
@@ -41,6 +43,7 @@ export function Progression() {
   const pbFlags = usePbFlags();
   const [course, setCourse] = useState<Course>(data.settings.defaultCourse);
   const include = data.settings.includeTraining;
+  const timeline = useTimeline(swimmer);
 
   const events = useMemo(() => {
     if (!swimmer) return [];
@@ -91,10 +94,24 @@ export function Progression() {
 
   return (
     <>
-      <NavBar title="Progression" subtitle={`L’évolution des temps de ${swimmer.firstName}, nage par nage`} />
+      <NavBar title="Progression" subtitle={`L’évolution ${deName(swimmer.firstName)}, compétition après compétition et nage par nage`} />
       <main className="page">
         <SwimmerChips swimmer={swimmer} />
-        <Segmented value={course} onChange={setCourse} options={COURSES.map((c) => ({ id: c.id, label: `Bassin ${c.label}` }))} />
+        {timeline.length >= 2 && (
+          <Section
+            title="Par compétition"
+            action={
+              <button className="section-link" onClick={() => navigate('/meets')}>
+                Détail
+              </button>
+            }
+          >
+            <EvolutionCard timeline={timeline} swimmer={swimmer} />
+          </Section>
+        )}
+        <Section title="Nage par nage">
+          <Segmented value={course} onChange={setCourse} options={COURSES.map((c) => ({ id: c.id, label: `Bassin ${c.label}` }))} />
+        </Section>
 
         {events.length === 0 ? (
           <div className="card" style={{ marginTop: 16 }}>

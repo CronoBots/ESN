@@ -10,6 +10,7 @@ import { formatDate, seasonLabel, seasonOf, todayISO, sportAge } from '../lib/da
 import { formatTime } from '../lib/time';
 import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
 import { findResultsNow } from './autoResults';
+import { deName } from '../lib/text';
 
 export function SwimmerChips({ swimmer }: { swimmer: Swimmer }) {
   const data = useData();
@@ -66,7 +67,7 @@ export function Records() {
     <>
       <NavBar
         title="Records"
-        subtitle={swimmer ? `Meilleurs temps de ${swimmer.firstName}` : undefined}
+        subtitle={swimmer ? `Meilleurs temps ${deName(swimmer.firstName)}` : undefined}
         right={
           <button className="icon-btn" onClick={() => navigate('/rankings')} aria-label="Classements">
             <Icon name="ranking" />
@@ -135,16 +136,16 @@ export function Records() {
                               <div className="row-title">{eventLabel(d, st.id)}</div>
                               <div className="row-sub">
                                 {formatDate(s.date)}
-                                {meet ? ` · ${meet.name}` : s.context === 'training' ? ' · Entraînement' : ''}
+                                {entry!.count > 1 ? ` · ${entry!.count} courses` : ''}
                               </div>
+                              {(meet || s.context === 'training') && (
+                                <div className="row-sub">{meet ? meet.name : 'Entraînement'}</div>
+                              )}
                             </div>
                             <div className="row-end">
                               <div style={{ textAlign: 'right' }}>
                                 <div className="time-big">{formatTime(s.timeCs)}</div>
-                                <div className="small muted tnum">
-                                  {pts != null ? `${pts} pts` : ''}
-                                  {entry!.count > 1 ? `${pts != null ? ' · ' : ''}${entry!.count} courses` : ''}
-                                </div>
+                                {pts != null && <div className="small muted tnum">{pts} pts</div>}
                               </div>
                               <Icon name="chevronRight" className="chev" />
                             </div>
@@ -270,9 +271,8 @@ export function Rankings() {
                       <div className="row-title" style={{ fontWeight: r.swimmer.relation === 'child' ? 700 : 400 }}>
                         {fullName(r.swimmer)}
                       </div>
-                      <div className="row-sub">
-                        {[age != null ? `${age} ans` : null, r.swimmer.club, formatDate(r.best.date)].filter(Boolean).join(' · ')}
-                      </div>
+                      <div className="row-sub">{[age != null ? `${age} ans` : null, r.swimmer.club].filter(Boolean).join(' · ')}</div>
+                      <div className="row-sub">{formatDate(r.best.date)}</div>
                     </div>
                     <div className="row-end" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                       <span className="time-big">{formatTime(r.best.timeCs)}</span>

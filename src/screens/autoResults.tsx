@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { overlay } from '../components/ui';
 import { syncLive, syncStatus } from '../lib/liveResults';
+import { deName } from '../lib/text';
 
 export function useSyncStatus() {
   return useSyncExternalStore(
@@ -11,7 +12,7 @@ export function useSyncStatus() {
 
 /** Lance tout de suite la recherche des résultats (nageur ajouté, bouton « Rechercher »). */
 export async function findResultsNow(firstName?: string) {
-  overlay.toast(firstName ? `Recherche des résultats de ${firstName}…` : 'Recherche des résultats…', '🔎');
+  overlay.toast(firstName ? `Recherche des résultats ${deName(firstName)}…` : 'Recherche des résultats…', '🔎');
   try {
     const r = await syncLive({ force: true });
     if (r.added) {

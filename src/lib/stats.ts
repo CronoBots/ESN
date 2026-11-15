@@ -467,3 +467,82 @@ export function goalAchievedDate(goal: Goal, swims: Swim[], includeTraining: boo
   );
   return already?.date;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Chronologie des compétitions                                               */
+/* ------------------------------------------------------------------------ */
+
+export interface TimelineEntry {
+  key: string;
+  meet?: Meet;
+  name: string;
+  city?: string;
+  course?: Course;
+  startDate: string;
+  endDate?: string;
+  swims: Swim[];
+  pbs: number;
+  /** Temps total gagné sur les records battus (centièmes). */
+  gainCs: number;
+  best: { swim: Swim; points: number } | null;
+  /** Écart de points avec la compétition précédente (meilleure perf.). */
+  trend: number | null;
+}
+
+/** Compétitions d'un nageur avec leurs résultats, de la plus ancienne à la plus récente. */
+export function meetTimeline(
+  swims: Swim[],
+  meets: Meet[],
+  swimmer: Swimmer,
+  pbFlags: Map<string, PbInfo>,
+): TimelineEntry[] {
+  const byMeet = new Map<string, Swim[]>();
+  for (const s of swims) {
+    if (s.swimmerId !== swimmer.id || s.context !== 'competition') continue;
+    if (s.timeCs == null && s.status === 'OK') continue; // épreuve prévue, pas encore nagée
+    const k = s.meetId ?? `date:${s.date}`;
+    byMeet.set(k, [...(byMeet.get(k) ?? []), s]);
+  }
+  const meetById = new Map(meets.map((m) => [m.id, m]));
+  const out: TimelineEntry[] = [];
+  for (const [key, list] of byMeet) {
+    const meet = meetById.get(key);
+    list.sort((a, b) => chronoCompare(a, b) || (a.eventNo ?? 0) - (b.eventNo ?? 0));
+    let best: TimelineEntry['best'] = null;
+    let pbs = 0;
+    let gainCs = 0;
+    for (const s of list) {
+      const p = pointsFor(s, swimmer);
+      if (p != null && (!best || p > best.points)) best = { swim: s, points: p };
+      const f = pbFlags.get(s.id);
+      if (f?.isPB) {
+        pbs++;
+        gainCs += -(f.deltaCs ?? 0);
+      }
+    }
+    const dates = list.map((s) => s.date).sort();
+    out.push({
+      key,
+      meet,
+      name: meet?.name ?? 'Compétition',
+      city: meet?.city,
+      course: meet?.course ?? list[0].course,
+      startDate: meet?.startDate ?? dates[0],
+      endDate: meet?.endDate ?? (dates[dates.length - 1] !== dates[0] ? dates[dates.length - 1] : undefined),
+      swims: list,
+      pbs,
+      gainCs,
+      best,
+      trend: null,
+    });
+  }
+  out.sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0));
+  let prev: number | null = null;
+  for (const e of out) {
+    if (e.best) {
+      e.trend = prev != null ? e.best.points - prev : null;
+      prev = e.best.points;
+    }
+  }
+  return out;
+}

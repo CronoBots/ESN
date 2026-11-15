@@ -187,7 +187,11 @@ export function ProgressChart({
         )}
 
         {series.map((s) => {
-          const pts = s.points.map((p) => ({ x: sx(fromISO(p.date).getTime()), y: sy(p.cs), p }));
+          const pts = s.points.map((p) => ({
+            x: sx(fromISO(p.date).getTime()),
+            y: sy(p.cs),
+            p,
+          }));
           if (!pts.length) return null;
           const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
           const area = single
@@ -250,13 +254,28 @@ export function ProgressChart({
               <div className="v">
                 {!single && <span className="line-key" style={{ background: series[p.si].color }} />}
                 {formatTime(p.cs)}
-                {p.pb && <span className="badge pb" style={{ marginLeft: 6 }}>PB</span>}
+                {p.pb && (
+                  <span className="badge pb" style={{ marginLeft: 6 }}>
+                    PB
+                  </span>
+                )}
               </div>
               <div className="k">
                 {!single && `${series[p.si].label} · `}
                 {formatDate(p.date)}
               </div>
-              {p.label && <div className="k" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.label}</div>}
+              {p.label && (
+                <div
+                  className="k"
+                  style={{
+                    maxWidth: 180,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {p.label}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -275,7 +294,13 @@ export function StrokeBars({
   rows,
   max,
 }: {
-  rows: { key: string; label: string; color: string; value: number | null; sub?: string }[];
+  rows: {
+    key: string;
+    label: string;
+    color: string;
+    value: number | null;
+    sub?: string;
+  }[];
   max: number;
 }) {
   return (
@@ -289,12 +314,228 @@ export function StrokeBars({
           <div className="hbar-track">
             <div
               className="hbar-fill"
-              style={{ width: r.value ? `${Math.max(2, (r.value / max) * 100)}%` : 0, background: r.color }}
+              style={{
+                width: r.value ? `${Math.max(2, (r.value / max) * 100)}%` : 0,
+                background: r.color,
+              }}
             />
           </div>
           <span className="hbar-val">{r.value ?? '–'}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Colonnes : une valeur par compétition, dans l'ordre chronologique          */
+/* ------------------------------------------------------------------------ */
+
+export interface ColumnDatum {
+  key: string;
+  date: string;
+  value: number;
+  /** Titre de l'infobulle (nom de la compétition). */
+  title: string;
+  /** Lignes complémentaires de l'infobulle. */
+  lines?: string[];
+}
+
+const SHORT_MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+function niceCeil(v: number): { max: number; step: number } {
+  const raw = v / 4;
+  const pow = 10 ** Math.floor(Math.log10(Math.max(1, raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * pow).find((s) => s >= raw) ?? 10 * pow;
+  return { max: Math.ceil(v / step) * step, step };
+}
+
+/**
+ * Histogramme chronologique (une colonne par compétition). Barres fines à
+ * extrémité arrondie, grille discrète, valeur affichée sur la dernière et la
+ * meilleure colonne seulement, infobulle au survol / toucher / clavier.
+ */
+export function ColumnChart({
+  data,
+  height = 190,
+  unit = 'pts',
+  ariaLabel,
+  onOpen,
+}: {
+  data: ColumnDatum[];
+  height?: number;
+  unit?: string;
+  ariaLabel: string;
+  /** Ouverture de l'élément (clic souris, second toucher, Entrée). */
+  onOpen?: (key: string) => void;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(600);
+  const [active, setActive] = useState<number | null>(null);
+  const lastPointer = useRef<string>('mouse');
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => setWidth(Math.max(240, entries[0].contentRect.width)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const pad = { top: 22, right: 6, bottom: 24, left: 34 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+  // Au-delà de ce qui tient lisiblement, on garde les plus récentes
+  const fit = Math.max(4, Math.floor(innerW / 10));
+  const shown = data.length > fit ? data.slice(-fit) : data;
+  const n = shown.length;
+  if (!n) return null;
+
+  const { max, step } = niceCeil(Math.max(...shown.map((d) => d.value)) * 1.08 || 100);
+  const ticks: number[] = [];
+  for (let v = 0; v <= max + 1e-9; v += step) ticks.push(v);
+  const slot = innerW / n;
+  const barW = Math.max(4, Math.min(24, slot * 0.6));
+  const cx = (i: number) => pad.left + slot * (i + 0.5);
+  const sy = (v: number) => pad.top + innerH - (v / max) * innerH;
+  const base = pad.top + innerH;
+
+  const bestIdx = shown.reduce((b, d, i) => (d.value > shown[b].value ? i : b), 0);
+  const labelled = new Set([n - 1, bestIdx]);
+
+  // Repères de date : premier mois de chaque groupe, espacés d'au moins 54 px
+  const xLabels: { i: number; text: string }[] = [];
+  let lastX = -Infinity;
+  let lastYear = -1;
+  let lastMonth = -1;
+  shown.forEach((d, i) => {
+    const dt = fromISO(d.date);
+    const key = dt.getFullYear() * 12 + dt.getMonth();
+    if (key === lastMonth) return;
+    lastMonth = key;
+    if (cx(i) - lastX < 54) return;
+    const yy = String(dt.getFullYear()).slice(2);
+    xLabels.push({
+      i,
+      text: `${SHORT_MONTHS[dt.getMonth()]}${dt.getFullYear() !== lastYear ? ` ${yy}` : ''}`,
+    });
+    lastX = cx(i);
+    lastYear = dt.getFullYear();
+  });
+
+  const pick = (clientX: number, rect: DOMRect) => {
+    const i = Math.floor((clientX - rect.left - pad.left) / slot);
+    return Math.max(0, Math.min(n - 1, i));
+  };
+  const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    lastPointer.current = e.pointerType;
+    const i = pick(e.clientX, e.currentTarget.getBoundingClientRect());
+    if (e.pointerType !== 'mouse' && i === active && onOpen) onOpen(shown[i].key);
+    else setActive(i);
+  };
+  const onMove = (e: PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType !== 'mouse') return;
+    setActive(pick(e.clientX, e.currentTarget.getBoundingClientRect()));
+  };
+  const onClick = () => {
+    if (lastPointer.current === 'mouse' && active != null && onOpen) onOpen(shown[active].key);
+  };
+  const onKey = (e: KeyboardEvent<SVGSVGElement>) => {
+    if (e.key === 'ArrowRight') setActive((a) => Math.min(n - 1, (a ?? -1) + 1));
+    else if (e.key === 'ArrowLeft') setActive((a) => Math.max(0, (a ?? n) - 1));
+    else if (e.key === 'Enter' && active != null && onOpen) onOpen(shown[active].key);
+    else if (e.key === 'Escape') setActive(null);
+    else return;
+    e.preventDefault();
+  };
+
+  const bar = (x: number, v: number) => {
+    const y = sy(v);
+    const h = base - y;
+    const r = Math.min(4, barW / 2, h);
+    const x0 = x - barW / 2;
+    const x1 = x + barW / 2;
+    return `M${x0},${base}V${y + r}Q${x0},${y} ${x0 + r},${y}H${x1 - r}Q${x1},${y} ${x1},${y + r}V${base}Z`;
+  };
+
+  const a = active != null ? shown[active] : null;
+  return (
+    <div className="chart" ref={wrapRef}>
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={ariaLabel}
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onPointerMove={onMove}
+        onPointerLeave={(e) => e.pointerType === 'mouse' && setActive(null)}
+        onClick={onClick}
+        onKeyDown={onKey}
+        onBlur={() => setActive(null)}
+        style={{ cursor: onOpen ? 'pointer' : undefined }}
+      >
+        <g className="grid">
+          {ticks.map((v) => (
+            <line key={v} x1={pad.left} x2={width - pad.right} y1={sy(v)} y2={sy(v)} />
+          ))}
+        </g>
+        <g className="axis">
+          {ticks.map((v) => (
+            <text key={v} x={pad.left - 6} y={sy(v) + 4} textAnchor="end">
+              {v}
+            </text>
+          ))}
+          {xLabels.map((l) => (
+            <text key={l.i} x={cx(l.i)} y={height - 6} textAnchor="middle">
+              {l.text}
+            </text>
+          ))}
+        </g>
+        {shown.map((d, i) => (
+          <path
+            key={d.key}
+            d={bar(cx(i), d.value)}
+            fill="var(--chart-line)"
+            opacity={active == null || active === i ? 1 : 0.45}
+          />
+        ))}
+        <g className="axis">
+          {[...labelled].map((i) => (
+            <text
+              key={i}
+              x={cx(i)}
+              y={sy(shown[i].value) - 6}
+              textAnchor="middle"
+              style={{ fill: 'var(--text)', fontWeight: 600 }}
+            >
+              {shown[i].value}
+            </text>
+          ))}
+        </g>
+      </svg>
+      {a && active != null && (
+        <div
+          className="chart-tip wrap"
+          style={{
+            left: Math.min(Math.max(cx(active), 95), width - 95),
+            top: Math.max(0, sy(a.value) - 92),
+          }}
+        >
+          <div className="v">
+            {a.value} <span style={{ fontSize: 12, fontWeight: 600 }}>{unit}</span>
+          </div>
+          <div className="t">{a.title}</div>
+          <div className="k">{formatDate(a.date)}</div>
+          {a.lines?.map((l) => (
+            <div key={l} className="k">
+              {l}
+            </div>
+          ))}
+        </div>
+      )}
+      {data.length > n && <div className="chart-note">{n} dernières compétitions</div>}
     </div>
   );
 }

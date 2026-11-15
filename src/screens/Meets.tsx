@@ -1,149 +1,218 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useData } from '../store/store';
-import { fullName, sortSwimmers, usePbFlags } from '../store/hooks';
+import { fullName, sortSwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
-import { formatDate, formatLongDay, formatRange, fromISO, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
+import { formatDate, formatLongDay, formatRange, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
 import { eventLabel, courseLabel, ROUND_LABEL } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { chronoCompare, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
-import type { Meet, Swim } from '../store/types';
+import type { Swim } from '../store/types';
 import { openMeetForm, openResultForm } from './forms';
 import { overlay } from '../components/ui';
 import { openResultPhotos } from './ResultPhotos';
+import { DateBlock, EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
+import { SwimmerChips } from './Records';
+import { findResultsNow, SyncBanner } from './autoResults';
+import { deName, placeLabel } from '../lib/text';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const MONTHS = ['JANV', 'FÉVR', 'MARS', 'AVR', 'MAI', 'JUIN', 'JUIL', 'AOÛT', 'SEPT', 'OCT', 'NOV', 'DÉC'];
-
-function DateBlock({ iso, accent }: { iso: string; accent?: boolean }) {
-  const d = fromISO(iso);
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 46,
-        height: 48,
-        borderRadius: 11,
-        background: accent ? 'var(--accent)' : 'var(--fill)',
-        color: accent ? '#fff' : 'var(--text)',
-        flexShrink: 0,
-      }}
-      aria-hidden="true"
-    >
-      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.05em', opacity: 0.8 }}>{MONTHS[d.getMonth()]}</span>
-      <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>{d.getDate()}</span>
-    </span>
-  );
+type Order = 'recent' | 'chrono';
+const ORDER_KEY = 'nageo.meetsOrder';
+function readOrder(): Order {
+  try {
+    return localStorage.getItem(ORDER_KEY) === 'chrono' ? 'chrono' : 'recent';
+  } catch {
+    return 'recent';
+  }
 }
 
 export function Meets() {
   const data = useData();
   const pbFlags = usePbFlags();
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const swimmer = useSelectedSwimmer();
+  const timeline = useTimeline(swimmer);
+  const [order, setOrderState] = useState<Order>(readOrder);
+  const setOrder = (o: Order) => {
+    setOrderState(o);
+    try {
+      localStorage.setItem(ORDER_KEY, o);
+    } catch {
+      /* stockage indisponible : préférence non mémorisée */
+    }
+  };
   const today = todayISO();
 
-  const info = useMemo(() => {
-    const map = new Map<string, { swims: Swim[]; pbs: number; swimmers: Set<string> }>();
-    for (const s of data.swims) {
-      if (!s.meetId) continue;
-      const e = map.get(s.meetId) ?? { swims: [], pbs: 0, swimmers: new Set<string>() };
-      e.swims.push(s);
-      e.swimmers.add(s.swimmerId);
-      if (pbFlags.get(s.id)?.isPB) e.pbs++;
-      map.set(s.meetId, e);
-    }
+  const entriesByMeet = useMemo(() => {
+    const map = new Map<string, number>();
+    if (swimmer)
+      for (const s of data.swims) if (s.meetId && s.swimmerId === swimmer.id) map.set(s.meetId, (map.get(s.meetId) ?? 0) + 1);
     return map;
-  }, [data.swims, pbFlags]);
+  }, [data.swims, swimmer]);
 
-  const upcoming = data.meets.filter((m) => (m.endDate ?? m.startDate) >= today).sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
-  const past = data.meets.filter((m) => (m.endDate ?? m.startDate) < today).sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
-  const list = tab === 'upcoming' ? upcoming : past;
+  const upcoming = data.meets
+    .filter((m) => (m.endDate ?? m.startDate) >= today)
+    .sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
 
-  // Regroupement par saison pour les compétitions passées
-  const groups = useMemo(() => {
-    const g = new Map<string, Meet[]>();
-    for (const m of list) {
-      const k = tab === 'past' ? seasonOf(m.startDate) : 'all';
-      g.set(k, [...(g.get(k) ?? []), m]);
+  // Chronologie par saison, dans l'ordre choisi
+  const seasons = useMemo(() => {
+    const list = timeline.filter((e) => e.startDate <= today);
+    const sorted = order === 'chrono' ? list : [...list].reverse();
+    const g = new Map<string, typeof list>();
+    for (const e of sorted) {
+      const k = seasonOf(e.startDate);
+      g.set(k, [...(g.get(k) ?? []), e]);
     }
     return [...g.entries()];
-  }, [list, tab]);
+  }, [timeline, order, today]);
+
+  // Compétitions passées sans résultat du nageur sélectionné
+  const others = useMemo(() => {
+    const seen = new Set(timeline.map((e) => e.key));
+    return data.meets
+      .filter((m) => (m.endDate ?? m.startDate) < today && !seen.has(m.id))
+      .sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
+  }, [data.meets, timeline, today]);
+
+  const newMeet = () => openMeetForm(undefined, (m) => navigate(`/meet/${m.id}`));
+  const pastCount = timeline.filter((e) => e.startDate <= today).length;
 
   return (
     <>
       <NavBar
         title="Compétitions"
+        subtitle={
+          swimmer && pastCount > 0
+            ? `${pastCount} compétition${pastCount > 1 ? 's' : ''} ${deName(swimmer.firstName)}, résultats compris`
+            : undefined
+        }
         right={
-          <button className="icon-btn" aria-label="Nouvelle compétition" onClick={() => openMeetForm(undefined, (m) => navigate(`/meet/${m.id}`))}>
+          <button className="icon-btn" aria-label="Nouvelle compétition" onClick={newMeet}>
             <Icon name="plus" />
           </button>
         }
       />
       <main className="page">
-        <Segmented
-          value={tab}
-          onChange={setTab}
-          options={[
-            { id: 'upcoming', label: `À venir · ${upcoming.length}` },
-            { id: 'past', label: `Passées · ${past.length}` },
-          ]}
-        />
-        {list.length === 0 ? (
-          <div className="card" style={{ marginTop: 16 }}>
-            <Empty
-              icon="calendar"
-              title={tab === 'upcoming' ? 'Aucune compétition à venir' : 'Aucune compétition passée'}
-              text={
-                tab === 'upcoming'
-                  ? 'Créez la prochaine compétition et ajoutez le programme de votre enfant : heures de passage, séries, lignes. Le jour J, saisissez les temps en direct.'
-                  : 'Les compétitions apparaissent ici après la saisie ou l’import de résultats.'
-              }
-              action={
-                <button className="btn small" onClick={() => openMeetForm(undefined, (m) => navigate(`/meet/${m.id}`))}>
-                  <Icon name="plus" /> Nouvelle compétition
-                </button>
-              }
-            />
-          </div>
-        ) : (
-          groups.map(([key, meets]) => (
-            <Section key={key} title={tab === 'past' ? seasonLabel(key) : undefined}>
-              <div className="list">
-                {meets.map((m) => {
-                  const e = info.get(m.id);
-                  const ongoing = m.startDate <= today && (m.endDate ?? m.startDate) >= today;
-                  const sub = [
-                    formatRange(m.startDate, m.endDate),
-                    m.city,
-                    courseLabel(m.course),
-                  ].filter(Boolean);
-                  return (
-                    <button key={m.id} className="row" onClick={() => navigate(`/meet/${m.id}`)}>
-                      <DateBlock iso={m.startDate} accent={ongoing} />
-                      <div className="row-body">
-                        <div className="row-title">{m.name}</div>
-                        <div className="row-sub">{sub.join(' · ')}</div>
-                        {e && (
-                          <div className="hstack" style={{ gap: 6, marginTop: 5 }}>
-                            <span className="badge">{e.swims.length} course{e.swims.length > 1 ? 's' : ''}</span>
-                            {e.pbs > 0 && <span className="badge pb">{e.pbs} PB</span>}
-                            {tab === 'upcoming' && <span className="badge first">{ongoing ? 'En cours' : relativeDay(m.startDate)}</span>}
-                          </div>
+        {swimmer && <SwimmerChips swimmer={swimmer} />}
+        <SyncBanner />
+
+        {upcoming.length > 0 && (
+          <Section title="À venir">
+            <div className="list">
+              {upcoming.map((m) => {
+                const ongoing = m.startDate <= today;
+                const n = entriesByMeet.get(m.id) ?? 0;
+                return (
+                  <button key={m.id} className="row" onClick={() => navigate(`/meet/${m.id}`)}>
+                    <DateBlock iso={m.startDate} accent={ongoing} />
+                    <div className="row-body">
+                      <div className="row-title">{m.name}</div>
+                      <div className="row-sub">
+                        {[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join(' · ')}
+                      </div>
+                      <div className="tl-badges">
+                        <span className="badge first">{ongoing ? 'En cours' : capitalize(relativeDay(m.startDate))}</span>
+                        {n > 0 && swimmer && (
+                          <span className="badge">
+                            {n} épreuve{n > 1 ? 's' : ''} au programme
+                          </span>
                         )}
                       </div>
-                      <Icon name="chevronRight" className="chev" />
+                    </div>
+                    <Icon name="chevronRight" className="chev" />
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {swimmer && timeline.length >= 2 && (
+          <Section title="Évolution" footer={undefined}>
+            <EvolutionCard timeline={timeline} swimmer={swimmer} />
+          </Section>
+        )}
+
+        {seasons.length === 0 ? (
+          <Section title={upcoming.length ? 'Résultats' : undefined}>
+            <div className="card">
+              <Empty
+                icon="calendar"
+                title="Aucun résultat de compétition"
+                text={
+                  swimmer
+                    ? `Les compétitions ${deName(swimmer.firstName)} apparaissent ici, dans l’ordre, avec ses temps, ses places et ses records, dès que les résultats sont publiés.`
+                    : 'Ajoutez un nageur pour suivre ses compétitions.'
+                }
+                action={
+                  swimmer ? (
+                    <button className="btn small" onClick={() => findResultsNow(swimmer.firstName)}>
+                      <Icon name="sparkles" /> Rechercher ses résultats
                     </button>
-                  );
-                })}
+                  ) : undefined
+                }
+              />
+            </div>
+          </Section>
+        ) : (
+          swimmer && (
+            <Section
+              title="Résultats"
+            >
+              <Segmented
+                value={order}
+                onChange={setOrder}
+                ariaLabel="Ordre des compétitions"
+                options={[
+                  { id: 'recent', label: 'Récentes d’abord' },
+                  { id: 'chrono', label: 'Ordre chronologique' },
+                ]}
+              />
+              <div className="timeline" style={{ marginTop: 14 }}>
+                {seasons.map(([season, entries]) => (
+                  <Fragment key={season}>
+                    <div className="tl-season">{seasonLabel(season)}</div>
+                    {entries.map((e) => (
+                      <div key={e.key} className={`tl-item${e.pbs > 0 ? ' pb' : ''}`}>
+                        <TimelineMeetCard entry={e} swimmer={swimmer} pbFlags={pbFlags} />
+                      </div>
+                    ))}
+                  </Fragment>
+                ))}
               </div>
             </Section>
-          ))
+          )
+        )}
+
+        {others.length > 0 && (
+          <Section title={swimmer ? `Sans résultat ${deName(swimmer.firstName)}` : 'Compétitions passées'}>
+            <div className="list">
+              {others.map((m) => (
+                <button key={m.id} className="row" onClick={() => navigate(`/meet/${m.id}`)}>
+                  <DateBlock iso={m.startDate} />
+                  <div className="row-body">
+                    <div className="row-title">{m.name}</div>
+                    <div className="row-sub">
+                      {[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <Icon name="chevronRight" className="chev" />
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {data.meets.length === 0 && seasons.length === 0 && (
+          <div className="section-foot" style={{ marginTop: 12 }}>
+            Une compétition à préparer ?{' '}
+            <button className="section-link" style={{ fontSize: 13 }} onClick={newMeet}>
+              Créer son programme
+            </button>
+          </div>
         )}
       </main>
     </>
@@ -161,6 +230,12 @@ export function MeetDetail({ id }: { id: string }) {
   const swims = useMemo(() => data.swims.filter((s) => s.meetId === id).sort(chronoCompare), [data.swims, id]);
   const swimmers = sortSwimmers(data.swimmers);
   const include = data.settings.includeTraining;
+  // Navigation chronologique : compétition précédente / suivante du nageur
+  const selected = useSelectedSwimmer();
+  const focus = swims.some((s) => s.swimmerId === selected?.id)
+    ? selected
+    : (swimmers.find((w) => swims.some((s) => s.swimmerId === w.id)) ?? selected);
+  const timeline = useTimeline(focus);
 
   if (!meet) {
     return (
@@ -176,7 +251,10 @@ export function MeetDetail({ id }: { id: string }) {
   const today = todayISO();
   const isPast = (meet.endDate ?? meet.startDate) < today;
   const bySwimmer = swimmers
-    .map((sw) => ({ swimmer: sw, swims: swims.filter((s) => s.swimmerId === sw.id) }))
+    .map((sw) => ({
+      swimmer: sw,
+      swims: swims.filter((s) => s.swimmerId === sw.id),
+    }))
     .filter((g) => g.swims.length);
   const pbs = swims.filter((s) => pbFlags.get(s.id)?.isPB);
   const totalGain = pbs.reduce((a, s) => a + -(pbFlags.get(s.id)?.deltaCs ?? 0), 0);
@@ -211,19 +289,24 @@ export function MeetDetail({ id }: { id: string }) {
       <main className="page">
         <div className="list">
           {!isPast && (
-            <Row icon="plus" title="Ajouter une épreuve au programme" chevron onClick={() => openResultForm({ meetId: meet.id, entry: true })} />
+            <Row
+              icon="plus"
+              title="Ajouter une épreuve au programme"
+              chevron
+              onClick={() => openResultForm({ meetId: meet.id, entry: true })}
+            />
           )}
           {meet.startDate <= today && (
             <Row
               icon="upload"
               iconBg="#bf5af2"
-              title="Photographier les résultats affichés"
-              sub="Les temps de vos enfants sont lus sur les feuilles"
+              title="Photographier les résultats"
+              sub="Feuilles affichées à la piscine : les temps sont lus automatiquement"
               chevron
               onClick={() => openResultPhotos({ meetId: meet.id })}
             />
           )}
-          {swims.length > 0 && (
+          {swims.length > 0 && !isPast && (
             <Row
               icon="bell"
               iconBg="#ff9f0a"
@@ -255,7 +338,16 @@ export function MeetDetail({ id }: { id: string }) {
             <div className="tile">
               <div className="tile-label">Meilleurs pts</div>
               <div className="tile-value">
-                {Math.max(0, ...swum.map((s) => pointsFor(s, data.swimmers.find((w) => w.id === s.swimmerId)) ?? 0)) || '—'}
+                {Math.max(
+                  0,
+                  ...swum.map(
+                    (s) =>
+                      pointsFor(
+                        s,
+                        data.swimmers.find((w) => w.id === s.swimmerId),
+                      ) ?? 0,
+                  ),
+                ) || '—'}
               </div>
             </div>
           </div>
@@ -265,10 +357,10 @@ export function MeetDetail({ id }: { id: string }) {
           <div className="card" style={{ marginTop: 16 }}>
             <Empty
               icon="flag"
-              title="Programme vide"
+              title={isPast ? 'Pas encore de résultat' : 'Programme vide'}
               text={
                 isPast
-                  ? 'Ajoutez les résultats de cette compétition.'
+                  ? 'Les résultats sont ajoutés automatiquement dès leur publication. Vous pouvez aussi photographier les feuilles affichées à la piscine.'
                   : 'Ajoutez les épreuves de votre enfant (numéro, heure, série, ligne) pour avoir son programme sous la main le jour J.'
               }
             />
@@ -284,7 +376,11 @@ export function MeetDetail({ id }: { id: string }) {
               title={
                 <span className="hstack" style={{ gap: 10 }}>
                   <Avatar swimmer={swimmer} size={30} />
-                  {bySwimmer.length > 1 ? fullName(swimmer) : 'Inscriptions'}
+                  {bySwimmer.length > 1
+                    ? fullName(swimmer)
+                    : isPast || list.some((x) => x.timeCs != null)
+                      ? 'Résultats'
+                      : 'Programme'}
                 </span>
               }
             >
@@ -295,19 +391,22 @@ export function MeetDetail({ id }: { id: string }) {
                     {ds.map((s) => {
                       const pb = pbFlags.get(s.id);
                       const prev = bestOf(swimmer.id, s);
+                      // Ligne 1 : quand et où nager ; ligne 2 : le classement
                       const sub = [
                         s.startTime,
-                        s.heat ? `Série ${s.heat}` : null,
-                        s.lane != null ? `Ligne ${s.lane}` : null,
+                        s.heat ? `Série\u00a0${s.heat}` : null,
+                        s.lane != null ? `Ligne\u00a0${s.lane}` : null,
                         s.round !== 'TIM' ? ROUND_LABEL[s.round] : null,
-                        s.place ? `${s.place}${s.place === 1 ? 're' : 'e'} place` : null,
                       ].filter(Boolean);
+                      const rank = s.place ? placeLabel(s.place) : null;
                       return (
                         <button
                           key={s.id}
                           className="row"
                           onClick={() =>
-                            s.timeCs == null && s.status === 'OK' ? openResultForm({ swim: s, entry: true }) : navigate(`/swim/${s.id}`)
+                            s.timeCs == null && s.status === 'OK'
+                              ? openResultForm({ swim: s, entry: true })
+                              : navigate(`/swim/${s.id}`)
                           }
                         >
                           <StrokeTag stroke={s.stroke} distance={s.distance} size={36} />
@@ -316,10 +415,18 @@ export function MeetDetail({ id }: { id: string }) {
                               {s.eventNo ? `${s.eventNo}. ` : ''}
                               {eventLabel(s.distance, s.stroke)}
                             </div>
-                            <div className="row-sub">{sub.join(', ') || formatDate(s.date)}</div>
+                            <div className="row-sub">{sub.join(' · ') || (rank ? null : formatDate(s.date))}</div>
+                            {rank && <div className="row-sub">{rank}</div>}
                           </div>
                           <div className="row-end">
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                gap: 3,
+                              }}
+                            >
                               {s.timeCs != null || s.status !== 'OK' ? (
                                 <>
                                   <span className="time-big">
@@ -365,6 +472,51 @@ export function MeetDetail({ id }: { id: string }) {
             </Section>
           );
         })}
+
+        {(() => {
+          const i = timeline.findIndex((e) => e.key === meet.id);
+          if (i < 0 || timeline.length < 2) return null;
+          const prev = timeline[i - 1];
+          const next = timeline[i + 1];
+          return (
+            <Section title={focus ? `Parcours ${deName(focus.firstName)}` : undefined}>
+              <div className="meet-nav">
+                {prev ? (
+                  <button
+                    className="meet-nav-btn"
+                    disabled={!prev.meet}
+                    onClick={() => navigate(`/meet/${prev.key}`, { replace: true })}
+                  >
+                    <span className="small muted">← Précédente</span>
+                    <span className="meet-nav-name">{prev.name}</span>
+                    <span className="small muted">{formatDate(prev.startDate)}</span>
+                  </button>
+                ) : (
+                  <span className="meet-nav-btn empty">Première compétition suivie</span>
+                )}
+                {next ? (
+                  <button
+                    className="meet-nav-btn r"
+                    disabled={!next.meet}
+                    onClick={() => navigate(`/meet/${next.key}`, { replace: true })}
+                  >
+                    <span className="small muted">Suivante →</span>
+                    <span className="meet-nav-name">{next.name}</span>
+                    <span className="small muted">{formatDate(next.startDate)}</span>
+                  </button>
+                ) : (
+                  <span className="meet-nav-btn r empty">Dernière compétition</span>
+                )}
+              </div>
+              {timeline[i].trend != null && (
+                <div className="section-foot">
+                  Meilleure performance : {timeline[i].best!.points} pts ({timeline[i].trend! >= 0 ? '+' : '−'}
+                  {Math.abs(timeline[i].trend!)} pts par rapport à la compétition précédente).
+                </div>
+              )}
+            </Section>
+          );
+        })()}
 
         <Section title="Infos">
           <div className="list">
