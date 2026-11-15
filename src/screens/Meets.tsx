@@ -12,6 +12,7 @@ import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
 import type { Meet, Swim } from '../store/types';
 import { openMeetForm, openResultForm } from './forms';
 import { overlay } from '../components/ui';
+import { openResultPhotos } from './ResultPhotos';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -215,6 +216,16 @@ export function MeetDetail({ id }: { id: string }) {
             chevron
             onClick={() => openResultForm({ meetId: meet.id, entry: !isPast })}
           />
+          {meet.startDate <= today && (
+            <Row
+              icon="upload"
+              iconBg="#bf5af2"
+              title="Photographier les résultats affichés"
+              sub="Les temps de vos enfants sont lus sur les feuilles"
+              chevron
+              onClick={() => openResultPhotos({ meetId: meet.id })}
+            />
+          )}
           {!isPast && swims.length > 0 && (
             <Row icon="stopwatch" iconBg="#30d158" title="Saisir un temps" chevron onClick={() => openResultForm({ meetId: meet.id })} />
           )}

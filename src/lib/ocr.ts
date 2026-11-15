@@ -10,8 +10,14 @@ export interface OcrProgress {
   label: string;
 }
 
-/** Prépare l'image : agrandissement et niveaux de gris contrastés. */
-async function prepare(file: Blob): Promise<HTMLCanvasElement> {
+export type Prep = 'stretch' | 'adaptive';
+
+/**
+ * Prépare l'image pour la lecture :
+ * - « stretch » : niveaux de gris contrastés (captures d'écran) ;
+ * - « adaptive » : seuil local, robuste aux reflets et aux ombres (photos).
+ */
+async function prepare(file: Blob, mode: Prep = 'stretch'): Promise<HTMLCanvasElement> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -21,7 +27,7 @@ async function prepare(file: Blob): Promise<HTMLCanvasElement> {
       i.src = url;
     });
     // Texte petit sur les captures de téléphone : on vise ~2400 px de large
-    const scale = Math.min(3, Math.max(1, 2400 / img.naturalWidth));
+    const scale = Math.min(3, Math.max(0.4, 2400 / img.naturalWidth));
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
     const canvas = document.createElement('canvas');
@@ -32,11 +38,39 @@ async function prepare(file: Blob): Promise<HTMLCanvasElement> {
     ctx.drawImage(img, 0, 0, w, h);
     const data = ctx.getImageData(0, 0, w, h);
     const px = data.data;
-    for (let i = 0; i < px.length; i += 4) {
-      const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-      // Étirement du contraste (fonds gris clairs → blanc, texte → noir)
-      const v = lum > 200 ? 255 : lum < 90 ? 0 : Math.round(((lum - 90) / 110) * 255);
-      px[i] = px[i + 1] = px[i + 2] = v;
+    const gray = new Float32Array(w * h);
+    for (let i = 0, j = 0; i < px.length; i += 4, j++) gray[j] = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+    if (mode === 'adaptive') {
+      // Seuil local : un pixel est « encre » s'il est nettement plus sombre que son voisinage
+      const integral = new Float64Array((w + 1) * (h + 1));
+      for (let y = 0; y < h; y++) {
+        let row = 0;
+        for (let x = 0; x < w; x++) {
+          row += gray[y * w + x];
+          integral[(y + 1) * (w + 1) + x + 1] = integral[y * (w + 1) + x + 1] + row;
+        }
+      }
+      const r = Math.max(8, Math.round(w / 90));
+      for (let y = 0; y < h; y++) {
+        const y0 = Math.max(0, y - r);
+        const y1 = Math.min(h, y + r + 1);
+        for (let x = 0; x < w; x++) {
+          const x0 = Math.max(0, x - r);
+          const x1 = Math.min(w, x + r + 1);
+          const sum = integral[y1 * (w + 1) + x1] - integral[y0 * (w + 1) + x1] - integral[y1 * (w + 1) + x0] + integral[y0 * (w + 1) + x0];
+          const mean = sum / ((x1 - x0) * (y1 - y0));
+          const v = gray[y * w + x] < mean * 0.88 ? 0 : 255;
+          const k = (y * w + x) * 4;
+          px[k] = px[k + 1] = px[k + 2] = v;
+        }
+      }
+    } else {
+      for (let j = 0, i = 0; j < gray.length; j++, i += 4) {
+        const lum = gray[j];
+        // Étirement du contraste (fonds gris clairs → blanc, texte → noir)
+        const v = lum > 200 ? 255 : lum < 90 ? 0 : Math.round(((lum - 90) / 110) * 255);
+        px[i] = px[i + 1] = px[i + 2] = v;
+      }
     }
     ctx.putImageData(data, 0, 0);
     return canvas;
@@ -85,6 +119,47 @@ export async function recognizeScreenshots(files: Blob[], onProgress: (p: OcrPro
       onProgress({ progress: (i + 1) / files.length, label: `Image ${i + 1}/${files.length} lue` });
     }
     return normalizeOcrText(texts.join('\n'));
+  } finally {
+    await worker.terminate();
+  }
+}
+
+/**
+ * Photos de feuilles de résultats : chaque photo est lue avec le seuil local ;
+ * si le résultat attendu n'est pas trouvé (ou pas vérifié), une seconde
+ * lecture avec un autre traitement est ajoutée.
+ */
+export async function recognizePhotos(
+  files: Blob[],
+  onProgress: (p: OcrProgress) => void,
+  isGood: (texts: string[]) => boolean,
+): Promise<string[][]> {
+  onProgress({ progress: 0, label: 'Chargement du lecteur de texte…' });
+  const Tesseract = await import('tesseract.js');
+  let current = 0;
+  const worker = await Tesseract.createWorker(['fra', 'eng'], Tesseract.OEM.LSTM_ONLY, {
+    logger: (m: { status: string; progress: number }) => {
+      if (m.status === 'recognizing text')
+        onProgress({ progress: (current + Math.min(0.95, m.progress)) / files.length, label: `Lecture de la photo ${current + 1}/${files.length}…` });
+      else if (m.status.includes('loading')) onProgress({ progress: 0.02, label: 'Téléchargement du lecteur (une seule fois)…' });
+    },
+  });
+  try {
+    await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK, preserve_interword_spaces: '1' });
+    const out: string[][] = [];
+    for (let i = 0; i < files.length; i++) {
+      current = i;
+      const texts: string[] = [];
+      for (const mode of ['adaptive', 'stretch'] as Prep[]) {
+        const canvas = await prepare(files[i], mode);
+        const { data } = await worker.recognize(canvas);
+        texts.push(normalizeOcrText(data.text));
+        if (isGood(texts)) break;
+      }
+      out.push(texts);
+    }
+    onProgress({ progress: 1, label: 'Lecture terminée' });
+    return out;
   } finally {
     await worker.terminate();
   }

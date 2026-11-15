@@ -11,6 +11,7 @@ import { formatTime, parseTime } from '../lib/time';
 import type { Gender } from '../store/types';
 import { openResultForm } from './forms';
 import { openClubFinder } from './ClubFinder';
+import { openResultPhotos } from './ResultPhotos';
 import { CLUB } from '../club';
 
 type Method = 'photo' | 'paste' | 'computer';
@@ -185,6 +186,19 @@ export function ImportScreen() {
           </div>
           <button className="btn block" onClick={() => openClubFinder({ swimmer: preselected })}>
             <Icon name="sparkles" /> Retrouver {preselected ? preselected.firstName : 'mon enfant'} dans les résultats du club
+          </button>
+        </div>
+        <div className="card pad" style={{ marginBottom: 18 }}>
+          <div className="hstack" style={{ marginBottom: 8 }}>
+            <span className="badge first">À la piscine</span>
+            <b>Résultats affichés</b>
+          </div>
+          <div className="muted small" style={{ marginBottom: 12 }}>
+            Prenez en photo les feuilles de résultats affichées : Nageo y retrouve votre enfant et importe ses temps, places, points et
+            passages.
+          </div>
+          <button className="btn secondary block" onClick={() => openResultPhotos({ swimmerId: preselected?.id })}>
+            <Icon name="upload" /> Photographier les résultats
           </button>
         </div>
         <p className="section-caption" style={{ padding: '0 4px 8px' }}>Autre club ou compétitions non publiées : depuis swimrankings.net</p>

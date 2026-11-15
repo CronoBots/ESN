@@ -289,7 +289,15 @@ export const actions = {
    * Import des résultats publiés par le club (rapports PDF « résultats par
    * club ») : crée les compétitions manquantes, ignore les doublons.
    */
-  importClubResults(swimmerId: string, reports: { meet: ReportMeet; swims: ReportSwim[] }[]): { added: number; swims: Swim[] } {
+  importClubResults(
+    swimmerId: string,
+    reports: {
+      meet: ReportMeet;
+      /** Compétition existante choisie par l'utilisateur. */
+      meetId?: string;
+      swims: (ReportSwim & { date?: string; startTime?: string; points?: number })[];
+    }[],
+  ): { added: number; swims: Swim[] } {
     const addedSwims: Swim[] = [];
     setState((s) => {
       const meets = [...s.meets];
@@ -297,7 +305,7 @@ export const actions = {
       const now = Date.now();
       let seq = 0;
       for (const r of reports) {
-        let meet = findMeet(meets, r.meet.name, r.meet.startDate, r.meet.course);
+        let meet = (r.meetId && meets.find((m) => m.id === r.meetId)) || findMeet(meets, r.meet.name, r.meet.startDate, r.meet.course);
         if (!meet) {
           meet = {
             id: uid(),
@@ -318,7 +326,7 @@ export const actions = {
         // Programme saisi à la main pour cette compétition : on complète les épreuves prévues
         const sorted = [...r.swims].sort((a, b) => (a.eventNo ?? 0) - (b.eventNo ?? 0));
         for (const rs of sorted) {
-          const date = r.meet.startDate;
+          const date = rs.date ?? r.meet.startDate;
           const candidate = { course: rs.course, distance: rs.distance, stroke: rs.stroke, timeCs: rs.timeCs ?? null, date, status: rs.status, meetId: meet.id };
           if (isDuplicate([...mine, ...addedSwims], candidate)) continue;
           const planned = mine.find(
@@ -328,6 +336,7 @@ export const actions = {
               x.status === 'OK' &&
               x.distance === rs.distance &&
               x.stroke === rs.stroke &&
+              (x.eventNo == null || rs.eventNo == null || x.eventNo === rs.eventNo) &&
               !addedSwims.some((a) => a.id === x.id),
           );
           if (planned) {
@@ -340,6 +349,10 @@ export const actions = {
               round: rs.round,
               eventNo: planned.eventNo ?? rs.eventNo,
               entryCs: planned.entryCs ?? rs.entryCs,
+              points: rs.points ?? planned.points,
+              course: rs.course,
+              date: rs.date ?? planned.date,
+              startTime: planned.startTime ?? rs.startTime,
               timing: 'electronic',
               updatedAt: now,
             });
@@ -351,10 +364,12 @@ export const actions = {
             meetId: meet.id,
             context: 'competition',
             date,
+            startTime: rs.startTime,
             distance: rs.distance,
             stroke: rs.stroke,
             course: rs.course,
             timeCs: rs.timeCs ?? null,
+            points: rs.points,
             entryCs: rs.entryCs,
             status: rs.status,
             round: rs.round,

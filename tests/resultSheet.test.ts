@@ -1,0 +1,71 @@
+import { describe, expect, it } from 'vitest';
+import { findSwimmerResult, lapsToSplits, parseSheetHeader } from '../src/lib/resultSheet';
+
+// Lectures (OCR) d'une même photo, bruitées comme sur une vraie photo — noms fictifs
+const READ_A = `- 7
+Be aR RTE A OEE. Ta mé
+Meeting d'automne du Club
+Epreuve 29
+14-11-26 - 15:5 Dames, 100m Libre 11 anse
+Points: AQUA 2026 20 Liste résultats
+ 1. MARTIN, Léa         14 Club Exemple     1:04.98  453  31.51  33.47
+ 17. DUPONT, Emma        15 Esn ; 1:22.17 224 a res
+`;
+const READ_B = ` | |
+Meeting d'automne du Club
+4000 Liège, 13- - 15-11-2026
+Epreuve 29
+14-11-26 - 15:50 Beue=scan des Liste résultats
+ 7 17. DUPONT, Emma 15 Esn 1:22.17 224 38.69 43.48
+`;
+
+describe('feuilles de résultats affichées (photo)', () => {
+  it('lit l’en-tête en combinant les lectures', () => {
+    expect(parseSheetHeader([READ_A, READ_B])).toEqual({
+      meetName: "Meeting d'automne du Club",
+      city: 'Liège',
+      startDate: '2026-11-13',
+      endDate: '2026-11-15',
+      eventNo: 29,
+      date: '2026-11-14',
+      startTime: '15:50',
+      gender: 'F',
+      distance: 100,
+      stroke: 'FREE',
+      round: 'TIM',
+    });
+  });
+
+  it('trouve et vérifie le temps du nageur', () => {
+    const r = findSwimmerResult([READ_A, READ_B], { firstName: 'Emma', lastName: 'Dupont', birthYear: 2015, gender: 'F' })!;
+    expect(r).toMatchObject({ place: 17, status: 'OK', timeCs: 8217, points: 224, laps: [3869, 4348], course: 'SCM', verified: true });
+    expect(lapsToSplits(r.laps)).toEqual([3869]);
+  });
+
+  it('gère les disqualifications et les chiffres sans virgule', () => {
+    const t = `Meeting d'automne du Club
+4000 Liège, 13- - 15-11-2026
+Epreuve 39 15-11-26 - 16:20 Dames, 50m Brasse
+ 5. DUPONT, Emma 155 Bemis IL 5052 177
+disq. DURAND, Zoé 15 Esn 52.37`;
+    const emma = findSwimmerResult([t], { firstName: 'Emma', lastName: 'Dupont', gender: 'F' })!;
+    expect(emma).toMatchObject({ place: 5, timeCs: 5052, points: 177, verified: true, course: 'SCM' });
+    const zoe = findSwimmerResult([t], { firstName: 'Zoé', lastName: 'Durand', gender: 'F' })!;
+    expect(zoe).toMatchObject({ status: 'DSQ', timeCs: 5237, place: undefined });
+  });
+
+  it('ne trouve rien pour un nageur absent', () => {
+    expect(findSwimmerResult([READ_A], { firstName: 'Paul', lastName: 'Absent' })).toBeNull();
+  });
+});
+
+describe('nom partiellement lu', () => {
+  it('accepte un nom coupé si le prénom et l’année correspondent', () => {
+    const t = `Epreuve 27 14-11-26 - 15:30 Dames, 50m Dos
+.     PONT, Emma                   15 Esn                               42.42 210`;
+    const r = findSwimmerResult([t], { firstName: 'Emma', lastName: 'Dupont', birthYear: 2015, gender: 'F' });
+    expect(r).toMatchObject({ timeCs: 4242, points: 210, verified: true });
+    // sans année concordante : pas de correspondance partielle
+    expect(findSwimmerResult([t], { firstName: 'Emma', lastName: 'Dupont', birthYear: 2012, gender: 'F' })).toBeNull();
+  });
+});

@@ -13,6 +13,7 @@ import { formatDelta, formatTime } from '../lib/time';
 import { openGoalForm, openResultForm, openSwimmerForm } from './forms';
 import { InstallBanner } from './Install';
 import { openClubFinder } from './ClubFinder';
+import { openResultPhotos } from './ResultPhotos';
 import type { Goal, Swimmer } from '../store/types';
 
 export function Home() {
@@ -218,6 +219,20 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                 </span>
               </div>
             </div>
+            {upcoming.startDate <= today && (
+              <div style={{ padding: '0 16px 12px' }}>
+                <span
+                  role="button"
+                  className="btn secondary small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openResultPhotos({ meetId: upcoming.id });
+                  }}
+                >
+                  <Icon name="upload" /> Résultats affichés : photographier
+                </span>
+              </div>
+            )}
             <div className="chips" style={{ padding: '0 16px 14px' }}>
               {upcomingEntries.slice(0, 8).map((s) => (
                 <span key={s.id} className="chip" style={{ boxShadow: 'none', background: 'var(--fill)' }}>
