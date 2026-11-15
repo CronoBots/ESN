@@ -1,0 +1,70 @@
+import type { Meet, Swim } from '../store/types';
+import type { PbInfo } from '../lib/stats';
+import { eventLabel, ROUND_LABEL, STATUS_SHORT, courseLabel } from '../lib/events';
+import { formatDelta, formatTime } from '../lib/time';
+import { formatDate, todayISO } from '../lib/dates';
+import { StrokeTag } from './ui';
+import { Icon } from './Icon';
+import { navigate } from '../router';
+
+export function SwimBadges({ swim, pb }: { swim: Swim; pb?: PbInfo }) {
+  if (swim.status !== 'OK') return <span className="badge bad">{STATUS_SHORT[swim.status]}</span>;
+  return (
+    <>
+      {swim.context === 'training' && <span className="badge training">ENTR.</span>}
+      {pb?.isPB && <span className="badge pb">PB</span>}
+      {pb?.isFirst && <span className="badge first">1er</span>}
+    </>
+  );
+}
+
+/** Ligne de résultat : épreuve, contexte, temps et badges. */
+export function SwimRow({
+  swim,
+  pb,
+  meet,
+  showMeet = true,
+  showCourse = true,
+  onClick,
+}: {
+  swim: Swim;
+  pb?: PbInfo;
+  meet?: Meet;
+  showMeet?: boolean;
+  showCourse?: boolean;
+  onClick?: () => void;
+}) {
+  const subParts: string[] = [];
+  if (showMeet) subParts.push(meet?.name ?? (swim.context === 'training' ? 'Entraînement' : 'Compétition'));
+  subParts.push(formatDate(swim.date));
+  if (showCourse) subParts.push(courseLabel(swim.course));
+  if (swim.round !== 'TIM' && swim.context === 'competition') subParts.push(ROUND_LABEL[swim.round]);
+  if (swim.place) subParts.push(`${swim.place}${swim.place === 1 ? 're' : 'e'} place`);
+  return (
+    <button className="row" type="button" onClick={onClick ?? (() => navigate(`/swim/${swim.id}`))}>
+      <StrokeTag stroke={swim.stroke} distance={swim.distance} />
+      <div className="row-body">
+        <div className="row-title">{eventLabel(swim.distance, swim.stroke)}</div>
+        <div className="row-sub">{subParts.join(' · ')}</div>
+      </div>
+      <div className="row-end">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+          {swim.timeCs != null ? (
+            <span className="time-big">{formatTime(swim.timeCs)}</span>
+          ) : swim.status === 'OK' ? (
+            <span className="badge first">{swim.date >= todayISO() ? 'Programmé' : 'Sans temps'}</span>
+          ) : null}
+          <span className="hstack" style={{ gap: 4 }}>
+            <SwimBadges swim={swim} pb={pb} />
+            {pb && !pb.isFirst && pb.deltaCs != null && swim.status === 'OK' && (
+              <span className={`small tnum ${pb.deltaCs < 0 ? 'good' : 'muted'}`} style={{ fontWeight: 600 }}>
+                {formatDelta(pb.deltaCs)}
+              </span>
+            )}
+          </span>
+        </div>
+        <Icon name="chevronRight" className="chev" />
+      </div>
+    </button>
+  );
+}
