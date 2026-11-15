@@ -11,7 +11,8 @@ import { formatDate } from '../lib/dates';
 import { formatDelta, formatTime, pacePer100 } from '../lib/time';
 import { navigate } from '../router';
 import type { Course, Stroke } from '../store/types';
-import { openGoalForm, openResultForm } from './forms';
+import { openGoalForm } from './forms';
+import { findResultsNow } from './autoResults';
 import { GoalCard } from './Home';
 
 const COMPARE_COLORS = ['var(--chart-line)', 'var(--chart-2)', 'var(--chart-3)'];
@@ -77,15 +78,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
         title={eventLabel(distance, stroke)}
         subtitle={`${fullName(swimmer)} · bassin de ${courseLabel(course)}`}
         back="/records"
-        right={
-          <button
-            className="icon-btn"
-            aria-label="Ajouter un temps"
-            onClick={() => openResultForm({ swimmerId, preset: { distance, stroke, course } })}
-          >
-            <Icon name="plus" />
-          </button>
-        }
       />
       <main className="page">
         <div className="stack" style={{ gap: 8 }}>
@@ -108,8 +100,8 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
               title="Pas encore de temps"
               text={`Aucun ${eventLabel(distance, stroke)} en bassin de ${courseLabel(course)} pour ${swimmer.firstName}.`}
               action={
-                <button className="btn small" onClick={() => openResultForm({ swimmerId, preset: { distance, stroke, course } })}>
-                  <Icon name="plus" /> Ajouter un temps
+                <button className="btn small" onClick={() => findResultsNow(swimmer.firstName)}>
+                  <Icon name="sparkles" /> Rechercher ses résultats
                 </button>
               }
             />
@@ -185,7 +177,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                   ariaLabel={`Progression sur ${eventLabel(distance, stroke)} : ${valid.length} temps, record ${formatTime(best!.timeCs)}`}
                 />
                 <div className="muted small center" style={{ padding: '4px 0 8px' }}>
-                  ↑ plus rapide · touchez la courbe pour le détail
+                  La courbe descend quand le temps s’améliore · touchez-la pour le détail
                 </div>
               </div>
             </div>

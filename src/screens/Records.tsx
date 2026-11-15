@@ -9,7 +9,7 @@ import { countsForRecords, pointsFor, chronoCompare } from '../lib/stats';
 import { formatDate, seasonLabel, seasonOf, todayISO, sportAge } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
-import { openResultForm } from './forms';
+import { findResultsNow } from './autoResults';
 
 export function SwimmerChips({ swimmer }: { swimmer: Swimmer }) {
   const data = useData();
@@ -103,10 +103,10 @@ export function Records() {
                 <Empty
                   icon="trophy"
                   title={`Aucun temps en ${courseLabel(course)}`}
-                  text={scope === 'season' ? 'Aucune course cette saison dans ce bassin.' : 'Les records apparaîtront dès le premier temps saisi.'}
+                  text={scope === 'season' ? 'Aucune course cette saison dans ce bassin.' : 'Les records apparaissent dès que des résultats sont publiés.'}
                   action={
-                    <button className="btn small" onClick={() => openResultForm({ swimmerId: swimmer.id, preset: { course } })}>
-                      <Icon name="plus" /> Ajouter un temps
+                    <button className="btn small" onClick={() => findResultsNow(swimmer.firstName)}>
+                      <Icon name="sparkles" /> Rechercher ses résultats
                     </button>
                   }
                 />

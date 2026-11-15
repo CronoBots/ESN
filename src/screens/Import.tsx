@@ -9,7 +9,6 @@ import { eventLabel, courseLabel } from '../lib/events';
 import { formatDate } from '../lib/dates';
 import { formatTime, parseTime } from '../lib/time';
 import type { Gender } from '../store/types';
-import { openResultForm } from './forms';
 import { findResultsNow } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
 
@@ -396,12 +395,6 @@ export function ImportScreen() {
             </div>
           )}
 
-          <div className="section-foot center">
-            Pas de swimrankings ?{' '}
-            <button className="section-link" style={{ padding: 0 }} onClick={() => openResultForm({ swimmerId: preselected?.id })}>
-              Saisir un temps à la main
-            </button>
-          </div>
         </Section>
 
         {/* 3. Vérification */}

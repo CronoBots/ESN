@@ -9,8 +9,7 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 
 | | |
 |---|---|
-| ⏱️ **Saisie éclair** | Clavier « chronomètre » : on tape `12462` → `1:24.62`. Le record est détecté pendant la saisie. Confettis à chaque nouveau record. |
-| 📈 **Progression nage par nage** | Courbe par épreuve et par bassin (axe inversé : plus haut = plus rapide), escalier des records, ligne d'objectif, comparaison avec d'autres nageurs. |
+| 📈 **Progression nage par nage** | Courbe par épreuve et par bassin (la courbe descend quand le temps s'améliore), escalier des records, ligne d'objectif, comparaison avec d'autres nageurs. |
 | 📊 **Statistiques** | Progression totale, sur 12 mois, tendance par mois, régularité, allure aux 100 m, points World Aquatics, tableau saison par saison, plus belles progressions. |
 | 🏆 **Records** | Meilleurs temps à vie ou de la saison, en petit et grand bassin, comme sur swimrankings.net. |
 | 🥇 **Classements** | Classement par épreuve entre vos enfants et les nageurs suivis (coéquipiers, amis), par sexe et par année de naissance. |

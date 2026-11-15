@@ -1,16 +1,16 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
 import { fullName, sortSwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { SwimRow } from '../components/SwimRow';
 import { StrokeBars } from '../components/Chart';
-import { navigate, useRoute } from '../router';
+import { navigate } from '../router';
 import { chronoCompare, countsForRecords, goalAchievedDate, projectGoal, swimmerSummary, eventHistory } from '../lib/stats';
 import { formatDate, formatMonthYear, formatRange, relativeDay, sportAge, todayISO, seasonLabel, seasonOf } from '../lib/dates';
 import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
-import { openGoalForm, openResultForm, openSwimmerForm } from './forms';
+import { openGoalForm, openSwimmerForm } from './forms';
 import { InstallBanner } from './Install';
 import { findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
@@ -21,15 +21,6 @@ export function Home() {
   const swimmer = useSelectedSwimmer();
   const pbFlags = usePbFlags();
   const swimmers = sortSwimmers(data.swimmers);
-  const route = useRoute();
-
-  // Raccourci d'application « Nouveau temps » (#/?new=1)
-  useEffect(() => {
-    if (route.query.get('new') === '1') {
-      navigate('/', { replace: true });
-      if (swimmer) openResultForm({ swimmerId: swimmer.id });
-    }
-  }, [route, swimmer]);
 
   if (!swimmer) {
     return (
@@ -86,9 +77,6 @@ export function Home() {
         )}
         <HomeContent swimmer={swimmer} pbFlags={pbFlags} />
       </main>
-      <button className="fab" onClick={() => openResultForm({ swimmerId: swimmer.id })}>
-        <Icon name="stopwatch" /> Nouveau temps
-      </button>
     </>
   );
 }
@@ -179,14 +167,11 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
             <Empty
               icon="stopwatch"
               title="Pas encore de résultat"
-              text={`Les résultats de compétition de ${swimmer.firstName} sont ajoutés automatiquement dès leur publication par les organisateurs. Vous pouvez aussi saisir un temps ou importer l’historique.`}
+              text={`Les résultats de compétition de ${swimmer.firstName} sont ajoutés automatiquement dès leur publication par les organisateurs. Pour l’historique plus ancien, utilisez l’import.`}
               action={
                 <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
                   <button className="btn block" onClick={() => findResultsNow(swimmer.firstName)}>
                     <Icon name="sparkles" /> Rechercher ses résultats
-                  </button>
-                  <button className="btn secondary block" onClick={() => openResultForm({ swimmerId: swimmer.id })}>
-                    <Icon name="stopwatch" /> Saisir un temps
                   </button>
                   <button className="btn ghost block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>
                     <Icon name="download" /> Importer depuis swimrankings

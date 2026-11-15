@@ -10,7 +10,7 @@ import { formatDate, seasonLabel, seasonOf, todayISO, fromISO } from '../lib/dat
 import { formatDelta, formatTime } from '../lib/time';
 import type { Course, Swim } from '../store/types';
 import { SwimmerChips } from './Records';
-import { openResultForm } from './forms';
+import { findResultsNow } from './autoResults';
 
 function Sparkline({ swims, color }: { swims: Swim[]; color: string }) {
   if (swims.length < 2) return <div style={{ height: 36 }} />;
@@ -23,7 +23,8 @@ function Sparkline({ swims, color }: { swims: Swim[]; color: string }) {
   const y0 = Math.min(...ys);
   const y1 = Math.max(...ys);
   const sx = (x: number) => 3 + ((x - x0) / (x1 - x0 || 1)) * (W - 6);
-  const sy = (y: number) => 4 + ((y - y0) / (y1 - y0 || 1)) * (H - 8);
+  // Plus rapide = plus bas : la courbe descend quand le temps s'améliore
+  const sy = (y: number) => 4 + ((y1 - y) / (y1 - y0 || 1)) * (H - 8);
   const d = swims.map((s, i) => `${i ? 'L' : 'M'}${sx(xs[i]).toFixed(1)},${sy(s.timeCs!).toFixed(1)}`).join('');
   const last = swims[swims.length - 1];
   return (
@@ -100,10 +101,10 @@ export function Progression() {
             <Empty
               icon="chart"
               title={`Aucun temps en ${courseLabel(course)}`}
-              text="Saisissez des temps ou importez-les pour voir les courbes de progression."
+              text="Les courbes apparaissent dès que des résultats sont publiés pour ce bassin."
               action={
-                <button className="btn small" onClick={() => openResultForm({ swimmerId: swimmer.id, preset: { course } })}>
-                  <Icon name="plus" /> Ajouter un temps
+                <button className="btn small" onClick={() => findResultsNow(swimmer.firstName)}>
+                  <Icon name="sparkles" /> Rechercher ses résultats
                 </button>
               }
             />

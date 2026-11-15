@@ -479,7 +479,7 @@ function ResultForm({ swim, swimmerId: initialSwimmer, meetId: initialMeet, entr
 
   return (
     <SheetLayout
-      title={swim ? (swim.timeCs == null && !entry ? 'Saisir le résultat' : 'Modifier la course') : entry ? 'Ajouter une épreuve' : 'Nouveau temps'}
+      title={swim ? (entry ? 'Modifier l’épreuve' : 'Modifier la course') : entry ? 'Ajouter une épreuve' : 'Nouveau temps'}
       onCancel={close}
       onDone={save}
       doneLabel="Enregistrer"
@@ -551,16 +551,16 @@ function ResultForm({ swim, swimmerId: initialSwimmer, meetId: initialMeet, entr
             )}
           </div>
         </div>
-        {!entry || swim ? (
+        {!entry ? (
           <TimeInput value={timeCs} onChange={setTimeCs} autoFocus={!swim || swim.timeCs == null} hint={hint} hintClass={isPB ? 'pb' : ''} />
         ) : (
           <div style={{ padding: '6px 16px 14px' }} className="muted small center">
-            Le temps se saisit après la course, directement depuis le programme.
+            Le résultat sera ajouté automatiquement après la course.
           </div>
         )}
       </div>
 
-      {(!entry || swim) && (
+      {!entry && (
         <div className="section" style={{ marginTop: 14 }}>
           <Segmented value={status} onChange={setStatus} options={STATUSES.map((s) => ({ id: s.id, label: s.label }))} ariaLabel="Statut" />
         </div>
@@ -661,7 +661,7 @@ function ResultForm({ swim, swimmerId: initialSwimmer, meetId: initialMeet, entr
                   <Stepper value={lane} onChange={setLane} min={0} max={10} />
                 </div>
               </div>
-              {(!entry || swim) && (
+              {!entry && (
                 <div className="field">
                   <span className="label">Classement</span>
                   <div style={{ marginLeft: 'auto' }}>
@@ -703,7 +703,7 @@ function ResultForm({ swim, swimmerId: initialSwimmer, meetId: initialMeet, entr
             )}
           </div>
 
-          {splitMarks.length > 0 && (!entry || swim) && (
+          {splitMarks.length > 0 && !entry && (
             <div className="section" style={{ marginTop: 18 }}>
               <p className="section-caption">Temps de passage (cumulés)</p>
               <div className="card pad">

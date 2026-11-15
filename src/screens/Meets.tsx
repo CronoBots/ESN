@@ -210,12 +210,9 @@ export function MeetDetail({ id }: { id: string }) {
       />
       <main className="page">
         <div className="list">
-          <Row
-            icon="plus"
-            title={isPast ? 'Ajouter un résultat' : 'Ajouter une épreuve'}
-            chevron
-            onClick={() => openResultForm({ meetId: meet.id, entry: !isPast })}
-          />
+          {!isPast && (
+            <Row icon="plus" title="Ajouter une épreuve au programme" chevron onClick={() => openResultForm({ meetId: meet.id, entry: true })} />
+          )}
           {meet.startDate <= today && (
             <Row
               icon="upload"
@@ -225,9 +222,6 @@ export function MeetDetail({ id }: { id: string }) {
               chevron
               onClick={() => openResultPhotos({ meetId: meet.id })}
             />
-          )}
-          {!isPast && swims.length > 0 && (
-            <Row icon="stopwatch" iconBg="#30d158" title="Saisir un temps" chevron onClick={() => openResultForm({ meetId: meet.id })} />
           )}
           {swims.length > 0 && (
             <Row
@@ -313,7 +307,7 @@ export function MeetDetail({ id }: { id: string }) {
                           key={s.id}
                           className="row"
                           onClick={() =>
-                            s.timeCs == null && s.status === 'OK' ? openResultForm({ swim: s }) : navigate(`/swim/${s.id}`)
+                            s.timeCs == null && s.status === 'OK' ? openResultForm({ swim: s, entry: true }) : navigate(`/swim/${s.id}`)
                           }
                         >
                           <StrokeTag stroke={s.stroke} distance={s.distance} size={36} />
@@ -356,11 +350,7 @@ export function MeetDetail({ id }: { id: string }) {
                                       <span className="badge">PB</span>
                                       {formatTime(prev)}
                                     </span>
-                                  ) : (
-                                    <span className="small" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                                      Saisir
-                                    </span>
-                                  )}
+                                  ) : null}
                                 </>
                               )}
                             </div>

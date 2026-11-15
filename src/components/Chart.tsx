@@ -21,7 +21,8 @@ export interface ChartSeries {
 const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 /**
- * Courbe de progression : axe vertical inversé (plus rapide = plus haut),
+ * Courbe de progression : axe vertical naturel (plus rapide = plus bas, la
+ * courbe descend quand le temps s'améliore),
  * axe horizontal temporel, réticule + infobulle au survol / toucher / clavier.
  */
 export function ProgressChart({
@@ -100,8 +101,8 @@ export function ProgressChart({
   if (!model) return null;
 
   const sx = (t: number) => pad.left + ((t - model.x0) / (model.x1 - model.x0)) * innerW;
-  // Inversé : temps le plus rapide (petit) en haut
-  const sy = (cs: number) => pad.top + ((cs - model.yMin) / (model.yMax - model.yMin)) * innerH;
+  // Temps le plus rapide (petit) en bas : la courbe descend quand le nageur progresse
+  const sy = (cs: number) => pad.top + ((model.yMax - cs) / (model.yMax - model.yMin)) * innerH;
 
   // Points à plat (pour le réticule)
   const flat = series
