@@ -2263,3 +2263,112 @@ textarea.textinput {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------------------------------------ Import */
+
+.time-edit {
+  width: 92px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fill);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+}
+
+.time-edit:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.sel-demo {
+  position: relative;
+  margin-top: 6px;
+  padding: 10px 10px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #222;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  border: 0.5px solid var(--separator);
+  overflow: hidden;
+}
+
+.sel-head,
+.sel-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr 1fr 1.3fr;
+  gap: 0;
+  padding: 4px 2px;
+}
+
+.sel-head {
+  background: #d9d9d9;
+  font-weight: 700;
+}
+
+.sel-row:nth-child(odd) {
+  background: #f3f3f3;
+}
+
+.sel-row span {
+  position: relative;
+  white-space: nowrap;
+}
+
+.sel-row mark {
+  background: rgba(10, 132, 255, 0.28);
+  color: inherit;
+  padding: 2px 4px 2px 2px;
+}
+
+.sel-demo .handle {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 22px;
+  background: #0a84ff;
+}
+
+.sel-demo .handle::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0a84ff;
+}
+
+.sel-demo .handle.start {
+  left: 0;
+}
+
+.sel-demo .handle.start::after {
+  top: -8px;
+}
+
+.sel-demo .handle.end {
+  right: 0;
+}
+
+.sel-demo .handle.end::after {
+  bottom: -8px;
+}
+
+.sel-demo .sel-menu {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #2c2c2e;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}

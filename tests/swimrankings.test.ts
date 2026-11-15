@@ -130,3 +130,23 @@ describe('bookmarkletCode', () => {
     expect(() => new Function(js)).not.toThrow();
   });
 });
+
+describe('capture d’écran (texte reconnu)', () => {
+  it('lit le texte d’une capture avec le menu sur les mêmes lignes', () => {
+    const ocr = `Accueil                                             DUPONT,  Emma
+(2015)
+SplashMe
+BEL - Belgique
+Records                                         Meilleurs temps, Meilleurs a vie
+Classements                                   Compétition             Bassin        Temps         Pts.      Date                    Ville (Pays)          Compétition
+Compétitions                              100m Libre             25m          1:24.62       205      11 oct 2026          Liège                Marie Petit & Challenge Jules …
+.                                      400m Libre              25m           6:29.33       206      10 oct 2026          Liege                 Marie Petit & Challenge Jules ...
+Calendrier
+100m Brasse           25m           1:56.61       152      10 oct 2026          Liège                 Marie Petit & Challenge Jules …
+50m Dos              25m         48.07        139     14 nov 2026        Crisnée            Meeting Liege Natation Invite`;
+    const r = parseSwimrankings(ocr);
+    expect(r.athlete).toMatchObject({ lastName: 'Dupont', firstName: 'Emma', birthYear: 2015, nation: 'BEL' });
+    expect(r.swims).toHaveLength(4);
+    expect(r.swims.find((s) => s.stroke === 'BACK')).toMatchObject({ timeCs: 4807, points: 139, city: 'Crisnée', meet: 'Meeting Liege Natation Invite' });
+  });
+});

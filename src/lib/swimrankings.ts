@@ -332,42 +332,61 @@ export function parseAthlete(text: string): ParsedAthlete {
     if (id) a.swimrankingsId = id;
   }
 
-  // "DUPONT, Emma" puis "(2015 ♀)" — ou "DUPONT, Emma (2015)"
+  // "DUPONT, Emma" puis "(2015 ♀)" — ou "DUPONT, Emma (2015)".
+  // Une ligne peut contenir plusieurs zones (menu du site à gauche, capture
+  // d'écran lue ligne par ligne) : on examine chaque zone séparément.
+  const segs = (l: string | undefined) =>
+    (l ?? '')
+      .replace(/,\s+/g, ', ')
+      .split(/\t| {3,}/)
+      .map((x) => x.trim())
+      .filter(Boolean);
   const nameRe = /^([A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ'’\- ]{1,40}),\s*([A-Za-zÀ-ÖØ-öø-ÿ'’\- ]{1,40}?)\s*(?:\((\d{4})[^)]*\)?)?$/;
-  for (let i = 0; i < lines.length; i++) {
-    const m = nameRe.exec(lines[i]);
-    if (!m) continue;
-    a.lastName = titleCase(m[1].trim());
-    a.firstName = m[2].trim();
-    let year = m[3] ? +m[3] : undefined;
-    if (!year && lines[i + 1]) {
-      const y = /^\(?\s*(\d{4})/.exec(lines[i + 1]);
-      if (y) year = +y[1];
-    }
-    if (year && year > 1900 && year <= new Date().getFullYear()) a.birthYear = year;
-    if (!a.gender) {
-      const around = `${lines[i]} ${lines[i + 1] ?? ''}`;
-      if (/♀|female|femme|dame|vrouw/i.test(around)) a.gender = 'F';
-      else if (/♂|\bmale\b|homme|herr|man\b/i.test(around)) a.gender = 'M';
-    }
-    // Nation + club : "BEL - Belgique" puis "Ecole Seraing Natation" (ou "BEL - Club")
-    for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
-      const n = /^([A-Z]{3})\s*-\s*(.+)$/.exec(lines[j]);
-      if (!n) continue;
-      a.nation = n[1];
-      const rest = n[2].trim();
-      const isCountry = /^(belgique|belgium|belgi[eë]|france|nederland|netherlands|pays-bas|luxembourg|deutschland|germany|allemagne|suisse|schweiz|switzerland|espa[ñn]a|spain|espagne|italia|italy|italie|great britain|grande-bretagne|canada|usa|united states)$/i.test(
-        rest,
-      );
-      if (isCountry) {
-        const next = lines[j + 1];
-        if (next && !/^(meilleurs|best|records?|comp[ée]titions?|biographie|personal)/i.test(next)) a.club = next;
-      } else {
-        a.club = rest;
+  const menuRe = /^(meilleurs|best|records?|comp[ée]titions?|biographie|personal|classements?|calendrier|accueil|nageurs|splashme|swimstats)/i;
+  outer: for (let i = 0; i < lines.length; i++) {
+    for (const seg of segs(lines[i])) {
+      const m = nameRe.exec(seg);
+      if (!m) continue;
+      a.lastName = titleCase(m[1].trim());
+      a.firstName = m[2].trim();
+      let year = m[3] ? +m[3] : undefined;
+      if (!year) {
+        for (const nseg of segs(lines[i + 1])) {
+          const y = /^\(?\s*(\d{4})\b/.exec(nseg);
+          if (y) {
+            year = +y[1];
+            break;
+          }
+        }
       }
-      break;
+      if (year && year > 1900 && year <= new Date().getFullYear()) a.birthYear = year;
+      if (!a.gender) {
+        const around = `${lines[i]} ${lines[i + 1] ?? ''}`;
+        if (/♀|female|femme|dame|vrouw/i.test(around)) a.gender = 'F';
+        else if (/♂|\bmale\b|homme|herr|man\b/i.test(around)) a.gender = 'M';
+      }
+      // Nation + club : "BEL - Belgique" puis "Ecole Seraing Natation" (ou "BEL - Club")
+      for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
+        const n = segs(lines[j])
+          .map((x) => /^([A-Z]{3})\s*-\s*(.+)$/.exec(x))
+          .find(Boolean);
+        if (!n) continue;
+        a.nation = n[1];
+        const rest = n[2].trim();
+        const isCountry = /^(belgique|belgium|belgi[eë]|france|nederland|netherlands|pays-bas|luxembourg|deutschland|germany|allemagne|suisse|schweiz|switzerland|espa[ñn]a|spain|espagne|italia|italy|italie|great britain|grande-bretagne|canada|usa|united states)$/i.test(
+          rest,
+        );
+        if (isCountry) {
+          const next = segs(lines[j + 1]).filter((x) => !menuRe.test(x));
+          const club = next[next.length - 1];
+          if (club && /[a-z]/i.test(club) && !/\d/.test(club)) a.club = club;
+        } else {
+          a.club = rest;
+        }
+        break;
+      }
+      break outer;
     }
-    break;
   }
   return a;
 }
