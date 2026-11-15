@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { actions, getState, loadDemo, normalizeData, useData } from '../store/store';
 import { fullName, sortSwimmers } from '../store/hooks';
-import { Avatar, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
+import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { downloadFile } from '../lib/ics';
@@ -11,6 +11,7 @@ import { formatTime } from '../lib/time';
 import { openSwimmerForm } from './forms';
 import { isStandalone, promptInstall } from './Install';
 import type { AppData } from '../store/types';
+import { CLUB } from '../club';
 
 export const APP_VERSION = '1.0.0';
 
@@ -229,6 +230,7 @@ export function Settings() {
                 }
               }}
             />
+            <Row icon="shield" iconBg="var(--brand-green)" title="Le club ESN Seraing" chevron onClick={() => navigate('/about')} />
             <Row icon="info" iconBg="#8e8e93" title="À propos" chevron onClick={() => navigate('/about')} />
           </div>
         </Section>
@@ -255,7 +257,7 @@ export function Settings() {
           </div>
         </Section>
         <div className="section-foot center" style={{ marginTop: 18 }}>
-          Nageo {APP_VERSION} · gratuit, sans publicité, sans compte
+          ESN Natation {APP_VERSION} · gratuit, sans publicité, sans compte
           <br />
           {data.swims.length} courses · {data.meets.length} compétitions · {formatDate(todayISO())}
         </div>
@@ -270,13 +272,23 @@ export function About() {
       <NavBar title="À propos" back="/settings" />
       <main className="page">
         <div className="center" style={{ padding: '8px 0 6px' }}>
-          <img src="./icons/icon-192.png" alt="" width={84} height={84} style={{ borderRadius: 20, boxShadow: '0 12px 30px rgba(10,132,255,.35)' }} />
-          <h2 style={{ margin: '14px 0 2px', fontSize: 26, fontWeight: 800 }}>Nageo</h2>
-          <div className="muted">Le carnet de performances des parents de nageurs</div>
+          <BrandLogo height={72} />
+          <h2 style={{ margin: '16px 0 2px', fontSize: 26, fontWeight: 800 }}>ESN Natation</h2>
+          <div className="muted">Le carnet de performances des parents de nageurs de l’Ecole Seraing Natation</div>
           <div style={{ marginTop: 10 }}>
             <span className="free-tag">✓ 100 % gratuit · toutes les fonctions</span>
           </div>
         </div>
+        <Section title="Le club">
+          <div className="list">
+            <Row title={CLUB.legal} sub={`Fondé en ${CLUB.founded} · ${CLUB.pool}`} />
+            <Row title={CLUB.address} sub="Adresse" />
+            <Row title="Téléphone" value={CLUB.phone} />
+            <Row title="E-mail" value={CLUB.email} />
+            <Row title="Site du club" href={CLUB.website} external />
+          </div>
+          <div className="section-foot">{CLUB.sections.join(' · ')}</div>
+        </Section>
         <Section title="Vos données">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
             Tout est enregistré <b>uniquement sur votre appareil</b> : pas de compte, pas de serveur, pas de publicité. Utilisez
@@ -292,7 +304,7 @@ export function About() {
         </Section>
         <Section title="swimrankings.net">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
-            Nageo n’est pas affilié à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
+            ESN Natation n’est pas affilié à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
             aucune donnée n’est envoyée à un tiers.
           </div>
         </Section>

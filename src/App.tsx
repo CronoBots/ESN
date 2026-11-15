@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useData } from './store/store';
 import { useRoute, navigate } from './router';
-import { UiHost } from './components/ui';
+import { BrandLogo, UiHost } from './components/ui';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
@@ -86,6 +86,11 @@ export function App() {
   const showOnboarding =
     data.swimmers.length === 0 && !data.settings.onboarded && route.path[0] !== 'import' && route.path[0] !== 'about';
 
+  // Fin de l'écran de bienvenue : on repart du haut de la page
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [showOnboarding]);
+
   if (showOnboarding) {
     return (
       <>
@@ -101,8 +106,7 @@ export function App() {
     <div className="app">
       <nav className="sidebar" aria-label="Navigation principale">
         <div className="sidebar-brand">
-          <img src="./icons/icon-192.png" alt="" />
-          Nageo
+          <BrandLogo height={38} />
         </div>
         {TABS.map((t) => (
           <button key={t.id} className={`side-item${tab === t.id ? ' active' : ''}`} onClick={() => navigate(t.path)} aria-current={tab === t.id ? 'page' : undefined}>
@@ -111,7 +115,7 @@ export function App() {
           </button>
         ))}
         <div className="sidebar-foot">
-          Nageo {APP_VERSION}
+          ESN Natation {APP_VERSION}
           <br />
           Gratuit · données sur votre appareil
         </div>

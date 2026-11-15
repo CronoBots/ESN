@@ -13,6 +13,8 @@ import { extractAthleteId } from '../lib/swimrankings';
 import { fullName, sortSwimmers } from '../store/hooks';
 import { navigate } from '../router';
 
+export const DEFAULT_CLUB = 'Ecole Seraing Natation';
+
 /* ======================================================================== */
 /* Nageur                                                                    */
 /* ======================================================================== */
@@ -26,7 +28,7 @@ function SwimmerForm({ swimmer, close, onCreated }: { swimmer?: Swimmer; close: 
   const [lastName, setLastName] = useState(swimmer?.lastName ?? '');
   const [gender, setGender] = useState<Gender>(swimmer?.gender ?? 'F');
   const [birthYear, setBirthYear] = useState(swimmer?.birthYear ? String(swimmer.birthYear) : '');
-  const [club, setClub] = useState(swimmer?.club ?? '');
+  const [club, setClub] = useState(swimmer ? (swimmer.club ?? '') : DEFAULT_CLUB);
   const [sr, setSr] = useState(swimmer?.swimrankingsId ?? '');
   const [relation, setRelation] = useState<Relation>(swimmer?.relation ?? 'child');
   const [color, setColor] = useState(swimmer?.color ?? getState().swimmers.length % 8);

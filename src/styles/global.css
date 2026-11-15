@@ -1,5 +1,5 @@
 /* =========================================================================
-   Nageo — système de design
+   ESN Natation — système de design
    Inspiré des apps iOS natives : sombre par défaut, listes groupées, flou.
    ========================================================================= */
 
@@ -35,7 +35,10 @@
   --bar-bg: rgba(249, 249, 249, 0.82);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.18);
-  --hero: linear-gradient(140deg, #0a84ff 0%, #0064d2 45%, #00b4d8 100%);
+  /* Identité ESN Seraing : vert du club + bleu du « S » */
+  --brand-green: #2e7d52;
+  --brand-blue: #1e5faf;
+  --hero: linear-gradient(140deg, #1b5b3f 0%, #2e7d52 38%, #1e5faf 100%);
 
   /* Couleurs d'identité des nages (palette validée daltonisme) */
   --stroke-free: #2a78d6;
@@ -87,7 +90,9 @@
     --bar-bg: rgba(22, 22, 24, 0.8);
     --shadow: none;
     --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
-    --hero: linear-gradient(140deg, #0a5bd8 0%, #0a3f9c 50%, #00879e 100%);
+    --brand-green: #4cb57a;
+    --brand-blue: #4a93e6;
+    --hero: linear-gradient(140deg, #164a33 0%, #226343 40%, #1a4f92 100%);
     --stroke-free: #3987e5;
     --stroke-fly: #d95926;
     --stroke-back: #199e70;
@@ -124,7 +129,9 @@
   --bar-bg: rgba(22, 22, 24, 0.8);
   --shadow: none;
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
-  --hero: linear-gradient(140deg, #0a5bd8 0%, #0a3f9c 50%, #00879e 100%);
+  --brand-green: #4cb57a;
+  --brand-blue: #4a93e6;
+  --hero: linear-gradient(140deg, #164a33 0%, #226343 40%, #1a4f92 100%);
   --stroke-free: #3987e5;
   --stroke-fly: #d95926;
   --stroke-back: #199e70;
@@ -433,10 +440,8 @@ a {
     font-size: 22px;
     letter-spacing: -0.02em;
   }
-  .sidebar-brand img {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
+  .sidebar-brand .brand-logo {
+    max-width: 100%;
   }
   .side-item {
     display: flex;
@@ -1444,7 +1449,7 @@ textarea.textinput {
   border-radius: var(--radius-lg);
   background: var(--hero);
   color: #fff;
-  box-shadow: 0 14px 40px rgba(10, 100, 210, 0.25);
+  box-shadow: 0 14px 40px rgba(27, 91, 63, 0.28);
 }
 
 .hero::after {
@@ -1924,7 +1929,7 @@ textarea.textinput {
 }
 
 .onboard h1 span {
-  background: linear-gradient(90deg, #0a84ff, #00c2e0);
+  background: linear-gradient(90deg, var(--brand-green), var(--brand-blue));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -2262,4 +2267,46 @@ textarea.textinput {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------------------------------------------------------- Logo du club */
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brand-logo img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+.brand-logo .on-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .brand-logo .on-light {
+    display: none;
+  }
+  :root:not([data-theme='light']) .brand-logo .on-dark {
+    display: block;
+  }
+}
+
+:root[data-theme='dark'] .brand-logo .on-light {
+  display: none;
+}
+
+:root[data-theme='dark'] .brand-logo .on-dark {
+  display: block;
+}
+
+.hero-logo {
+  position: absolute;
+  right: 18px;
+  top: 16px;
+  height: 22px;
+  opacity: 0.9;
 }

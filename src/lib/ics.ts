@@ -9,7 +9,7 @@ import { formatTime } from './time';
 export function buildMeetCalendar(meet: Meet, swims: Swim[], swimmers: Swimmer[]): string {
   const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/[,;]/g, (m) => `\\${m}`).replace(/\n/g, '\\n');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Nageo//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ESN Natation//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
   const byId = new Map(swimmers.map((s) => [s.id, s]));
   const place = [meet.city, meet.nation].filter(Boolean).join(', ');
 

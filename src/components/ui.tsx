@@ -582,3 +582,16 @@ function Confetti() {
   }, []);
   return <canvas ref={ref} className="confetti" style={{ width: '100vw', height: '100vh' }} />;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Logo du club (version noire en thème clair, blanche en thème sombre)      */
+/* ------------------------------------------------------------------------ */
+
+export function BrandLogo({ height = 40, className = '' }: { height?: number; className?: string }) {
+  return (
+    <span className={`brand-logo ${className}`} style={{ height }} role="img" aria-label="ESN Seraing">
+      <img className="on-light" src="./brand/esn-logo-color.png" alt="" height={height} />
+      <img className="on-dark" src="./brand/esn-logo-color-dark.png" alt="" height={height} />
+    </span>
+  );
+}
