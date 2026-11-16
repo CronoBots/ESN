@@ -366,16 +366,15 @@ export const actions = {
     return { added, total: roster.members.length };
   },
 
-  /** Mes enfants parmi les nageurs (les autres restent suivis). */
-  setChildren(ids: string[]) {
+  /**
+   * Nageurs suivis (favoris), choisis dans la liste du club : ce sont eux qui
+   * s'affichent sur l'accueil et dans les sélecteurs.
+   */
+  setFollowed(ids: string[]) {
     setState((s) => ({
       ...s,
       swimmers: s.swimmers.map((sw) =>
-        ids.includes(sw.id)
-          ? { ...sw, relation: 'child', favorite: true }
-          : sw.relation === 'child'
-            ? { ...sw, relation: 'followed', favorite: false }
-            : sw,
+        ids.includes(sw.id) ? { ...sw, favorite: true } : sw.favorite || sw.relation === 'child' ? { ...sw, favorite: false, relation: 'followed' } : sw,
       ),
       settings: {
         ...s.settings,
@@ -383,6 +382,17 @@ export const actions = {
         selectedSwimmerId: ids.includes(s.settings.selectedSwimmerId ?? '') ? s.settings.selectedSwimmerId : ids[0] ?? s.settings.selectedSwimmerId,
       },
     }));
+  },
+
+  /** Suivre ou ne plus suivre un nageur (cœur). */
+  follow(id: string, on: boolean) {
+    setState((s) => {
+      const swimmers = s.swimmers.map((sw) => (sw.id === id ? { ...sw, favorite: on, relation: on ? sw.relation : ('followed' as const) } : sw));
+      const followed = swimmers.filter((sw) => sw.favorite || sw.relation === 'child');
+      const sel = s.settings.selectedSwimmerId;
+      const selectedSwimmerId = followed.some((sw) => sw.id === sel) ? sel : (followed[0]?.id ?? sel);
+      return { ...s, swimmers, settings: { ...s.settings, selectedSwimmerId } };
+    });
   },
 
   /** Oublie le code du club (les nageurs et leurs résultats restent). */

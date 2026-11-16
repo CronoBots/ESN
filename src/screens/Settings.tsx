@@ -1,15 +1,14 @@
 import { useRef } from 'react';
 import { actions, getState, loadDemo, normalizeData, useData } from '../store/store';
-import { fullName, hasClubMembers, mySwimmers } from '../store/hooks';
+import { fullName, mySwimmers } from '../store/hooks';
 import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
-import { groupName, openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
+import { groupName, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import { downloadFile } from '../lib/ics';
 import { formatDate, relativeDay, toISO, todayISO } from '../lib/dates';
 import { COURSES, eventLabel, ROUND_LABEL, STATUS_LABEL } from '../lib/events';
 import { formatTime } from '../lib/time';
-import { openSwimmerForm } from './forms';
 import { isStandalone, promptInstall } from './Install';
 import type { AppData } from '../store/types';
 import { CLUB } from '../club';
@@ -87,7 +86,6 @@ export function Settings() {
   const data = useData();
   const fileRef = useRef<HTMLInputElement>(null);
   const swimmers = mySwimmers(data.swimmers);
-  const clubMode = hasClubMembers(data.swimmers);
   const club = data.settings.club;
   const rosterAvailable = useRosterAvailable();
   const s = data.settings;
@@ -129,29 +127,27 @@ export function Settings() {
     <>
       <NavBar title="Réglages" />
       <main className="page">
-        <Section title={clubMode ? 'Mes nageurs' : 'Nageurs'}>
+        <Section title="Nageurs suivis">
           <div className="list">
             {swimmers.map((sw) => (
               <button key={sw.id} className="row" onClick={() => navigate(`/swimmer/${sw.id}`)}>
                 <Avatar swimmer={sw} size={38} />
                 <div className="row-body">
                   <div className="row-title">
-                    {fullName(sw)} {sw.favorite && <Icon name="heartFill" style={{ width: 14, height: 14, color: '#ff375f', verticalAlign: '-1px' }} />}
+                    {fullName(sw)}
                   </div>
                   <div className="row-sub">
-                    {[sw.relation === 'child' ? 'Mon enfant' : 'Suivi', sw.birthYear, groupName(club?.groups ?? [], sw.group) ?? sw.club].filter(Boolean).join(' · ')}
+                    {[sw.birthYear, groupName(club?.groups ?? [], sw.group) ?? sw.club].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <Icon name="chevronRight" className="chev" />
               </button>
             ))}
-            {clubMode && <Row icon="person" title="Choisir mes enfants" accent onClick={() => openChildrenPicker()} />}
-            <Row icon="plus" title="Ajouter un nageur" accent onClick={() => openSwimmerForm()} />
+            <Row icon="heart" title="Choisir les nageurs suivis" accent onClick={() => openFollow()} />
           </div>
           <div className="section-foot">
-            {clubMode
-              ? 'Vos enfants et vos favoris (cœur sur la fiche d’un nageur) apparaissent sur l’accueil et dans les sélecteurs.'
-              : 'Ajoutez vos enfants, mais aussi des coéquipiers « suivis » pour les classements et les comparaisons.'}
+            Les nageurs suivis s’affichent sur l’accueil et dans les sélecteurs. Dans la liste du club, touchez le cœur d’un nageur pour le
+            suivre.
           </div>
         </Section>
 
@@ -172,7 +168,7 @@ export function Settings() {
                   {club.expired && <Row icon="shield" iconBg="#ff9f0a" title="Entrer le nouveau code du club" chevron onClick={() => openClubCode()} />}
                 </>
               ) : (
-                <Row icon="shield" iconBg="var(--brand-green)" title="Entrer le code du club" chevron onClick={() => openClubCode(() => openChildrenPicker())} />
+                <Row icon="shield" iconBg="var(--brand-green)" title="Entrer le code du club" chevron onClick={() => openClubCode(() => openFollowPicker())} />
               )}
               <Row icon="info" iconBg="#8e8e93" title="Infos du club" chevron onClick={() => navigate('/about')} />
             </div>

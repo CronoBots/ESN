@@ -10,11 +10,11 @@ import { chronoCompare, countsForRecords, goalAchievedDate, projectGoal, swimmer
 import { formatDate, formatMonthYear, formatRange, relativeDay, sportAge, todayISO, seasonLabel, seasonOf } from '../lib/dates';
 import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
-import { openGoalForm, openSwimmerForm } from './forms';
+import { openGoalForm } from './forms';
 import { InstallBanner } from './Install';
 import { findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
-import { clubSummary, openChildrenPicker, openClubCode, useRosterAvailable } from './Club';
+import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Goal, Swimmer } from '../store/types';
 
 const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -35,12 +35,12 @@ export function Home() {
         <main className="page">
           <Empty
             icon="person"
-            title="Qui sont vos enfants ?"
-            text="Choisissez vos enfants dans la liste du club : leurs résultats, records et progression s’afficheront ici."
+            title="Quels nageurs suivre ?"
+            text="Choisissez dans la liste du club les nageurs à suivre (vos enfants, leurs coéquipiers…) : leurs résultats, records et progression s’afficheront ici."
             action={
               <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
-                <button className="btn block" onClick={() => openChildrenPicker()}>
-                  <Icon name="person" /> Choisir mes enfants
+                <button className="btn block" onClick={() => openFollowPicker()}>
+                  <Icon name="heart" /> Choisir les nageurs suivis
                 </button>
                 <button className="btn ghost block" onClick={() => navigate('/club')}>
                   <Icon name="users" /> Voir les nageurs du club
@@ -60,11 +60,11 @@ export function Home() {
         <main className="page">
           <Empty
             icon="person"
-            title="Aucun nageur"
-            text="Ajoutez votre enfant pour commencer à suivre ses performances."
+            title="Aucun nageur suivi"
+            text="Choisissez dans la liste du club les nageurs à suivre : leurs résultats arrivent tout seuls."
             action={
-              <button className="btn" onClick={() => openSwimmerForm()}>
-                <Icon name="plus" /> Ajouter un nageur
+              <button className="btn" onClick={() => openFollow()}>
+                <Icon name="heart" /> Choisir dans la liste du club
               </button>
             }
           />
@@ -80,7 +80,7 @@ export function Home() {
         wide
         left={<BrandLogo variant="mark" height={30} className="nav-brand" />}
         right={
-          <button className="icon-btn" aria-label="Ajouter un nageur" onClick={() => openSwimmerForm()}>
+          <button className="icon-btn" aria-label="Suivre des nageurs" onClick={() => openFollow()}>
             <Icon name="plus" />
           </button>
         }
@@ -100,11 +100,11 @@ export function Home() {
                 <span className="name">{s.firstName}</span>
               </button>
             ))}
-            <button onClick={() => openSwimmerForm()} aria-label="Ajouter un nageur">
+            <button onClick={() => openFollow()} aria-label="Suivre d’autres nageurs">
               <span className="add">
                 <Icon name="plus" style={{ width: 22, height: 22 }} />
               </span>
-              <span className="name">Ajouter</span>
+              <span className="name">Suivre</span>
             </button>
           </div>
         )}
@@ -495,7 +495,7 @@ function ClubCard() {
           </button>
         </div>
       ) : (
-        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openClubCode(() => openChildrenPicker())}>
+        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openClubCode(() => openFollowPicker())}>
           <BrandLogo variant="mark" height={34} />
           <div className="grow">
             <div style={{ fontWeight: 600 }}>Membre de l’ESN ?</div>

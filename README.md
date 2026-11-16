@@ -18,8 +18,8 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | 🎖️ **Trophées** | 19 badges à débloquer (premier record, coup du chapeau, polyvalence, 300 points…). |
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | 🏊 **Entraînements** | Chronos d'entraînement séparés (inclus ou non dans les records). |
-| 👨‍👩‍👧 **Plusieurs nageurs** | Frères et sœurs, nageurs suivis, favoris. |
-| 👥 **Nageurs du club** | Liste des membres par année de naissance (ou par groupe A, B, C), réservée aux membres (code du club) : chaque parent choisit ses enfants, résultats de tout le club, classements du club. |
+| ❤️ **Nageurs suivis** | Pas de saisie : on choisit dans la liste du club les nageurs à suivre (cœur) — ses enfants, leurs coéquipiers. Ils s'affichent sur l'accueil et dans les sélecteurs. |
+| 👥 **Nageurs du club** | Liste des membres par année de naissance (ou par groupe A, B, C), réservée aux membres (code du club) : chaque parent y choisit les nageurs qu'il suit, résultats de tout le club, classements du club. |
 | ⚡ **Résultats automatiques** | Dès qu'un enfant est ajouté, ses résultats officiels de compétition (LENEX, live.swimrankings.net) arrivent tout seuls. |
 | 📸 **Photos des résultats affichés** | Les feuilles affichées à la piscine, photographiées, sont lues sur le téléphone. |
 | 🔄 **Import swimrankings.net** | Capture d'écran lue sur le téléphone, copier-coller ou bouton-favori (ordinateur). |
@@ -52,7 +52,7 @@ Préparer ou mettre à jour la liste :
 3. `npm run roster -- chiffrer membres.csv ESN-7KQ4-M2XP` écrit le fichier chiffré ; `npm run roster -- verifier ESN-7KQ4-M2XP` le relit.
 4. Seul `public/data/club-roster.json` est ajouté au dépôt.
 
-Les parents entrent le code une fois (écran de bienvenue, Réglages › Le club) ou ouvrent le lien `https://cronobots.github.io/ESN/#/club?code=ESN-7KQ4-M2XP` partagé par le club. Une nouvelle liste publiée avec le même code est appliquée automatiquement (nouveaux nageurs, changements de groupe) ; avec un nouveau code, l'application le redemande. Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.
+Les nageurs ne sont jamais ajoutés à la main. Les parents entrent le code une fois (écran de bienvenue, Réglages › Le club) ou ouvrent le lien `https://cronobots.github.io/ESN/#/club?code=ESN-7KQ4-M2XP` partagé par le club, puis touchent le cœur des nageurs à suivre. Une nouvelle liste publiée avec le même code est appliquée automatiquement (nouveaux nageurs, changements de groupe) ; avec un nouveau code, l'application le redemande. Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.
 
 ## Points World Aquatics
 

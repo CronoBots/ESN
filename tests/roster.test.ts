@@ -75,11 +75,19 @@ describe('liste du club dans l’application', async () => {
     expect(names).toEqual(['Emma:A', 'Lucas:A']);
   });
 
-  it('choisit mes enfants parmi les membres', () => {
+  it('suit des nageurs choisis dans la liste', () => {
     const lucas = getState().swimmers.find((x) => x.firstName === 'Lucas')!;
-    actions.setChildren([lucas.id]);
-    const s = getState();
-    expect(s.swimmers.filter((x) => x.relation === 'child').map((x) => x.firstName)).toEqual(['Lucas']);
+    actions.setFollowed([lucas.id]);
+    let s = getState();
+    const followed = () => getState().swimmers.filter((x) => x.favorite || x.relation === 'child').map((x) => x.firstName);
+    expect(followed()).toEqual(['Lucas']);
     expect(s.settings.selectedSwimmerId).toBe(lucas.id);
+    const emma = s.swimmers.find((x) => x.firstName === 'Emma')!;
+    actions.follow(emma.id, true);
+    expect(followed()).toEqual(['Emma', 'Lucas']);
+    actions.follow(lucas.id, false);
+    s = getState();
+    expect(followed()).toEqual(['Emma']);
+    expect(s.settings.selectedSwimmerId).toBe(emma.id);
   });
 });

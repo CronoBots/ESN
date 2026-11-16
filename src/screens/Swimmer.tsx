@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import { actions, useData } from '../store/store';
 import { fullName, usePbFlags } from '../store/hooks';
-import { Avatar, Empty, NavBar, Row, Section } from '../components/ui';
-import { Icon } from '../components/Icon';
+import { Avatar, Empty, NavBar, Row, Section, Toggle } from '../components/ui';
 import { SwimRow } from '../components/SwimRow';
 import { navigate } from '../router';
-import { groupName } from './Club';
+import { FollowButton, groupName } from './Club';
 import { sportAge, seasonLabel, seasonOf } from '../lib/dates';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { achievements, chronoCompare } from '../lib/stats';
@@ -47,16 +46,12 @@ export function SwimmerProfile({ id }: { id: string }) {
         large={false}
         right={
           <>
-            <button
-              className="icon-btn"
-              aria-label={swimmer.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              onClick={() => actions.updateSwimmer(id, { favorite: !swimmer.favorite })}
-            >
-              <Icon name={swimmer.favorite ? 'heartFill' : 'heart'} />
-            </button>
-            <button className="icon-btn" onClick={() => openSwimmerForm(swimmer)}>
-              Modifier
-            </button>
+            <FollowButton swimmer={swimmer} />
+            {!swimmer.member && (
+              <button className="icon-btn" onClick={() => openSwimmerForm(swimmer)}>
+                Modifier
+              </button>
+            )}
           </>
         }
       />
@@ -95,7 +90,14 @@ export function SwimmerProfile({ id }: { id: string }) {
             {age != null && <Row title="Âge" value={age} />}
             {swimmer.birthYear && <Row title="Année de naissance" value={swimmer.birthYear} />}
             <Row title="Sexe" value={swimmer.gender === 'F' ? 'Fille' : 'Garçon'} />
-            <Row title="Type" value={swimmer.relation === 'child' ? 'Mon enfant' : 'Nageur suivi'} />
+            <div className="field">
+              <span className="label grow">Suivre ce nageur</span>
+              <Toggle
+                on={swimmer.favorite || swimmer.relation === 'child'}
+                onChange={(v) => actions.follow(id, v)}
+                label="Suivre ce nageur"
+              />
+            </div>
           </div>
         </Section>
 

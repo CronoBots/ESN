@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { actions, getState, useData } from '../store/store';
 import { fullName } from '../store/hooks';
-import { Avatar, BrandLogo, Empty, NavBar, Section, Segmented, SheetLayout, overlay } from '../components/ui';
+import { Avatar, BrandLogo, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate, useRoute } from '../router';
 import { decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
@@ -172,11 +172,38 @@ function ClubCodeSheet({ close, onUnlocked, initial }: { close: () => void; onUn
 }
 
 /* ------------------------------------------------------------------------ */
-/* Mes enfants                                                               */
+/* Nageurs suivis (favoris), choisis dans la liste du club                   */
 /* ------------------------------------------------------------------------ */
 
-export function openChildrenPicker(onDone?: () => void) {
-  overlay.sheet((close) => <ChildrenPicker close={close} onDone={onDone} />);
+export function openFollowPicker(onDone?: () => void) {
+  overlay.sheet((close) => <FollowPicker close={close} onDone={onDone} />);
+}
+
+/** Choisir des nageurs à suivre : dans la liste du club (code du club demandé la première fois). */
+export function openFollow(onDone?: () => void) {
+  if (getState().settings.club && !getState().settings.club?.expired) openFollowPicker(onDone);
+  else openClubCode(() => openFollowPicker(onDone));
+}
+
+const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child';
+
+/** Bouton cœur : suivre / ne plus suivre. */
+export function FollowButton({ swimmer }: { swimmer: Swimmer }) {
+  const on = isFollowed(swimmer);
+  return (
+    <button
+      type="button"
+      className={`follow-btn${on ? ' on' : ''}`}
+      aria-pressed={on}
+      aria-label={on ? `Ne plus suivre ${fullName(swimmer)}` : `Suivre ${fullName(swimmer)}`}
+      onClick={() => {
+        actions.follow(swimmer.id, !on);
+        overlay.toast(on ? `${swimmer.firstName} n’est plus suivi${swimmer.gender === 'F' ? 'e' : ''}` : `${swimmer.firstName} est suivi${swimmer.gender === 'F' ? 'e' : ''} sur l’accueil`, on ? '♡' : '❤️');
+      }}
+    >
+      <Icon name={on ? 'heartFill' : 'heart'} />
+    </button>
+  );
 }
 
 /** Par année de naissance, puis par nom. */
@@ -225,10 +252,10 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (v: 
   );
 }
 
-function ChildrenPicker({ close, onDone }: { close: () => void; onDone?: () => void }) {
+function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => void }) {
   const data = useData();
   const groups = data.settings.club?.groups ?? [];
-  const [sel, setSel] = useState<Set<string>>(() => new Set(data.swimmers.filter((s) => s.relation === 'child').map((s) => s.id)));
+  const [sel, setSel] = useState<Set<string>>(() => new Set(data.swimmers.filter(isFollowed).map((s) => s.id)));
   const [q, setQ] = useState('');
   const sections = useMemo(() => clubSections(data.swimmers, groups, 'all', q), [data.swimmers, groups, q]);
 
@@ -240,16 +267,17 @@ function ChildrenPicker({ close, onDone }: { close: () => void; onDone?: () => v
       return n;
     });
   const done = () => {
-    actions.setChildren([...sel]);
+    actions.setFollowed([...sel]);
     close();
-    if (sel.size) overlay.toast(sel.size > 1 ? `${sel.size} enfants suivis sur l’accueil` : 'Suivi sur l’accueil', '✓');
+    if (sel.size) overlay.toast(`${sel.size}\u00a0nageur${sel.size > 1 ? 's' : ''} suivi${sel.size > 1 ? 's' : ''} sur l’accueil`, '❤️');
     onDone?.();
   };
 
   return (
-    <SheetLayout title="Mes enfants" onCancel={close} onDone={done} doneLabel={sel.size ? 'OK' : 'Plus tard'}>
+    <SheetLayout title="Nageurs suivis" onCancel={close} onDone={done} doneLabel={sel.size ? 'OK' : 'Plus tard'}>
       <p className="muted" style={{ margin: '0 4px 12px' }}>
-        Touchez le nom de vos enfants : leurs résultats, records et progression s’affichent sur l’accueil.
+        Touchez les nageurs à suivre (vos enfants, leurs coéquipiers…) : leurs résultats, records et progression s’affichent sur
+        l’accueil.
       </p>
       <SearchField value={q} onChange={setQ} label="Rechercher un nageur" />
       {sections.length === 0 && <Empty icon="person" title="Aucun nageur trouvé" />}
@@ -260,14 +288,16 @@ function ChildrenPicker({ close, onDone }: { close: () => void; onDone?: () => v
               const on = sel.has(sw.id);
               return (
                 <button key={sw.id} type="button" className="row" role="checkbox" aria-checked={on} onClick={() => toggle(sw.id)}>
-                  <span className={`check${on ? ' on' : ''}`} aria-hidden="true">
-                    {on && <Icon name="check" />}
-                  </span>
                   <Avatar swimmer={sw} size={36} />
                   <div className="row-body">
-                    <div className="row-title">{fullName(sw)}</div>
-                    {sw.birthYear && <div className="row-sub">{sw.birthYear}</div>}
+                    <div className="row-title" style={on ? { fontWeight: 600 } : undefined}>
+                      {fullName(sw)}
+                    </div>
+                    {groups.length > 0 && sw.birthYear && <div className="row-sub">{sw.birthYear}</div>}
                   </div>
+                  <span className={`follow-mark${on ? ' on' : ''}`} aria-hidden="true">
+                    <Icon name={on ? 'heartFill' : 'heart'} />
+                  </span>
                 </button>
               );
             })}
@@ -306,7 +336,7 @@ export function ClubScreen() {
   useEffect(() => {
     if (!linkCode) return;
     navigate('/club', { replace: true });
-    if (!getState().settings.club || getState().settings.club?.expired) openClubCode(() => openChildrenPicker(), linkCode);
+    if (!getState().settings.club || getState().settings.club?.expired) openClubCode(() => openFollowPicker(), linkCode);
   }, [linkCode]);
 
   const stats = useMemo(() => {
@@ -322,13 +352,17 @@ export function ClubScreen() {
   }, [data.swims]);
 
   const members = data.swimmers.filter((s) => s.member);
+  const followedCount = members.filter(isFollowed).length;
   const years = memberYears(data.swimmers).filter(Boolean);
-  const choices = groups.length ? groups.map((g) => g.id) : years;
+  const choices = [...(groups.length ? groups.map((g) => g.id) : years), ...(followedCount ? ['followed'] : [])];
   const active = filter === 'all' || choices.includes(filter) ? filter : 'all';
-  const sections = useMemo(
-    () => clubSections(members, groups, active, q).filter((s) => s.id !== 'others'),
-    [data.swimmers, groups, active, q],
-  );
+  const sections = useMemo(() => {
+    if (active === 'followed') {
+      const items = members.filter((s) => isFollowed(s) && matches(s, q)).sort(byYearName);
+      return items.length ? [{ id: 'followed', title: 'Suivis', items }] : [];
+    }
+    return clubSections(members, groups, active, q).filter((s) => s.id !== 'others');
+  }, [data.swimmers, groups, active, q]);
   const choose = (v: string) => {
     setFilter(v);
     try {
@@ -351,7 +385,7 @@ export function ClubScreen() {
               elle s’ouvre avec le code donné par le club.
             </p>
             {available ? (
-              <button className="btn" onClick={() => openClubCode(() => openChildrenPicker())}>
+              <button className="btn" onClick={() => openClubCode(() => openFollowPicker())}>
                 <Icon name="shield" /> Entrer le code du club
               </button>
             ) : (
@@ -370,11 +404,6 @@ export function ClubScreen() {
         title="Le club"
         subtitle={clubSummary(groups, members)}
         back="/"
-        right={
-          <button className="icon-btn" onClick={() => openChildrenPicker()}>
-            Mes enfants
-          </button>
-        }
       />
       <main className="page">
         {club.expired && (
@@ -388,21 +417,23 @@ export function ClubScreen() {
             </div>
           </div>
         )}
-        {groups.length > 0 ? (
-          <div style={{ marginTop: 8 }}>
-            <Segmented value={active} onChange={choose} options={[{ id: 'all', label: 'Tous' }, ...groups.map((g) => ({ id: g.id, label: g.name }))]} />
-          </div>
-        ) : (
-          years.length > 1 && (
-            <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Année de naissance">
-              {['all', ...years].map((y) => (
-                <button key={y} className={`chip${active === y ? ' active' : ''}`} aria-pressed={active === y} onClick={() => choose(y)}>
-                  {y === 'all' ? 'Toutes les années' : y}
-                </button>
-              ))}
-            </div>
-          )
-        )}
+        <div className="chips" style={{ marginTop: 8 }} role="group" aria-label={groups.length ? 'Groupe' : 'Année de naissance'}>
+          {['all', ...(followedCount ? ['followed'] : []), ...(groups.length ? groups.map((g) => g.id) : years)].map((v) => (
+            <button key={v} className={`chip${active === v ? ' active' : ''}`} aria-pressed={active === v} onClick={() => choose(v)}>
+              {v === 'all' ? (groups.length ? 'Tous' : 'Toutes les années') : v === 'followed' ? (
+                <>
+                  <Icon name="heartFill" style={{ width: 13, height: 13, color: '#ff375f' }} /> Suivis
+                  <span className="count">{followedCount}</span>
+                </>
+              ) : (
+                groupName(groups, v) ?? v
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="section-foot" style={{ margin: '8px 4px 0' }}>
+          Touchez le cœur d’un nageur pour le suivre : il apparaît sur l’accueil.
+        </div>
         <div style={{ marginTop: 10 }}>
           <SearchField value={q} onChange={setQ} label="Rechercher un nageur" />
         </div>
@@ -422,25 +453,19 @@ export function ClubScreen() {
                   st ? `${st.count} course${st.count > 1 ? 's' : ''}` : 'Pas encore de résultat',
                   st?.last ? `dernière le ${formatDate(st.last)}` : null,
                 ].filter(Boolean);
-                const mine = sw.relation === 'child';
                 return (
-                  <button key={sw.id} className="row" onClick={() => navigate(`/swimmer/${sw.id}`)}>
-                    <Avatar swimmer={sw} size={38} />
-                    <div className="row-body">
-                      <div className="row-title" style={mine ? { fontWeight: 700 } : undefined}>
-                        {fullName(sw)}
-                        {(mine || sw.favorite) && (
-                          <Icon
-                            name="heartFill"
-                            aria-label={mine ? 'Mon enfant' : 'Favori'}
-                            style={{ width: 14, height: 14, color: '#ff375f', verticalAlign: '-1px', marginLeft: 6 }}
-                          />
-                        )}
+                  <div key={sw.id} className="row club-row">
+                    <button className="club-row-main" onClick={() => navigate(`/swimmer/${sw.id}`)}>
+                      <Avatar swimmer={sw} size={38} />
+                      <div className="row-body">
+                        <div className="row-title" style={isFollowed(sw) ? { fontWeight: 600 } : undefined}>
+                          {fullName(sw)}
+                        </div>
+                        <div className="row-sub">{sub.join(' · ')}</div>
                       </div>
-                      <div className="row-sub">{sub.join(' · ')}</div>
-                    </div>
-                    <Icon name="chevronRight" className="chev" />
-                  </button>
+                    </button>
+                    <FollowButton swimmer={sw} />
+                  </div>
                 );
               })}
             </div>
