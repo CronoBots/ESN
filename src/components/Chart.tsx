@@ -197,6 +197,9 @@ export function ProgressChart({
           }));
           if (!pts.length) return null;
           const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+          // Seul le record actuel (meilleur temps) est cerclé d'or ; les records
+          // battus en chemin restent signalés par « PB » dans la lecture
+          const bestIdx = pts.reduce((b, p, i) => (p.p.cs < pts[b].p.cs ? i : b), 0);
           const area = single
             ? `${path}L${pts[pts.length - 1].x.toFixed(1)},${pad.top + innerH}L${pts[0].x.toFixed(1)},${pad.top + innerH}Z`
             : null;
@@ -209,10 +212,10 @@ export function ProgressChart({
                   key={i}
                   cx={p.x}
                   cy={p.y}
-                  r={p.p.pb ? 5 : 4}
+                  r={i === bestIdx ? 5.5 : 3.5}
                   fill={s.color}
-                  stroke={p.p.pb ? 'var(--chart-goal)' : 'var(--card)'}
-                  strokeWidth={2}
+                  stroke={i === bestIdx ? 'var(--chart-goal)' : 'var(--card)'}
+                  strokeWidth={i === bestIdx ? 2.5 : 1.5}
                 />
               ))}
             </g>

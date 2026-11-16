@@ -147,7 +147,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                   ariaLabel={`Progression sur ${eventLabel(distance, stroke)} : ${valid.length} temps, record ${formatTime(best!.timeCs)}`}
                 />
                 <div className="muted small center" style={{ padding: '4px 0 8px' }}>
-                  La courbe descend quand le temps s’améliore · touchez-la pour le détail
+                  La courbe descend quand le temps s’améliore · cercle doré : record · touchez la courbe pour le détail
                 </div>
               </div>
             </div>
