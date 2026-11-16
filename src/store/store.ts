@@ -8,6 +8,12 @@ import { uid } from '../lib/id';
 
 const STORAGE_KEY = 'nageo:data:v1';
 
+/**
+ * Version de la lecture de la liste du club. 2 : anciens membres. Une liste
+ * appliquée par une version précédente est relue une fois, même inchangée.
+ */
+export const ROSTER_PARSER = 2;
+
 const DEFAULT_SETTINGS: Settings = {
   theme: 'auto',
   includeTraining: false,
@@ -313,7 +319,7 @@ export const actions = {
   },
 
   /**
-   * Liste des membres du club : ajoute les nouveaux nageurs (suivis, avec leur
+   * Liste des membres du club (lecture version ROSTER_PARSER) : ajoute les nouveaux nageurs (suivis, avec leur
    * groupe), met à jour les groupes, et retire les anciens membres sans
    * résultat (ceux qui ont des résultats restent, sans groupe).
    */
@@ -377,7 +383,7 @@ export const actions = {
         settings: {
           ...s.settings,
           onboarded: true,
-          club: { code, version, updated: roster.updated, groups: roster.groups, count: roster.members.length },
+          club: { code, version, updated: roster.updated, groups: roster.groups, count: roster.members.length, rosterParser: ROSTER_PARSER },
         },
       };
     });

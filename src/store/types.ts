@@ -129,6 +129,8 @@ export interface ClubAccess {
   historyVersion?: string;
   /** Version de la lecture de l'historique (une nouvelle version le réapplique). */
   historyParser?: number;
+  /** Version de la lecture de la liste (une nouvelle version la réapplique). */
+  rosterParser?: number;
 }
 
 export interface LiveSyncSettings {

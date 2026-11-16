@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { actions, batch, getState, useData } from '../store/store';
+import { actions, batch, getState, ROSTER_PARSER, useData } from '../store/store';
 import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
 import { Avatar, BrandLogo, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -142,7 +142,8 @@ export async function refreshClubRoster(): Promise<number> {
   const club = getState().settings.club;
   if (!club) return 0;
   const enc = await fetchRoster();
-  if (!enc || enc.iv === club.version) {
+  // Même liste déjà lue par cette version de l'application : rien à refaire
+  if (!enc || (enc.iv === club.version && (club.rosterParser ?? 1) >= ROSTER_PARSER)) {
     await applyClubHistory();
     return 0;
   }
