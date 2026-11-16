@@ -24,7 +24,7 @@ const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'aoû
  * Courbe de progression : axe vertical naturel (plus rapide = plus bas, la
  * courbe descend quand le temps s'améliore),
  * axe horizontal temporel, réticule au survol / toucher / clavier et lecture
- * des temps au-dessus du tracé (jamais par-dessus les courbes).
+ * des temps sous le tracé (jamais par-dessus les courbes).
  */
 export function ProgressChart({
   series,
@@ -134,7 +134,7 @@ export function ProgressChart({
   const activeT = active != null ? xs[active] : null;
   const single = series.length === 1;
   // Lecture : pour chaque série, son temps à la date pointée (ou le dernier
-  // connu avant), sinon son dernier temps. Hors du tracé : rien ne le masque.
+  // connu avant), sinon son dernier temps. Sous le tracé : rien ne le masque.
   const readout = series.map((s, si) => {
     const pts = flat.filter((p) => p.si === si);
     const at = activeT == null ? pts[pts.length - 1] : [...pts].reverse().find((p) => p.t <= activeT);
@@ -143,29 +143,6 @@ export function ProgressChart({
 
   return (
     <div className="chart" ref={wrapRef}>
-      <div className={`chart-readout${single ? ' single' : ''}`}>
-        {readout.map(({ s, p, exact }) => (
-          <div key={s.id} className={`readout-row${exact ? '' : ' before'}`}>
-            {!single && <span className="line-key" style={{ background: s.color }} aria-hidden="true" />}
-            <span className="readout-value tnum">{p ? formatTime(p.cs) : '—'}</span>
-            <span className="readout-body">
-              <span className="readout-title">
-                <span className="t">{single ? (p?.label ?? (p ? formatDate(p.date) : '')) : s.label}</span>
-                {p?.pb && <span className="badge pb">PB</span>}
-              </span>
-              <span className="readout-sub">
-                {!p
-                  ? 'pas encore de temps à cette date'
-                  : single
-                    ? p.label
-                      ? formatDate(p.date)
-                      : ''
-                    : [formatDate(p.date), p.label].filter(Boolean).join(' · ')}
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
       <svg
         width={width}
         height={height}
@@ -269,6 +246,29 @@ export function ProgressChart({
           </g>
         )}
       </svg>
+      <div className={`chart-readout${single ? ' single' : ''}`}>
+        {readout.map(({ s, p, exact }) => (
+          <div key={s.id} className={`readout-row${exact ? '' : ' before'}`}>
+            {!single && <span className="line-key" style={{ background: s.color }} aria-hidden="true" />}
+            <span className="readout-value tnum">{p ? formatTime(p.cs) : '—'}</span>
+            <span className="readout-body">
+              <span className="readout-title">
+                <span className="t">{single ? (p?.label ?? (p ? formatDate(p.date) : '')) : s.label}</span>
+                {p?.pb && <span className="badge pb">PB</span>}
+              </span>
+              <span className="readout-sub">
+                {!p
+                  ? 'pas encore de temps à cette date'
+                  : single
+                    ? p.label
+                      ? formatDate(p.date)
+                      : ''
+                    : [formatDate(p.date), p.label].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

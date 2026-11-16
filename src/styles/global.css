@@ -1901,14 +1901,16 @@ textarea.textinput {
   vertical-align: middle;
 }
 
-/* Lecture du graphique de progression : au-dessus du tracé, hauteur fixe
+/* Lecture du graphique de progression : sous le tracé, hauteur fixe
    (une ligne par série), pour ne jamais masquer les courbes */
 .chart-readout {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 6px 10px;
-  padding: 0 4px 10px;
+  margin-top: 6px;
+  padding: 10px 4px 2px;
+  border-top: 0.5px solid var(--separator);
 }
 
 .chart-readout.single {
