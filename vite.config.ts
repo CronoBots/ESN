@@ -29,7 +29,8 @@ function serviceWorkerPlugin(): Plugin {
         /* pas de dossier public */
       }
       const files = ['./', ...Object.keys(bundle), ...publicFiles]
-        .filter((f) => !f.endsWith('.map') && f !== 'sw.js')
+        // pdf.js (≈ 1,9 Mo) : chargé seulement quand une compétition ne publie que des PDF, puis mis en cache
+        .filter((f) => !f.endsWith('.map') && f !== 'sw.js' && !/^assets\/pdf/.test(f))
         .map((f) => (f === './' ? f : `./${f}`));
       const hash = createHash('sha256');
       for (const [name, chunk] of Object.entries(bundle)) {

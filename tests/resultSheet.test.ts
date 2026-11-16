@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { findSwimmerResult, lapsToSplits, parseSheetHeader } from '../src/lib/resultSheet';
+import { findSwimmerEntry, findSwimmerResult, lapsToSplits, parseSheetHeader } from '../src/lib/resultSheet';
+import { parseMeetDocs } from '../src/lib/liveResults';
 
 // Lectures (OCR) d'une même photo, bruitées comme sur une vraie photo — noms fictifs
 const READ_A = `- 7
@@ -80,5 +81,44 @@ describe('place illisible', () => {
 5. ROBERT, Lou 15 Club 45.64 168`;
     const r = findSwimmerResult([t], { firstName: 'Emma', lastName: 'Dupont', birthYear: 2015, gender: 'F' })!;
     expect(r).toMatchObject({ place: 2, timeCs: 4242 });
+  });
+});
+
+describe('listes de départ (PDF des compétitions)', () => {
+  const START = `Meeting d'automne
+4000 Liège, 13- - 15-11-2026
+Epreuve 9   Messieurs, 100m Brasse   11 ans et plus
+13-11-26 - 19:15   Liste des séries
+AN
+Série 2 de 3
+1 MARTIN, Lucas   12   Club Exemple   1:31.20
+3 DUPONT, Hugo   14   Esn   1:25.78
+4 DUPONT, Hugo   11   Autre Club   NT
+Splash Meet Manager   Page 1`;
+
+  it('retrouve la série, la ligne et le temps d’engagement', () => {
+    expect(findSwimmerEntry(START, { firstName: 'Hugo', lastName: 'Dupont', birthYear: 2014, gender: 'M' })).toEqual({
+      heat: 2,
+      lane: 3,
+      entryCs: 8578,
+    });
+    // Homonyme d'une autre année : seule la bonne ligne compte
+    expect(findSwimmerEntry(START, { firstName: 'Hugo', lastName: 'Dupont', birthYear: 2011, gender: 'M' })).toEqual({
+      heat: 2,
+      lane: 4,
+      entryCs: undefined,
+    });
+    expect(findSwimmerEntry(START, { firstName: 'Léa', lastName: 'Dupont', birthYear: 2014, gender: 'F' })).toBeNull();
+    const h = parseSheetHeader([START]);
+    expect(h).toMatchObject({ eventNo: 9, distance: 100, stroke: 'BREAST', gender: 'M', date: '2026-11-13', startTime: '19:15' });
+  });
+
+  it('liste les feuilles publiées sur la page de la compétition', () => {
+    const docs = parseMeetDocs(
+      '<a href="StartList_1.pdf">x</a><a href="StartList_2.pdf">x</a><a href="ResultList_1.pdf">x</a><a href="EntryStatistics.pdf">x</a>',
+    );
+    expect([...docs.results.keys()]).toEqual([1]);
+    expect([...docs.starts.keys()]).toEqual([1, 2]);
+    expect(docs.stats).toBe('EntryStatistics.pdf');
   });
 });

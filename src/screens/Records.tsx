@@ -107,7 +107,7 @@ export function Records() {
                   title={`Aucun temps en ${courseLabel(course)}`}
                   text={scope === 'season' ? 'Aucune course cette saison dans ce bassin.' : 'Les records apparaissent dès que des résultats sont publiés.'}
                   action={
-                    <button className="btn small" onClick={() => findResultsNow(swimmer.firstName)}>
+                    <button className="btn small" onClick={() => findResultsNow(swimmer.firstName, swimmer.id)}>
                       <Icon name="sparkles" /> Rechercher ses résultats
                     </button>
                   }

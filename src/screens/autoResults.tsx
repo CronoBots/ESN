@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { overlay } from '../components/ui';
 import { getState } from '../store/store';
 import type { LiveSyncResult } from '../lib/liveResults';
+import type { AppData, Meet } from '../store/types';
+import { todayISO } from '../lib/dates';
 import { syncLive, syncStatus } from '../lib/liveResults';
 import { deName } from '../lib/text';
 
@@ -28,8 +30,26 @@ export function resultsMessage(r: Pick<LiveSyncResult, 'added' | 'swimmers'>, wo
   return `${head} pour ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}` : parts[0]}`;
 }
 
+/**
+ * Compétitions terminées (30 derniers jours) où le nageur était inscrit mais
+ * dont les résultats ne sont pas encore publiés par l'organisateur.
+ */
+export function awaitingMeets(data: Pick<AppData, 'meets' | 'swims'>, swimmerId: string): { meet: Meet; entries: number }[] {
+  const today = todayISO();
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const out: { meet: Meet; entries: number }[] = [];
+  for (const meet of data.meets) {
+    const end = meet.endDate ?? meet.startDate;
+    if (end >= today || end < since) continue;
+    const swims = data.swims.filter((s) => s.swimmerId === swimmerId && s.meetId === meet.id && s.context === 'competition');
+    const planned = swims.filter((s) => s.timeCs == null && s.status === 'OK');
+    if (planned.length && planned.length === swims.length) out.push({ meet, entries: planned.length });
+  }
+  return out.sort((a, b) => (a.meet.startDate < b.meet.startDate ? 1 : -1));
+}
+
 /** Lance tout de suite la recherche des résultats (nageur ajouté, bouton « Rechercher »). */
-export async function findResultsNow(firstName?: string) {
+export async function findResultsNow(firstName?: string, swimmerId?: string) {
   overlay.toast(firstName ? `Recherche des résultats ${deName(firstName)}…` : 'Recherche des résultats…', '🔎');
   try {
     const r = await syncLive({ force: true });
@@ -37,7 +57,17 @@ export async function findResultsNow(firstName?: string) {
       overlay.toast(resultsMessage(r, 'trouvé'), '🎉');
       if (r.pbs) overlay.celebrate();
     } else {
-      overlay.toast(firstName ? `Pas de nouveau résultat pour ${firstName} : ils arriveront après sa prochaine compétition` : 'Tout est à jour', '✓');
+      const waiting = swimmerId ? awaitingMeets(getState(), swimmerId)[0] : undefined;
+      overlay.toast(
+        waiting
+          ? `Résultats du ${waiting.meet.name} pas encore publiés par l’organisateur : ils s’ajouteront tout seuls`
+          : r.entries
+            ? `Programme ajouté : ${r.entries}\u00a0épreuve${r.entries > 1 ? 's' : ''} au programme`
+            : firstName
+              ? `Aucun nouveau résultat publié pour ${firstName}`
+              : 'Tout est à jour',
+        waiting ? '⏳' : '✓',
+      );
     }
   } catch {
     overlay.toast(navigator.onLine ? 'Résultats indisponibles pour le moment, nouvel essai plus tard' : 'Pas de connexion internet', '⚠️');

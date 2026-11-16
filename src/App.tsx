@@ -99,7 +99,10 @@ export function App() {
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
     const notify = (r: LiveSyncResult) => {
-      if (!r.added) return;
+      if (!r.added) {
+        if (r.entries) overlay.toast(`Programme de compétition ajouté (${r.entries}\u00a0épreuve${r.entries > 1 ? 's' : ''})`, '📋');
+        return;
+      }
       overlay.toast(resultsMessage(r, 'nouveau'), '🏊');
       if (r.pbs) overlay.celebrate();
     };

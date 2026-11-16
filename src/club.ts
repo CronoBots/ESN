@@ -13,6 +13,8 @@ export const CLUB = {
   founded: 1976,
   pool: 'Piscine olympique (50 m)',
   sections: ['Natation sportive', 'Masters', 'Natation artistique', 'Water-polo', 'École de nage', 'École sportive'],
+  /** Le club dans les feuilles des compétitions (« Ecole Seraing Natation a.s.b.l. », « Esn »). */
+  match: /seraing|\besn\b/i,
   /** Pays des compétitions suivies sur live.swimrankings.net. */
   liveNation: 'BEL',
 };

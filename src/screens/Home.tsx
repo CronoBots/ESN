@@ -12,7 +12,7 @@ import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { openGoalForm } from './forms';
 import { InstallBanner } from './Install';
-import { findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
+import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { openResultPhotos } from './ResultPhotos';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Goal, Swimmer } from '../store/types';
@@ -130,6 +130,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
       .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))[0];
   }, [data.meets, mine, today]);
   const upcomingEntries = upcoming ? mine.filter((s) => s.meetId === upcoming.id).sort(chronoCompare) : [];
+  const awaiting = useMemo(() => awaitingMeets(data, swimmer.id), [data, swimmer.id]);
 
   const recentPBs = useMemo(
     () =>
@@ -191,7 +192,34 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
       <InstallBanner />
       <SyncBanner />
 
-      {summary.races === 0 && !upcoming && !syncing && (
+      {awaiting.length > 0 && (
+        <Section title="Résultats en attente">
+          <div className="list">
+            {awaiting.map(({ meet, entries }) => (
+              <button key={meet.id} className="row" onClick={() => navigate(`/meet/${meet.id}`)}>
+                <span className="row-icon" style={{ background: '#ff9f0a' }}>
+                  <Icon name="stopwatch" />
+                </span>
+                <div className="row-body">
+                  <div className="row-title">{meet.name}</div>
+                  <div className="row-sub">
+                    {[formatRange(meet.startDate, meet.endDate), meet.city, `${entries}\u00a0épreuve${entries > 1 ? 's' : ''} au programme`].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <Icon name="chevronRight" className="chev" />
+              </button>
+            ))}
+          </div>
+          <div className="section-foot">
+            L’organisateur n’a pas encore publié les résultats : ils s’ajouteront tout seuls dès leur publication.{' '}
+            <button className="section-link" style={{ fontSize: 13 }} onClick={() => openResultPhotos({ meetId: awaiting[0].meet.id })}>
+              Photographier les feuilles affichées
+            </button>
+          </div>
+        </Section>
+      )}
+
+      {summary.races === 0 && !upcoming && !syncing && awaiting.length === 0 && (
         <Section>
           <div className="card">
             <Empty
@@ -200,7 +228,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               text={`Les résultats de compétition ${deName(swimmer.firstName)} sont ajoutés automatiquement dès leur publication par les organisateurs. Pour l’historique plus ancien, utilisez l’import.`}
               action={
                 <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
-                  <button className="btn block" onClick={() => findResultsNow(swimmer.firstName)}>
+                  <button className="btn block" onClick={() => findResultsNow(swimmer.firstName, swimmer.id)}>
                     <Icon name="sparkles" /> Rechercher ses résultats
                   </button>
                   <button className="btn ghost block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>

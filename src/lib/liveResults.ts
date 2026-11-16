@@ -4,7 +4,10 @@ import type { Swim, Swimmer } from '../store/types';
 import { makeISO, monthFromToken, todayISO } from './dates';
 import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './lenex';
 import { computePbFlags } from './stats';
-import { nameKeys, sameSwimmer } from './results';
+import { nameKeys, normName, sameSwimmer, type ReportMeet } from './results';
+import { findSwimmerEntry, findSwimmerResult, lapsToSplits, parseSheetHeader } from './resultSheet';
+import { isValidEvent } from './events';
+import type { ImportReport } from '../store/store';
 
 export { sameSwimmer };
 
@@ -73,7 +76,12 @@ export function parseMeetList(html: string): LiveMeet[] {
     const badge = strip(/<span class="badge[^"]*"[^>]*>([\s\S]*?)<\/span>/.exec(cell('tdStatus'))?.[1] ?? '').toLowerCase();
     const dateLong = strip(/<span class="dateLong">([\s\S]*?)<\/span>/.exec(cell('tdDate'))?.[1] ?? '');
     const name = strip(/<span class="name">([\s\S]*?)<\/span>/.exec(cell('tdName'))?.[1] ?? '');
-    const city = strip(cell('tdCity')).replace(/\s*\b[A-Z]{3}$/, '').replace(/^[^\p{L}\d]+/u, '').trim();
+    // « 🇧🇪 4367 Crisnée BEL », « 4053 - Embourg » → « Crisnée », « Embourg »
+    const city = strip(cell('tdCity'))
+      .replace(/\s*\b[A-Z]{3}$/, '')
+      .replace(/^[^\p{L}\d]+/u, '')
+      .replace(/^\d{4,5}\s*-?\s*/, '')
+      .trim();
     const course = /50m/.test(strip(cell('tdCourse'))) ? 'LCM' : /25m/.test(strip(cell('tdCourse'))) ? 'SCM' : undefined;
     const d = parseLiveDates(dateLong);
     const status: LiveMeet['status'] = /live/.test(badge + m[1]) ? 'live' : /finish|termin|fini/.test(badge + m[1]) ? 'finished' : 'upcoming';
@@ -109,6 +117,97 @@ export function fetchLiveResults(id: string, live = false): Promise<LenexMeet | 
   return p;
 }
 
+/* ------------------------------------------------------------------------ */
+/* Feuilles PDF (quand l'organisateur ne publie pas le fichier LENEX)        */
+/* ------------------------------------------------------------------------ */
+
+export interface MeetDocs {
+  /** Résultats par épreuve : numéro d'épreuve → fichier. */
+  results: Map<number, string>;
+  /** Listes de départ par épreuve. */
+  starts: Map<number, string>;
+  stats?: string;
+}
+
+/** Feuilles publiées sur la page d'une compétition (ResultList_N.pdf, StartList_N.pdf…). */
+export function parseMeetDocs(html: string): MeetDocs {
+  const docs: MeetDocs = { results: new Map(), starts: new Map() };
+  for (const m of html.matchAll(/href="((ResultList|StartList)_(\d+)\.pdf)"/g)) {
+    (m[2] === 'ResultList' ? docs.results : docs.starts).set(Number(m[3]), m[1]);
+  }
+  if (/href="EntryStatistics\.pdf"/.test(html)) docs.stats = 'EntryStatistics.pdf';
+  return docs;
+}
+
+async function pdfText(url: string, fresh: boolean): Promise<string> {
+  const res = await fetch(url, { cache: fresh ? 'no-cache' : 'default' });
+  if (!res.ok) return '';
+  const { pdfLines } = await import('./pdfText');
+  return (await pdfLines(await res.arrayBuffer())).join('\n');
+}
+
+type PdfSwim = ImportReport['swims'][number];
+
+/**
+ * Résultats (feuilles « Liste résultats ») et, à défaut, programme (« Liste
+ * des séries » : série, ligne, temps d'engagement) des nageurs, lus dans les
+ * PDF de la compétition. `complete` : tous les résultats sont publiés.
+ */
+export async function readMeetPdfs(
+  m: LiveMeet,
+  swimmers: Swimmer[],
+  club?: RegExp,
+): Promise<{ found: Map<string, PdfSwim[]>; complete: boolean } | null> {
+  const fresh = m.status !== 'finished';
+  const res = await fetch(`${LIVE_BASE}/${m.id}/`, { cache: fresh ? 'no-cache' : 'default' });
+  if (!res.ok) return null;
+  const docs = parseMeetDocs(await res.text());
+  if (!docs.results.size && !docs.starts.size) return null;
+  // Terminé : tous les résultats sont là (ou la compétition date de plus de 3 jours : épreuves annulées, relais…)
+  const old = (m.endDate ?? m.startDate ?? '') < new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const complete = m.status === 'finished' && docs.results.size > 0 && (docs.results.size >= docs.starts.size || old);
+  const found = new Map<string, PdfSwim[]>();
+  // Aucun nageur du club inscrit : rien à lire
+  if (club && docs.stats && !club.test(await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh))) return { found, complete: m.status === 'finished' };
+  const events = [...new Set([...docs.results.keys(), ...docs.starts.keys()])].sort((a, b) => a - b);
+  const course = m.course ?? 'SCM';
+  await mapLimit(events, 4, async (no) => {
+    const isResult = docs.results.has(no);
+    const text = await pdfText(`${LIVE_BASE}/${m.id}/${(isResult ? docs.results : docs.starts).get(no)}`, fresh && !isResult);
+    if (!text) return;
+    const flat = normName(text);
+    const header = parseSheetHeader([text]);
+    if (!header.distance || !header.stroke || !isValidEvent(header.distance, header.stroke, course)) return;
+    for (const sw of swimmers) {
+      if (!flat.includes(normName(sw.lastName)) || (header.gender && header.gender !== sw.gender)) continue;
+      const base = {
+        eventNo: header.eventNo ?? no,
+        distance: header.distance,
+        stroke: header.stroke,
+        course,
+        round: header.round,
+        date: header.date,
+        startTime: header.startTime,
+      };
+      let swim: PdfSwim | null = null;
+      if (isResult) {
+        const r = findSwimmerResult([text], sw, header);
+        if (r && (r.timeCs != null || r.status !== 'OK'))
+          swim = { ...base, timeCs: r.timeCs, status: r.status, place: r.place, points: r.points, splits: lapsToSplits(r.laps) };
+      } else {
+        const e = findSwimmerEntry(text, sw);
+        if (e) swim = { ...base, status: 'OK', entryCs: e.entryCs, heat: e.heat, lane: e.lane };
+      }
+      if (swim) found.set(sw.id, [...(found.get(sw.id) ?? []), swim]);
+    }
+  });
+  return { found, complete };
+}
+
+function liveMeetReport(m: LiveMeet): ReportMeet | null {
+  return m.startDate ? { name: m.name, city: m.city, course: m.course ?? 'SCM', startDate: m.startDate, endDate: m.endDate } : null;
+}
+
 function toImport(l: LenexMeet, a: LenexAthlete) {
   return {
     meet: l.meet,
@@ -141,7 +240,10 @@ async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void
 /* ------------------------------------------------------------------------ */
 
 export interface LiveSyncResult {
+  /** Résultats ajoutés (temps, disqualifications…). */
   added: number;
+  /** Épreuves au programme ajoutées (listes de départ). */
+  entries: number;
   pbs: number;
   swimmers: { swimmer: Swimmer; added: number }[];
 }
@@ -184,17 +286,26 @@ export function syncLive(opts: { force?: boolean; onProgress?: (p: Progress) => 
 }
 
 async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p: Progress) => void }): Promise<LiveSyncResult> {
-  const result: LiveSyncResult = { added: 0, pbs: 0, swimmers: [] };
+  const result: LiveSyncResult = { added: 0, entries: 0, pbs: 0, swimmers: [] };
   const state = getState();
   const cfg = state.settings.liveSync;
   if ((!cfg.enabled && !force) || !state.swimmers.length) return result;
 
   const today = todayISO();
-  const meets = (await listLiveMeets()).filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
+  const all = await listLiveMeets();
+  const meets = all.filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
   const processed = { ...cfg.processed };
   const swimmers = state.swimmers;
-  const todo = meets.filter((m) => m.status === 'live' || swimmers.some((s) => !processed[m.id]?.includes(s.id)));
-  const found = new Map<string, ReturnType<typeof toImport>[]>();
+  // Nageurs du club : on lit aussi les feuilles PDF (compétitions récentes sans fichier LENEX, programmes à venir)
+  const club = swimmers.some((s) => s.member) ? CLUB.match : undefined;
+  const soon = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
+  const recent = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const upcoming = club ? all.filter((m) => m.status === 'upcoming' && m.startDate && m.startDate <= soon) : [];
+  const todo = [
+    ...meets.filter((m) => m.status === 'live' || swimmers.some((s) => !processed[m.id]?.includes(s.id))),
+    ...upcoming,
+  ];
+  const found = new Map<string, ImportReport[]>();
   const profile = new Map<string, Partial<Swimmer>>();
   let done = 0;
   onProgress?.({ done, total: todo.length });
@@ -203,9 +314,18 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
     todo,
     3,
     async (m) => {
-      const l = await fetchLiveResults(m.id, m.status === 'live');
-      if (!l) return; // pas encore publié : on réessaiera
-      const pending = m.status === 'live' ? swimmers : swimmers.filter((s) => !processed[m.id]?.includes(s.id));
+      const pending = m.status === 'finished' ? swimmers.filter((s) => !processed[m.id]?.includes(s.id)) : swimmers;
+      const l = m.status === 'upcoming' ? null : await fetchLiveResults(m.id, m.status === 'live');
+      if (!l) {
+        // Pas de fichier LENEX : feuilles PDF (nageurs du club, compétitions récentes ou à venir)
+        const report = liveMeetReport(m);
+        if (!club || !report || report.startDate < recent) return;
+        const pdf = await readMeetPdfs(m, pending, club);
+        if (!pdf) return; // rien de publié : on réessaiera
+        for (const [id, swims] of pdf.found) found.set(id, [...(found.get(id) ?? []), { meet: report, swims }]);
+        if (pdf.complete) processed[m.id] = [...new Set([...(processed[m.id] ?? []), ...pending.map((s) => s.id)])];
+        return;
+      }
       // Index des nageurs de la compétition (des centaines) : recherche directe par nom
       const index = new Map<string, LenexAthlete[]>();
       for (const x of l.athletes) for (const k of nameKeys(x)) index.set(k, [...(index.get(k) ?? []), x]);
@@ -231,10 +351,12 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       const reports = found.get(sw.id);
       if (!reports?.length) continue;
       const r = actions.importClubResults(sw.id, reports);
-      if (r.added) {
-        result.added += r.added;
-        result.swimmers.push({ swimmer: sw, added: r.added });
-        added.push(...r.swims);
+      const done = r.swims.filter((x) => x.timeCs != null || x.status !== 'OK');
+      result.entries += r.swims.length - done.length;
+      if (done.length) {
+        result.added += done.length;
+        result.swimmers.push({ swimmer: sw, added: done.length });
+        added.push(...done);
       }
     }
     actions.updateLiveSync({ processed, lastCheck: Date.now() });

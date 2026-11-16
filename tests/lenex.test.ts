@@ -119,7 +119,7 @@ describe('liste des compétitions en direct', () => {
     const html = `<tbody><tr class="group"><th colspan="5">This week</th></tr><tr class="live"><td class="tdStatus"><a href="/123/"><span class="badge badge-live" title="Live">Live</span></a></td><td class="tdDate"><a href="/123/"><span class="dateLong"> 13 - 15 Nov 2026</span><span class="dateShort">x</span></a></td><td class="tdCourse"><a href="/123/"><span class="course">25m</span></a></td><td class="tdName"><a href="/123/"><span class="name">Meeting d&#39;automne</span><span class="meta">Liège</span></a></td><td class="tdCity"><a href="/123/"><span class="flag">🇧🇪</span>4000 Liège <span class="nation">BEL</span></a></td></tr>
 <tr class=""><td class="tdStatus"><a href="/99/"><span class="badge badge-finished">Finished</span></a></td><td class="tdDate"><a href="/99/"><span class="dateLong"> 8 Nov 2026</span></a></td><td class="tdCourse"><a href="/99/"><span class="course">50m</span></a></td><td class="tdName"><a href="/99/"><span class="name">Open de Namur</span></a></td><td class="tdCity"><a href="/99/">Namur <span class="nation">BEL</span></a></td></tr></tbody>`;
     expect(parseMeetList(html)).toEqual([
-      { id: '123', status: 'live', name: "Meeting d'automne", city: '4000 Liège', course: 'SCM', startDate: '2026-11-13', endDate: '2026-11-15' },
+      { id: '123', status: 'live', name: "Meeting d'automne", city: 'Liège', course: 'SCM', startDate: '2026-11-13', endDate: '2026-11-15' },
       { id: '99', status: 'finished', name: 'Open de Namur', city: 'Namur', course: 'LCM', startDate: '2026-11-08', endDate: undefined },
     ]);
   });

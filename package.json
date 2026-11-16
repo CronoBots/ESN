@@ -13,6 +13,7 @@
     "roster": "node scripts/roster.mjs"
   },
   "dependencies": {
+    "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tesseract.js": "^7.0.0"

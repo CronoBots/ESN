@@ -120,7 +120,7 @@ export function Progression() {
               title={`Aucun temps en ${courseLabel(course)}`}
               text="Les courbes apparaissent dès que des résultats sont publiés pour ce bassin."
               action={
-                <button className="btn small" onClick={() => findResultsNow(swimmer.firstName)}>
+                <button className="btn small" onClick={() => findResultsNow(swimmer.firstName, swimmer.id)}>
                   <Icon name="sparkles" /> Rechercher ses résultats
                 </button>
               }

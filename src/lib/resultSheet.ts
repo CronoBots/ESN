@@ -347,3 +347,39 @@ export function lapsToSplits(laps: number[]): number[] | undefined {
   }
   return out;
 }
+
+export interface SheetEntry {
+  heat?: number;
+  lane?: number;
+  /** Temps d'engagement en centièmes (absent : NT). */
+  entryCs?: number;
+}
+
+/**
+ * Inscription d'un nageur dans une liste de départ (« Liste des séries ») :
+ *
+ *   Série 2 de 3
+ *       4 DUPONT, Emma            14       Esn                 1:23.45
+ */
+export function findSwimmerEntry(text: string, sw: SheetSwimmer): SheetEntry | null {
+  const yy = sw.birthYear ? String(sw.birthYear % 100).padStart(2, '0') : null;
+  let heat: number | undefined;
+  for (const raw of text.split('\n')) {
+    const h = /(?:S[ée]rie|Heat|Reeks)\s+(\d+)\b/i.exec(raw);
+    if (h && !/\d{1,2}[.:]\d{2}/.test(raw)) {
+      heat = Number(h[1]);
+      continue;
+    }
+    if (nameOnLine(raw, sw) < 0) continue;
+    const line = clean(raw);
+    // Homonyme d'une autre année de naissance : ce n'est pas lui
+    if (yy && /\s\d{2}\s/.test(` ${line} `) && !new RegExp(`(^|\\s)${yy}(\\s|$)`).test(line)) continue;
+    const lane = /^(\d{1,2})\s/.exec(line)?.[1];
+    const times = [...line.matchAll(/(?:(\d{1,2}):)?(\d{1,2})[.,](\d{2})(?!\d)/g)];
+    const t = times[times.length - 1];
+    const entryCs = t ? (Number(t[1] ?? 0) * 60 + Number(t[2])) * 100 + Number(t[3]) : undefined;
+    return { heat, lane: lane ? Number(lane) : undefined, entryCs };
+  }
+  return null;
+}
+
