@@ -1018,6 +1018,95 @@ a.row:active {
   font-variant-numeric: tabular-nums;
 }
 
+/* Niveaux FFBN : Mistral (le plus accessible), Trident, Requin (le plus exigeant) */
+:root {
+  --lvl-mistral: #0d8478;
+  --lvl-trident: #2357d0;
+  --lvl-requin: #14254d;
+}
+
+.lvl-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.lvl-chip.lvl-mistral {
+  background: color-mix(in srgb, var(--lvl-mistral) 13%, transparent);
+  color: var(--lvl-mistral);
+}
+
+.lvl-chip.lvl-trident {
+  background: color-mix(in srgb, var(--lvl-trident) 13%, transparent);
+  color: var(--lvl-trident);
+}
+
+.lvl-chip.lvl-requin {
+  background: var(--lvl-requin);
+  color: #fff;
+}
+
+.lvl-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--separator);
+  color: #fff;
+}
+
+.lvl-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lvl-mark.on.lvl-mistral {
+  background: var(--lvl-mistral);
+  box-shadow: none;
+}
+
+.lvl-mark.on.lvl-trident {
+  background: var(--lvl-trident);
+  box-shadow: none;
+}
+
+.lvl-mark.on.lvl-requin {
+  background: var(--lvl-requin);
+  box-shadow: none;
+}
+
+/* Prochain niveau : anneau de sa couleur, écart en couleur */
+.lvl-row.next .lvl-mark.lvl-mistral {
+  box-shadow: inset 0 0 0 2px var(--lvl-mistral);
+}
+
+.lvl-row.next .lvl-mark.lvl-trident {
+  box-shadow: inset 0 0 0 2px var(--lvl-trident);
+}
+
+.lvl-row.next .lvl-mark.lvl-requin {
+  box-shadow: inset 0 0 0 2px var(--lvl-requin);
+}
+
+.lvl-row.next .row-sub {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.lvl-row .row-title {
+  font-weight: 600;
+}
+
 /* Comparaison (fiche d'une épreuve) : nageurs comparés, raccourcis, recherche */
 .compare-bar {
   margin-top: 16px;

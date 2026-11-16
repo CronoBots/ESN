@@ -13,6 +13,8 @@ import { navigate } from '../router';
 import type { Course, Stroke } from '../store/types';
 import { findResultsNow } from './autoResults';
 import { addCompare, openComparePicker, type CompareCandidate } from '../components/ComparePicker';
+import { LevelLadder, levelYear } from '../components/Levels';
+import { levelStatus } from '../lib/levels';
 
 const COMPARE_COLORS = ['var(--chart-line)', 'var(--chart-2)', 'var(--chart-3)'];
 
@@ -72,6 +74,8 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
       .filter((s): s is ChartSeries => !!s),
   ];
   const best = stats.best;
+  // Niveaux FFBN de l'âge atteint cette année, comparés au record
+  const levels = levelStatus(swimmer, course, distance, stroke, levelYear(), best?.timeCs);
   const bestPts = best ? pointsFor(best, swimmer) : null;
   const otherCourse: Course = course === 'SCM' ? 'LCM' : 'SCM';
   const otherValid = isValidEvent(distance, stroke, otherCourse);
@@ -179,14 +183,17 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
               <div style={{ marginTop: 14 }}>
                 <ProgressChart
                   series={series}
+                  goalCs={levels?.next?.cs}
                   height={250}
                   ariaLabel={`Progression sur ${eventLabel(distance, stroke)} : ${valid.length} temps, record ${formatTime(best!.timeCs)}`}
                 />
                 <div className="muted small center" style={{ padding: '4px 0 8px' }}>
-                  La courbe descend quand le temps s’améliore · cercle doré : record · touchez la courbe pour le détail
+                  Plus bas = plus rapide · cercle doré : record{levels?.next ? ` · pointillé : niveau ${levels.next.level}` : ''} · touchez la courbe pour le détail
                 </div>
               </div>
             </div>
+
+            {levels && <LevelLadder status={levels} course={course} />}
 
             <Section title="Statistiques">
               <div className="tiles">

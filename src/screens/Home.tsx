@@ -11,6 +11,7 @@ import { formatDate, formatMonthYear, formatRange, formatShortWeekday, relativeD
 import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { InstallBanner } from './Install';
+import { LevelGoals } from '../components/Levels';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Swimmer } from '../store/types';
@@ -298,6 +299,8 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               <TimelineMeetCard entry={lastMeet} swimmer={swimmer} pbFlags={pbFlags} />
             </Section>
           )}
+
+          <LevelGoals swimmer={swimmer} swims={data.swims} includeTraining={include} />
 
           {timeline.length >= 2 && (
             <Section title="Évolution">

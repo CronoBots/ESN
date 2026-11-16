@@ -12,6 +12,8 @@ import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
 import { findResultsNow } from './autoResults';
 import { deName } from '../lib/text';
 import { groupName } from './Club';
+import { LevelChip, levelYear } from '../components/Levels';
+import { levelStatus } from '../lib/levels';
 
 export function SwimmerChips({ swimmer }: { swimmer: Swimmer }) {
   const data = useData();
@@ -134,7 +136,13 @@ export function Records() {
                           >
                             <StrokeTag stroke={st.id} distance={d} />
                             <div className="row-body">
-                              <div className="row-title">{eventLabel(d, st.id)}</div>
+                              <div className="row-title">
+                                {eventLabel(d, st.id)}
+                                {(() => {
+                                  const lv = levelStatus(swimmer, course, d, st.id, levelYear(), s.timeCs)?.reached;
+                                  return lv ? <> <LevelChip level={lv} /></> : null;
+                                })()}
+                              </div>
                               <div className="row-sub">
                                 {formatDate(s.date)}
                                 {entry!.count > 1 ? ` · ${entry!.count} courses` : ''}
