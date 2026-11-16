@@ -100,7 +100,7 @@ export function App() {
   useEffect(() => {
     const notify = (r: LiveSyncResult) => {
       if (!r.added) {
-        if (r.entries) overlay.toast(`Programme de compétition ajouté (${r.entries}\u00a0épreuve${r.entries > 1 ? 's' : ''})`, '📋');
+        if (r.entries) overlay.toast(resultsMessage({ added: r.entries, swimmers: r.entrySwimmers }, 'programme'), '📋');
         return;
       }
       overlay.toast(resultsMessage(r, 'nouveau'), '🏊');

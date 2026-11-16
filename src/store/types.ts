@@ -126,6 +126,8 @@ export interface LiveSyncSettings {
   /** Compétitions déjà lues : identifiant → nageurs déjà recherchés. */
   processed: Record<string, string[]>;
   lastCheck?: number;
+  /** Version de la recherche (une nouvelle version relance une recherche complète). */
+  engine?: number;
 }
 
 export interface AppData {

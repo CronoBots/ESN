@@ -24,6 +24,9 @@ export interface Progress {
  */
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
+/** 2 : lecture des feuilles PDF (résultats et listes de départ). */
+export const SYNC_ENGINE = 2;
+
 export interface LiveMeet {
   id: string;
   status: 'live' | 'finished' | 'upcoming';
@@ -244,6 +247,7 @@ export interface LiveSyncResult {
   added: number;
   /** Épreuves au programme ajoutées (listes de départ). */
   entries: number;
+  entrySwimmers: { swimmer: Swimmer; added: number }[];
   pbs: number;
   swimmers: { swimmer: Swimmer; added: number }[];
 }
@@ -286,7 +290,7 @@ export function syncLive(opts: { force?: boolean; onProgress?: (p: Progress) => 
 }
 
 async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p: Progress) => void }): Promise<LiveSyncResult> {
-  const result: LiveSyncResult = { added: 0, entries: 0, pbs: 0, swimmers: [] };
+  const result: LiveSyncResult = { added: 0, entries: 0, entrySwimmers: [], pbs: 0, swimmers: [] };
   const state = getState();
   const cfg = state.settings.liveSync;
   if ((!cfg.enabled && !force) || !state.swimmers.length) return result;
@@ -352,14 +356,18 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       if (!reports?.length) continue;
       const r = actions.importClubResults(sw.id, reports);
       const done = r.swims.filter((x) => x.timeCs != null || x.status !== 'OK');
-      result.entries += r.swims.length - done.length;
+      const planned = r.swims.length - done.length;
+      if (planned) {
+        result.entries += planned;
+        result.entrySwimmers.push({ swimmer: sw, added: planned });
+      }
       if (done.length) {
         result.added += done.length;
         result.swimmers.push({ swimmer: sw, added: done.length });
         added.push(...done);
       }
     }
-    actions.updateLiveSync({ processed, lastCheck: Date.now() });
+    actions.updateLiveSync({ processed, lastCheck: Date.now(), engine: SYNC_ENGINE });
   });
   if (added.length) {
     const flags = computePbFlags(getState().swims, getState().settings.includeTraining);
@@ -373,6 +381,8 @@ export function shouldAutoSyncLive(): boolean {
   const cfg = s.settings.liveSync;
   if (!cfg.enabled || !s.swimmers.length) return false;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  // Application mise à jour avec une nouvelle façon de chercher : tout de suite
+  if ((cfg.engine ?? 1) < SYNC_ENGINE) return true;
   // Nageur ajouté (ou renommé) depuis la dernière recherche : tout de suite
   const known = new Set(Object.values(cfg.processed).flat());
   if (s.swimmers.some((sw) => !known.has(sw.id))) return true;

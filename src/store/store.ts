@@ -326,7 +326,16 @@ export const actions = {
         const i = swimmers.findIndex((sw) => !kept.has(sw.id) && sameSwimmer(m, sw));
         if (i >= 0) {
           const sw = swimmers[i];
-          swimmers[i] = { ...sw, group: m.group, member: true, birthYear: sw.birthYear ?? m.birthYear, club: sw.club || roster.club };
+          // Nom et prénom écrits comme dans la liste du club (même orthographe pour tous)
+          swimmers[i] = {
+            ...sw,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            group: m.group,
+            member: true,
+            birthYear: sw.birthYear ?? m.birthYear,
+            club: sw.club || roster.club,
+          };
           kept.add(sw.id);
         } else {
           const sw: Swimmer = {

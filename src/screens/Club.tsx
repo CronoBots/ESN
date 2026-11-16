@@ -340,12 +340,15 @@ export function ClubScreen() {
   }, [linkCode]);
 
   const stats = useMemo(() => {
-    const m = new Map<string, { count: number; last?: string }>();
+    const m = new Map<string, { count: number; last?: string; planned: number }>();
     for (const s of data.swims) {
-      if (s.context !== 'competition' || s.timeCs == null) continue;
-      const cur = m.get(s.swimmerId) ?? { count: 0 };
-      cur.count++;
-      if (!cur.last || s.date > cur.last) cur.last = s.date;
+      if (s.context !== 'competition') continue;
+      const cur = m.get(s.swimmerId) ?? { count: 0, planned: 0 };
+      if (s.timeCs == null && s.status === 'OK') cur.planned++;
+      else {
+        cur.count++;
+        if (!cur.last || s.date > cur.last) cur.last = s.date;
+      }
       m.set(s.swimmerId, cur);
     }
     return m;
@@ -450,7 +453,11 @@ export function ClubScreen() {
                 const st = stats.get(sw.id);
                 const sub = [
                   groups.length ? sw.birthYear : null, // sans groupes, l'année est déjà le titre de la section
-                  st ? `${st.count} course${st.count > 1 ? 's' : ''}` : 'Pas encore de résultat',
+                  st?.count
+                    ? `${st.count}\u00a0course${st.count > 1 ? 's' : ''}`
+                    : st?.planned
+                      ? `${st.planned}\u00a0épreuve${st.planned > 1 ? 's' : ''} au programme, résultats en attente`
+                      : 'Pas encore de résultat',
                   st?.last ? `dernière le ${formatDate(st.last)}` : null,
                 ].filter(Boolean);
                 return (
