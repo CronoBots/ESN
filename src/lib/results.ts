@@ -8,6 +8,8 @@ export interface ReportMeet {
   course: Course;
   startDate: string;
   endDate?: string;
+  /** Identifiant sur live.swimrankings.net. */
+  liveId?: string;
 }
 
 /** Course telle que lue dans une source de résultats. */

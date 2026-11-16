@@ -42,6 +42,8 @@ export interface Meet {
   organizer?: string;
   notes?: string;
   favorite?: boolean;
+  /** Identifiant de la compétition sur live.swimrankings.net (séries et résultats en direct). */
+  liveId?: string;
   createdAt: number;
 }
 

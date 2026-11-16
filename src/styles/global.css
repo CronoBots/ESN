@@ -627,6 +627,11 @@ a.row:active {
   min-width: 0;
 }
 
+/* Ligne titre + valeur longue (« Compétition … Meeting Liège Natation Invite ») : le titre garde ses mots entiers */
+.row-body:has(+ .row-value) {
+  min-width: 120px;
+}
+
 .row-title {
   font-size: 17px;
   line-height: 1.25;
@@ -2942,4 +2947,54 @@ button.meet-nav-btn:active {
 
 .follow-btn:active svg {
   transform: scale(0.85);
+}
+
+/* ---------------------------------------------------------- Séries en direct */
+
+.heat-summary {
+  margin-top: 18px;
+}
+
+.heat-row {
+  min-height: 52px;
+}
+
+.heat-row.mine {
+  background: var(--accent-soft);
+}
+
+.heat-row.mine .row-title {
+  font-weight: 700;
+}
+
+.lane {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--fill);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.heat-row.mine .lane {
+  background: var(--accent);
+  color: #fff;
+}
+
+.heat-time {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.heat-cat {
+  margin: 0 4px 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }

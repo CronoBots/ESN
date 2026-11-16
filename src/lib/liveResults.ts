@@ -6,6 +6,7 @@ import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './len
 import { computePbFlags } from './stats';
 import { nameKeys, normName, sameSwimmer, type ReportMeet } from './results';
 import { findSwimmerEntry, findSwimmerResult, lapsToSplits, parseSheetHeader } from './resultSheet';
+import { estimateHeatStarts, parseResultSheet, parseStartSheet, type EventSheet, type SheetRow } from './heatSheet';
 import { isValidEvent } from './events';
 import type { ImportReport } from '../store/store';
 
@@ -25,7 +26,7 @@ export interface Progress {
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
 /** 2 : lecture des feuilles PDF (résultats et listes de départ). */
-export const SYNC_ENGINE = 3; // 3 : fiche swimrankings reliée depuis les résultats officiels
+export const SYNC_ENGINE = 4; // 3 : fiche swimrankings reliée ; 4 : séries en direct (identifiant live, heures de série)
 
 export interface LiveMeet {
   id: string;
@@ -142,7 +143,7 @@ export function parseMeetDocs(html: string): MeetDocs {
   return docs;
 }
 
-async function pdfText(url: string, fresh: boolean): Promise<string> {
+export async function pdfText(url: string, fresh: boolean): Promise<string> {
   const res = await fetch(url, { cache: fresh ? 'no-cache' : 'default' });
   if (!res.ok) return '';
   const { pdfLines } = await import('./pdfText');
@@ -199,7 +200,9 @@ export async function readMeetPdfs(
           swim = { ...base, timeCs: r.timeCs, status: r.status, place: r.place, points: r.points, splits: lapsToSplits(r.laps) };
       } else {
         const e = findSwimmerEntry(text, sw);
-        if (e) swim = { ...base, status: 'OK', entryCs: e.entryCs, heat: e.heat, lane: e.lane };
+        // Heure de passage : départ estimé de sa série
+        const heatStart = e?.heat ? estimateHeatStarts(parseStartSheet(text), header.distance).heats.find((h) => h.heat === e.heat)?.start : undefined;
+        if (e) swim = { ...base, startTime: heatStart ?? base.startTime, status: 'OK', entryCs: e.entryCs, heat: e.heat, lane: e.lane };
       }
       if (swim) found.set(sw.id, [...(found.get(sw.id) ?? []), swim]);
     }
@@ -207,8 +210,86 @@ export async function readMeetPdfs(
   return { found, complete };
 }
 
+/* ------------------------------------------------------------------------ */
+/* Feuille complète d'une épreuve (séries et classement), à la demande       */
+/* ------------------------------------------------------------------------ */
+
+const sheetCache = new Map<string, { at: number; p: Promise<EventSheet | null> }>();
+
+/** Séries et classement d'une épreuve d'après le fichier LENEX. */
+export function sheetFromLenex(l: LenexMeet, eventNo: number): EventSheet | null {
+  const rows: (SheetRow & { heat?: number })[] = [];
+  let ref: LenexMeet['athletes'][number]['swims'][number] | undefined;
+  for (const a of l.athletes) {
+    for (const s of a.swims) {
+      if (s.eventNo !== eventNo) continue;
+      ref ??= s;
+      rows.push({
+        heat: s.heat,
+        lane: s.lane,
+        status: s.status,
+        name: `${a.lastName.toUpperCase()}, ${a.firstName}`,
+        yy: a.birthYear ? String(a.birthYear % 100).padStart(2, '0') : undefined,
+        club: a.club,
+        entryCs: s.entryCs,
+        timeCs: s.status === 'OK' ? s.timeCs : undefined,
+        points: s.points,
+      });
+    }
+  }
+  if (!ref) return null;
+  const heats = [...new Set(rows.map((r) => r.heat ?? 1))]
+    .sort((a, b) => a - b)
+    .map((heat, _i, all) => ({ heat, total: all.length, rows: rows.filter((r) => (r.heat ?? 1) === heat).sort((a, b) => (a.lane ?? 0) - (b.lane ?? 0)) }));
+  const done = rows.filter((r) => r.timeCs != null || r.status !== 'OK');
+  const ranked = done
+    .slice()
+    .sort((a, b) => (a.timeCs ?? Infinity) - (b.timeCs ?? Infinity))
+    .map((r, _i, arr) => ({ ...r, place: r.timeCs != null ? arr.findIndex((x) => x.timeCs === r.timeCs) + 1 : undefined }));
+  const sheet: EventSheet = {
+    header: { round: ref.round, eventNo, distance: ref.distance, stroke: ref.stroke, date: ref.date, startTime: ref.startTime },
+    heats,
+    results: ranked.length ? [{ category: 'Tous âges', rows: ranked }] : [],
+  };
+  return estimateHeatStarts(sheet, ref.distance);
+}
+
+/**
+ * Séries (tous les nageurs, ligne, club, engagement, heure estimée) et
+ * classement d'une épreuve : fichier LENEX s'il est publié, sinon feuilles PDF.
+ * `live` : compétition en cours, relue toutes les 2 minutes au plus.
+ */
+export function loadEventSheet(liveId: string, eventNo: number, live: boolean): Promise<EventSheet | null> {
+  const key = `${liveId}/${eventNo}`;
+  const cached = sheetCache.get(key);
+  if (cached && (!live || Date.now() - cached.at < 120000)) return cached.p;
+  const p = (async () => {
+    const l = await fetchLiveResults(liveId, live).catch(() => null);
+    const fromLenex = l ? sheetFromLenex(l, eventNo) : null;
+    if (fromLenex) return fromLenex;
+    const res = await fetch(`${LIVE_BASE}/${liveId}/`, { cache: live ? 'no-cache' : 'default' });
+    if (!res.ok) return null;
+    const docs = parseMeetDocs(await res.text());
+    const startFile = docs.starts.get(eventNo);
+    const resultFile = docs.results.get(eventNo);
+    const [st, rs] = await Promise.all([
+      startFile ? pdfText(`${LIVE_BASE}/${liveId}/${startFile}`, live) : Promise.resolve(''),
+      resultFile ? pdfText(`${LIVE_BASE}/${liveId}/${resultFile}`, live) : Promise.resolve(''),
+    ]);
+    if (!st && !rs) return null;
+    const start = st ? parseStartSheet(st) : null;
+    const result = rs ? parseResultSheet(rs) : null;
+    const header = start?.header ?? result!.header;
+    const sheet: EventSheet = { header, title: start?.title ?? result?.title, heats: start?.heats ?? [], results: result?.results ?? [] };
+    return header.distance ? estimateHeatStarts(sheet, header.distance) : sheet;
+  })();
+  sheetCache.set(key, { at: Date.now(), p });
+  p.catch(() => sheetCache.delete(key));
+  return p;
+}
+
 function liveMeetReport(m: LiveMeet): ReportMeet | null {
-  return m.startDate ? { name: m.name, city: m.city, course: m.course ?? 'SCM', startDate: m.startDate, endDate: m.endDate } : null;
+  return m.startDate ? { name: m.name, city: m.city, course: m.course ?? 'SCM', startDate: m.startDate, endDate: m.endDate, liveId: m.id } : null;
 }
 
 function toImport(l: LenexMeet, a: LenexAthlete) {
@@ -337,7 +418,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       for (const sw of pending) {
         const a = (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw));
         if (!a) continue;
-        found.set(sw.id, [...(found.get(sw.id) ?? []), toImport(l, a)]);
+        const report = toImport(l, a);
+        found.set(sw.id, [...(found.get(sw.id) ?? []), { ...report, meet: { ...report.meet, liveId: m.id } }]);
         const patch: Partial<Swimmer> = { ...profile.get(sw.id) };
         if (!sw.birthYear && a.birthYear) patch.birthYear = a.birthYear;
         if (!sw.club && a.club) patch.club = a.club;

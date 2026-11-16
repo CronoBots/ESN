@@ -419,6 +419,8 @@ export const actions = {
    */
   importClubResults(swimmerId: string, reports: ImportReport[]): { added: number; swims: Swim[] } {
     const addedSwims: Swim[] = [];
+    /** Programme mis à jour (série, ligne, heure) : pas compté comme ajout. */
+    const refreshed: Swim[] = [];
     setState((s) => {
       const meets = [...s.meets];
       const mine = s.swims.filter((x) => x.swimmerId === swimmerId);
@@ -435,19 +437,57 @@ export const actions = {
             startDate: r.meet.startDate,
             endDate: r.meet.endDate,
             course: r.meet.course,
+            liveId: r.meet.liveId,
             createdAt: now,
           };
           meets.push(meet);
-        } else if (r.meet.endDate && (!meet.endDate || meet.endDate < r.meet.endDate)) {
-          const i = meets.indexOf(meet);
-          meet = { ...meet, endDate: r.meet.endDate, startDate: meet.startDate < r.meet.startDate ? meet.startDate : r.meet.startDate };
-          meets[i] = meet;
+        } else {
+          const longer = r.meet.endDate && (!meet.endDate || meet.endDate < r.meet.endDate);
+          if (longer || (r.meet.liveId && !meet.liveId)) {
+            const i = meets.indexOf(meet);
+            meet = {
+              ...meet,
+              liveId: meet.liveId ?? r.meet.liveId,
+              ...(longer ? { endDate: r.meet.endDate, startDate: meet.startDate < r.meet.startDate ? meet.startDate : r.meet.startDate } : {}),
+            };
+            meets[i] = meet;
+          }
         }
         // Programme saisi à la main pour cette compétition : on complète les épreuves prévues
         const sorted = [...r.swims].sort((a, b) => (a.eventNo ?? 0) - (b.eventNo ?? 0));
         for (const rs of sorted) {
           const date = rs.date ?? r.meet.startDate;
           const candidate = { course: rs.course, distance: rs.distance, stroke: rs.stroke, timeCs: rs.timeCs ?? null, date, status: rs.status, meetId: meet.id };
+          // Programme déjà connu : on met à jour série, ligne, heure et engagement s'ils ont changé
+          if (rs.timeCs == null && rs.status === 'OK') {
+            const same = [...mine, ...addedSwims, ...refreshed].find(
+              (x) =>
+                x.meetId === meet!.id &&
+                x.timeCs == null &&
+                x.status === 'OK' &&
+                x.distance === rs.distance &&
+                x.stroke === rs.stroke &&
+                (x.eventNo == null || rs.eventNo == null || x.eventNo === rs.eventNo),
+            );
+            if (same) {
+              const changed =
+                (rs.heat != null && rs.heat !== same.heat) ||
+                (rs.lane != null && rs.lane !== same.lane) ||
+                (rs.startTime != null && rs.startTime !== same.startTime) ||
+                (rs.entryCs != null && rs.entryCs !== same.entryCs);
+              if (changed)
+                refreshed.push({
+                  ...same,
+                  heat: rs.heat ?? same.heat,
+                  lane: rs.lane ?? same.lane,
+                  startTime: rs.startTime ?? same.startTime,
+                  entryCs: rs.entryCs ?? same.entryCs,
+                  eventNo: same.eventNo ?? rs.eventNo,
+                  updatedAt: now,
+                });
+              continue;
+            }
+          }
           if (isDuplicate([...mine, ...addedSwims], candidate)) continue;
           const planned = mine.find(
             (x) =>
@@ -509,12 +549,13 @@ export const actions = {
           });
         }
       }
-      const newOnes = addedSwims.filter((a) => !s.swims.some((x) => x.id === a.id));
-      const updatedIds = new Set(addedSwims.map((a) => a.id));
+      const changes = [...addedSwims, ...refreshed.filter((r) => !addedSwims.some((a) => a.id === r.id))];
+      const newOnes = changes.filter((a) => !s.swims.some((x) => x.id === a.id));
+      const updatedIds = new Set(changes.map((a) => a.id));
       return {
         ...s,
         meets,
-        swims: [...s.swims.map((x) => (updatedIds.has(x.id) ? { ...x, ...addedSwims.find((a) => a.id === x.id)! } : x)), ...newOnes],
+        swims: [...s.swims.map((x) => (updatedIds.has(x.id) ? { ...x, ...changes.find((a) => a.id === x.id)! } : x)), ...newOnes],
       };
     });
     return { added: addedSwims.length, swims: addedSwims };

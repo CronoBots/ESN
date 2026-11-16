@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useData } from '../store/store';
 import { fullName, usePbFlags } from '../store/hooks';
 import { Empty, NavBar, Row, Section, StrokeTag, overlay } from '../components/ui';
@@ -6,7 +7,8 @@ import { SwimBadges } from '../components/SwimRow';
 import { eventLabel, ROUND_LABEL, STATUS_LABEL, courseLabel } from '../lib/events';
 import { formatDate } from '../lib/dates';
 import { formatDelta, formatTime, pacePer100, speed } from '../lib/time';
-import { pointsFor } from '../lib/stats';
+import { personalBests, pointsFor, swimKey } from '../lib/stats';
+import { HeatPanel } from '../components/HeatPanel';
 import { navigate } from '../router';
 import { openResultForm } from './forms';
 
@@ -14,6 +16,10 @@ export function SwimDetail({ id }: { id: string }) {
   const data = useData();
   const pbFlags = usePbFlags();
   const swim = data.swims.find((s) => s.id === id);
+  const bests = useMemo(
+    () => (swim ? personalBests(data.swims, swim.swimmerId, data.settings.includeTraining) : new Map()),
+    [data.swims, swim, data.settings.includeTraining],
+  );
   if (!swim) {
     return (
       <>
@@ -119,6 +125,10 @@ export function SwimDetail({ id }: { id: string }) {
             </div>
           )}
         </div>
+
+        {meet && swimmer && swim.context === 'competition' && (
+          <HeatPanel meet={meet} swim={swim} swimmer={swimmer} pb={bests.get(swimKey(swim))} />
+        )}
 
         <div className="btn-row" style={{ marginTop: 14 }}>
           <button className="btn secondary" onClick={() => navigate(`/event/${swim.swimmerId}/${swim.course}/${swim.distance}/${swim.stroke}`)}>
