@@ -284,63 +284,31 @@ function matches(sw: Swimmer, q: string) {
     .every((t) => hay.includes(t));
 }
 
-/** Années de naissance des nageurs donnés, de la plus ancienne à la plus récente. */
-const memberYears = (swimmers: Swimmer[]) =>
-  [...new Set(swimmers.map((s) => String(s.birthYear ?? '')))].sort((a, b) => (a || '9999').localeCompare(b || '9999'));
+/** Sections par année de naissance, de la plus récente à la plus ancienne (année inconnue à la fin). */
+function byBirthYear(list: Swimmer[]) {
+  const years = [...new Set(list.map((s) => String(s.birthYear ?? '')))].sort((a, b) => (b || '0').localeCompare(a || '0'));
+  return years.map((y) => ({ id: `y${y || 'na'}`, title: y || 'Année inconnue', items: list.filter((s) => String(s.birthYear ?? '') === y) }));
+}
 
-const byYear = (list: Swimmer[], y: string) => list.filter((s) => String(s.birthYear ?? '') === y);
+/** L'année de naissance est-elle déjà le titre de la section ? */
+const yearInTitle = (sectionId: string) => /^y\d{4}$/.test(sectionId);
 
-/** À partir de cet âge, les membres actifs sont regroupés en une section « Adultes » :
- * une section par année de naissance n'a de sens que pour les jeunes (catégories d'âge). */
-const ADULT_AGE = 20;
-const ADULTS = 'adults';
-
-/** Section d'un membre actif sans groupes : son année de naissance, ou « Adultes ». */
-const yearKey = (s: Swimmer) => (s.birthYear && s.birthYear <= new Date().getFullYear() - ADULT_AGE ? ADULTS : String(s.birthYear ?? ''));
-
-/** Sections des membres actifs sans groupes : « Adultes » d'abord, puis les années, l'année inconnue à la fin. */
-const activeYearKeys = (swimmers: Swimmer[]) => {
-  const keys = new Set(swimmers.map(yearKey));
-  return [...(keys.has(ADULTS) ? [ADULTS] : []), ...[...keys].filter((k) => k !== ADULTS).sort((a, b) => (a || '9999').localeCompare(b || '9999'))];
-};
-
-const yearTitle = (k: string) => (k === ADULTS ? 'Adultes' : k || 'Année inconnue');
-
-/** Anciens membres nés avant cette année : une seule section. */
-const FORMER_EARLY = 1980;
-
-/** L'année de naissance est-elle déjà le titre de la section (« 2012 », anciens « 1995 ») ? */
-const yearInTitle = (sectionId: string) => /^(former-)?d{4}$/.test(sectionId);
+/** Filtres de la liste du club (en plus des groupes, s'il y en a). */
+type ClubFilter = 'all' | 'active' | 'former' | 'followed' | string;
 
 /**
- * Membres actifs par groupe (A, B, C…) ou, sans groupes, par année de naissance ;
- * chaque section triée par année puis par nom. Puis les autres nageurs et les
- * anciens membres. Filtre « former » : les anciens membres seuls, par année.
+ * Nageurs du club, actifs et anciens ensemble, une section par année de naissance
+ * (les plus jeunes d'abord). Filtres : actifs, anciens, ou un groupe (A, B, C…) s'il y en a.
+ * Dans le sélecteur des nageurs suivis (« all »), les nageurs hors club suivent à part.
  */
-function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: string, q: string) {
+function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: ClubFilter, q: string) {
   const list = swimmers.filter((s) => matches(s, q)).sort(byYearName);
-  const active = list.filter(isActiveMember);
-  const former = list.filter(isFormerMember);
-  if (filter === 'former') {
-    // Anciens membres par année ; les plus anciennes (un ou deux nageurs par année) en une seule section
-    const early = former.filter((s) => s.birthYear && s.birthYear < FORMER_EARLY);
-    return [
-      { id: 'former-early', title: `Avant ${FORMER_EARLY}`, items: early },
-      ...memberYears(former.filter((s) => !early.includes(s))).map((y) => ({ id: `former-${y || 'na'}`, title: y || 'Année inconnue', items: byYear(former, y) })),
-    ].filter((s) => s.items.length);
-  }
-  const sections = groups.length
-    ? groups
-        .filter((g) => filter === 'all' || g.id === filter)
-        .map((g) => ({ id: g.id, title: g.name, items: active.filter((s) => s.group === g.id) }))
-    : activeYearKeys(active)
-        .filter((k) => filter === 'all' || k === filter)
-        .map((k) => ({ id: k || 'na', title: yearTitle(k), items: active.filter((s) => yearKey(s) === k) }));
-  if (filter === 'all') {
-    const others = list.filter((s) => !s.member || (!s.former && groups.length > 0 && !groups.some((g) => g.id === s.group)));
-    if (others.length) sections.push({ id: 'others', title: 'Autres nageurs', items: others });
-    if (former.length) sections.push({ id: 'former', title: 'Anciens membres', items: former });
-  }
+  const members = list.filter((s) => isActiveMember(s) || isFormerMember(s));
+  const others = list.filter((s) => !s.member);
+  if (groups.some((g) => g.id === filter)) return byBirthYear(members.filter((s) => s.group === filter && !s.former));
+  const shown = filter === 'active' ? members.filter(isActiveMember) : filter === 'former' ? members.filter(isFormerMember) : members;
+  const sections = byBirthYear(shown);
+  if (filter === 'all' && others.length) sections.push({ id: 'others', title: 'Autres nageurs', items: others });
   return sections.filter((s) => s.items.length);
 }
 
@@ -394,7 +362,9 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
                     <div className="row-title" style={on ? { fontWeight: 600 } : undefined}>
                       {fullName(sw)}
                     </div>
-                    {!yearInTitle(sec.id) && sw.birthYear && <div className="row-sub">{sw.birthYear}</div>}
+                    {(sw.former || (!yearInTitle(sec.id) && sw.birthYear)) && (
+                      <div className="row-sub">{[yearInTitle(sec.id) ? null : sw.birthYear, sw.former ? 'ancien membre' : null].filter(Boolean).join(' · ')}</div>
+                    )}
                   </div>
                   <span className={`follow-mark${on ? ' on' : ''}`} aria-hidden="true">
                     <Icon name={on ? 'heartFill' : 'heart'} />
@@ -459,15 +429,14 @@ export function ClubScreen() {
   const activeMembers = members.filter(isActiveMember);
   const formerCount = members.length - activeMembers.length;
   const followedCount = members.filter(isFollowed).length;
-  const years = activeYearKeys(activeMembers).filter(Boolean);
-  const choices = [...(groups.length ? groups.map((g) => g.id) : years), ...(followedCount ? ['followed'] : []), ...(formerCount ? ['former'] : [])];
+  const choices = ['active', ...(formerCount ? ['former'] : []), ...(followedCount ? ['followed'] : []), ...groups.map((g) => g.id)];
   const active = filter === 'all' || choices.includes(filter) ? filter : 'all';
   const sections = useMemo(() => {
     if (active === 'followed') {
       const items = members.filter((s) => isFollowed(s) && matches(s, q)).sort(byYearName);
       return items.length ? [{ id: 'followed', title: 'Suivis', items }] : [];
     }
-    return clubSections(members, groups, active, q).filter((s) => s.id !== 'others' && s.id !== 'former');
+    return clubSections(members, groups, active, q);
   }, [data.swimmers, groups, active, q]);
   const choose = (v: string) => {
     setFilter(v);
@@ -508,7 +477,7 @@ export function ClubScreen() {
     <>
       <NavBar
         title="Le club"
-        subtitle={clubSummary(groups, activeMembers)}
+        subtitle={`${activeMembers.length} membres actifs${formerCount ? ` · ${formerCount} anciens membres` : ''} · par année de naissance`}
         back="/"
       />
       <main className="page">
@@ -523,11 +492,21 @@ export function ClubScreen() {
             </div>
           </div>
         )}
-        <div className="chips" style={{ marginTop: 8 }} role="group" aria-label={groups.length ? 'Groupe' : 'Année de naissance'}>
-          {['all', ...(followedCount ? ['followed'] : []), ...(groups.length ? groups.map((g) => g.id) : years), ...(formerCount ? ['former'] : [])].map(
+        <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Nageurs affichés">
+          {['all', ...choices].map(
             (v) => (
               <button key={v} className={`chip${active === v ? ' active' : ''}`} aria-pressed={active === v} onClick={() => choose(v)}>
-                {v === 'all' ? (groups.length ? 'Tous' : 'Toutes les années') : v === 'followed' ? (
+                {v === 'all' ? (
+                  <>
+                    Tous
+                    <span className="count">{members.length}</span>
+                  </>
+                ) : v === 'active' ? (
+                  <>
+                    Actifs
+                    <span className="count">{activeMembers.length}</span>
+                  </>
+                ) : v === 'followed' ? (
                   <>
                     <Icon name="heartFill" style={{ width: 13, height: 13, color: '#ff375f' }} /> Suivis
                     <span className="count">{followedCount}</span>
@@ -538,7 +517,7 @@ export function ClubScreen() {
                     <span className="count">{formerCount}</span>
                   </>
                 ) : (
-                  (groups.length ? groupName(groups, v) : undefined) ?? yearTitle(v)
+                  groupName(groups, v)
                 )}
               </button>
             ),
@@ -564,7 +543,8 @@ export function ClubScreen() {
               {sec.items.map((sw) => {
                 const st = stats.get(sw.id);
                 const sub = [
-                  yearInTitle(sec.id) ? null : sw.birthYear, // l'année est souvent déjà le titre de la section
+                  yearInTitle(sec.id) ? null : sw.birthYear, // l'année est le plus souvent le titre de la section
+                  sw.former ? 'ancien membre' : null,
                   st?.count
                     ? `${st.count}\u00a0course${st.count > 1 ? 's' : ''}`
                     : st?.planned
