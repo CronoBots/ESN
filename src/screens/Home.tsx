@@ -171,15 +171,15 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
         <div className="hero-stats">
           <div className="hero-stat">
             <b>{summary.races}</b>
-            <span>Courses</span>
+            <span>{summary.races > 1 ? 'Courses' : 'Course'}</span>
           </div>
           <div className="hero-stat">
             <b>{summary.pbs}</b>
-            <span>Records</span>
+            <span>{summary.pbs > 1 ? 'Records' : 'Record'}</span>
           </div>
           <div className="hero-stat">
             <b>{summary.meets}</b>
-            <span>Meetings</span>
+            <span>{summary.meets > 1 ? 'Compétitions' : 'Compétition'}</span>
           </div>
           <div className="hero-stat">
             <b>{summary.bestPoints?.points ?? '–'}</b>
