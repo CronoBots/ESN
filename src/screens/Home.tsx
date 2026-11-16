@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
 import { fullName, hasClubMembers, isActiveMember, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
-import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
+import { Avatar, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { StrokeBars } from '../components/Chart';
@@ -28,7 +28,7 @@ export function Home() {
   if (noChild) {
     return (
       <>
-        <NavBar title="Accueil" left={<BrandLogo variant="mark" height={30} className="nav-brand" />} />
+        <NavBar title="Accueil" />
         <main className="page">
           <Empty
             icon="person"
@@ -53,7 +53,7 @@ export function Home() {
   if (!swimmer) {
     return (
       <>
-        <NavBar title="Accueil" left={<BrandLogo variant="mark" height={30} className="nav-brand" />} />
+        <NavBar title="Accueil" />
         <main className="page">
           <Empty
             icon="person"
@@ -75,7 +75,6 @@ export function Home() {
       <NavBar
         title="Accueil"
         wide
-        left={<BrandLogo variant="mark" height={30} className="nav-brand" />}
         right={
           <button className="icon-btn" aria-label="Suivre des nageurs" onClick={() => openFollow()}>
             <Icon name="plus" />
@@ -342,11 +341,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                         <StrokeTag stroke={s.stroke} distance={s.distance} size={28} />
                         <div
                           className="tile-label grow"
-                          style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
+
                         >
                           {STROKE_BY_ID[s.stroke].label} · {courseLabel(s.course)}
                         </div>
@@ -473,7 +468,9 @@ function ClubCard() {
         </div>
       ) : (
         <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openClubCode(() => openFollowPicker())}>
-          <BrandLogo variant="mark" height={34} />
+          <span className="row-icon club-card-icon" aria-hidden="true">
+            <Icon name="shield" />
+          </span>
           <div className="grow">
             <div style={{ fontWeight: 600 }}>Membre de l’ESN ?</div>
             <div className="muted small">Entrez le code du club pour retrouver tous les nageurs du club et leurs résultats.</div>

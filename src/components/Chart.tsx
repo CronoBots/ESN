@@ -264,11 +264,7 @@ export function ProgressChart({
               {p.label && (
                 <div
                   className="k"
-                  style={{
-                    maxWidth: 180,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
+                  style={{ maxWidth: 200, whiteSpace: 'normal' }}
                 >
                   {p.label}
                 </div>

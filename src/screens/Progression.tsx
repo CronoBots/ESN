@@ -172,7 +172,7 @@ export function Progression() {
                     >
                       <div className="hstack" style={{ gap: 8 }}>
                         <StrokeTag stroke={e.stroke} distance={e.distance} size={28} />
-                        <span className="tile-label grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span className="tile-label grow">
                           {STROKE_BY_ID[e.stroke].label}
                         </span>
                       </div>

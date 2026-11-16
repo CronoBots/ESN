@@ -17,12 +17,17 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <style>
-      /* Évite le flash blanc au démarrage en mode sombre */
-      html { background: #f2f2f7; }
-      @media (prefers-color-scheme: dark) { html { background: #000; } }
+      html { background: #f4f4f5; }
+      /* Écran d'ouverture : le logo du club, le temps que l'application démarre */
+      #splash { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: #2357d0; transition: opacity 0.35s ease; }
+      #splash img { width: min(62vw, 280px); height: auto; filter: brightness(0) invert(1); animation: splash-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+      #splash.hide { opacity: 0; pointer-events: none; }
+      @keyframes splash-in { from { opacity: 0; transform: scale(0.94); } }
+      @media (prefers-reduced-motion: reduce) { #splash img { animation: none; } }
     </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true"><img src="./brand/esn-competition.png" alt="" /></div>
     <div id="root"></div>
     <noscript>ESN Compétition a besoin de JavaScript pour fonctionner.</noscript>
     <script type="module" src="/src/main.tsx"></script>

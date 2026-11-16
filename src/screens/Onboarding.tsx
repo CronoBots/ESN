@@ -1,4 +1,3 @@
-import { loadDemo } from '../store/store';
 import { Icon, type IconName } from '../components/Icon';
 import { navigate } from '../router';
 import { BrandLogo } from '../components/ui';
@@ -41,9 +40,6 @@ export function Onboarding() {
       <div className="onboard-actions">
         <button className="btn block" onClick={() => openClubCode(() => openFollowPicker(() => navigate('/', { replace: true })))}>
           <Icon name="shield" /> Je suis membre de l’ESN
-        </button>
-        <button className="btn ghost block" onClick={() => loadDemo()}>
-          <Icon name="sparkles" /> Découvrir avec un exemple
         </button>
       </div>
     </main>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { actions, batch, getState, ROSTER_PARSER, useData } from '../store/store';
 import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
-import { Avatar, BrandLogo, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
+import { Avatar, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate, useRoute } from '../router';
 import { decryptHistory, decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
@@ -188,7 +188,9 @@ function ClubCodeSheet({ close, onUnlocked, initial }: { close: () => void; onUn
   return (
     <SheetLayout title="Code du club" onCancel={close}>
       <div className="center" style={{ padding: '4px 0 18px' }}>
-        <BrandLogo height={72} />
+        <span className="lock-icon" aria-hidden="true">
+          <Icon name="shield" />
+        </span>
         <p className="muted" style={{ margin: '14px auto 0', maxWidth: 380 }}>
           Entrez le code donné par le club : les nageurs du club apparaissent dans l’application, avec leurs résultats.
         </p>
@@ -453,7 +455,9 @@ export function ClubScreen() {
         <NavBar title="Le club" back="/" />
         <main className="page">
           <div className="card pad center club-lock">
-            <BrandLogo height={96} />
+            <span className="lock-icon" aria-hidden="true">
+              <Icon name="shield" />
+            </span>
             <h2>Les nageurs de l’ESN</h2>
             <p className="muted">
               Retrouvez tous les nageurs du club et leurs résultats de compétition. La liste est réservée aux membres :

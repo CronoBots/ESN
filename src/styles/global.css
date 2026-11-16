@@ -80,7 +80,10 @@
   --radius-lg: 22px;
   --tabbar-h: 62px;
   /* Espace sous la barre d'onglets flottante : bas de l'écran, juste au-dessus de la barre d'accueil de l'iPhone */
-  --tabbar-gap: max(6px, calc(var(--safe-bottom) - 18px));
+  --tabbar-gap: max(6px, calc(var(--safe-bottom) - 26px));
+  /* iPhone à barre d'accueil : la barre descend jusqu'aux coins de l'écran, son contenu reste au-dessus de l'indicateur */
+  --tabbar-pad: max(0px, calc(var(--safe-bottom) - 22px));
+  --tabbar-corner: max(26px, calc(var(--safe-bottom) * 1.3));
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -138,6 +141,17 @@ a {
   border-radius: 6px;
 }
 
+p,
+.section-foot,
+.section-caption,
+.muted,
+.small,
+.callout,
+.tile-sub,
+.empty p {
+  text-wrap: pretty;
+}
+
 .tnum,
 .tile-value,
 .hero-stat b,
@@ -177,7 +191,7 @@ a {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 8px calc(16px + var(--safe-right)) calc(var(--tabbar-h) + var(--tabbar-gap) + 28px)
+  padding: 8px calc(16px + var(--safe-right)) calc(var(--tabbar-h) + var(--tabbar-pad) + var(--tabbar-gap) + 28px)
     calc(16px + var(--safe-left));
 }
 
@@ -295,10 +309,9 @@ a {
   font-size: 20px;
   letter-spacing: 0.01em;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 56vw;
+  line-height: 1.1;
+  text-wrap: balance;
+  max-width: 64vw;
   color: #fff;
   opacity: 0;
   transform: translateY(4px);
@@ -397,18 +410,19 @@ a {
 
 .tabbar {
   position: fixed;
-  left: calc(10px + var(--safe-left));
-  right: calc(10px + var(--safe-right));
+  left: calc(8px + var(--safe-left));
+  right: calc(8px + var(--safe-right));
   bottom: var(--tabbar-gap);
   z-index: 40;
   display: flex;
   gap: 2px;
   max-width: 520px;
-  height: var(--tabbar-h);
+  height: calc(var(--tabbar-h) + var(--tabbar-pad));
   margin: 0 auto;
-  padding: 4px;
+  padding: 4px 4px calc(4px + var(--tabbar-pad));
   border: 0.5px solid var(--glass-border);
-  border-radius: 28px;
+  /* Coins du bas concentriques à ceux de l'écran (iPhone à barre d'accueil) ; capsule ailleurs */
+  border-radius: 26px 26px var(--tabbar-corner) var(--tabbar-corner);
   background: var(--glass);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
@@ -422,7 +436,7 @@ a {
   right: 0;
   bottom: 0;
   z-index: 39;
-  height: calc(var(--tabbar-h) + var(--tabbar-gap) + 12px);
+  height: calc(var(--tabbar-h) + var(--tabbar-pad) + var(--tabbar-gap) + 12px);
   background: linear-gradient(to top, var(--bg-solid) 25%, transparent);
   pointer-events: none;
 }
@@ -691,12 +705,8 @@ a.row:active {
 .row-title {
   font-size: 17px;
   line-height: 1.25;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .row-title.wrap {
@@ -708,12 +718,8 @@ a.row:active {
   color: var(--text-2);
   font-size: 14px;
   line-height: 1.3;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
 }
 
 .row-value {
@@ -904,7 +910,7 @@ a.row:active {
 .fab {
   position: fixed;
   right: calc(18px + var(--safe-right));
-  bottom: calc(var(--tabbar-h) + var(--tabbar-gap) + 16px);
+  bottom: calc(var(--tabbar-h) + var(--tabbar-pad) + var(--tabbar-gap) + 16px);
   z-index: 35;
   display: inline-flex;
   align-items: center;
@@ -1639,10 +1645,9 @@ textarea.textinput {
 }
 
 .switcher .name {
-  max-width: 64px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 72px;
+  overflow-wrap: break-word;
+  text-align: center;
 }
 
 /* Tuiles statistiques */
@@ -2344,10 +2349,9 @@ textarea.textinput {
 
 .agenda-name {
   min-width: 0;
-  overflow: hidden;
+  padding: 8px 0;
   font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 
 .agenda-row.agenda-more {
@@ -2851,12 +2855,8 @@ button.tl-head:not(:disabled):active {
   font-size: 15px;
   font-weight: 600;
   line-height: 1.25;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  text-wrap: balance;
 }
 
 button.meet-nav-btn:active {
@@ -2961,6 +2961,28 @@ button.meet-nav-btn:active {
 .club-lock {
   margin-top: 12px;
   padding: 28px 20px 24px;
+}
+
+.lock-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.lock-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.club-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
 }
 
 .club-lock h2 {
@@ -3115,12 +3137,6 @@ button.meet-nav-btn:active {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-}
-
-/* Classements : nom complet sur 3 lignes au plus (petits écrans, noms composés) */
-.rank-row .row-title {
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
 }
 
 @media (max-width: 380px) {

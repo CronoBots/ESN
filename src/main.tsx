@@ -10,6 +10,15 @@ import '@fontsource/barlow-condensed/latin-600.css';
 import '@fontsource/barlow-condensed/latin-700.css';
 import './styles/global.css';
 
+// Écran d'ouverture (logo) : visible au moins 0,9 s depuis le lancement, puis fondu
+const splash = document.getElementById('splash');
+if (splash) {
+  setTimeout(() => {
+    splash.classList.add('hide');
+    setTimeout(() => splash.remove(), 400);
+  }, Math.max(0, 900 - performance.now()));
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

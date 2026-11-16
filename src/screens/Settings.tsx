@@ -1,6 +1,6 @@
-import { actions, getState, loadDemo, useData } from '../store/store';
+import { actions, getState, useData } from '../store/store';
 import { fullName, isActiveMember, mySwimmers } from '../store/hooks';
-import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
+import { Avatar, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { groupName, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
@@ -166,24 +166,6 @@ export function Settings() {
         <Section title="Application">
           <div className="list">
             {!isStandalone() && <Row icon="phone" title="Installer sur l’écran d’accueil" chevron onClick={promptInstall} />}
-            <Row
-              icon="sparkles"
-              iconBg="#bf5af2"
-              title="Charger un exemple"
-              sub="Une nageuse fictive pour découvrir toutes les fonctions"
-              chevron
-              onClick={async () => {
-                const ok = await overlay.confirm({
-                  title: 'Ajouter la nageuse d’exemple ?',
-                  message: '« Emma Exemple » et ses courses seront ajoutées. Vous pourrez la supprimer à tout moment.',
-                  confirmLabel: 'Ajouter l’exemple',
-                });
-                if (ok) {
-                  loadDemo();
-                  overlay.toast('Exemple ajouté', '✨');
-                }
-              }}
-            />
             <Row icon="info" iconBg="#8e8e93" title="À propos" chevron onClick={() => navigate('/about')} />
           </div>
         </Section>
@@ -225,8 +207,7 @@ export function About() {
       <NavBar title="À propos" back="/settings" />
       <main className="page">
         <div className="center" style={{ padding: '8px 0 6px' }}>
-          <BrandLogo height={120} />
-          <div className="muted" style={{ marginTop: 14 }}>
+          <div className="muted">
             L’application compétition des nageurs de l’Ecole Seraing Natation
           </div>
           <div style={{ marginTop: 10 }}>

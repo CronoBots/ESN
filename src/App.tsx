@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useData } from './store/store';
 import { useRoute, navigate } from './router';
-import { BrandLogo, UiHost, overlay } from './components/ui';
+import { UiHost, overlay } from './components/ui';
 import { isSyncing, shouldAutoSyncLive, syncLive, type LiveSyncResult } from './lib/liveResults';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
@@ -144,9 +144,6 @@ export function App() {
   return (
     <div className="app">
       <nav className="sidebar" aria-label="Navigation principale">
-        <div className="sidebar-brand">
-          <BrandLogo height={84} />
-        </div>
         {TABS.map((t) => (
           <button key={t.id} className={`side-item${tab === t.id ? ' active' : ''}`} onClick={() => navigate(t.path)} aria-current={tab === t.id ? 'page' : undefined}>
             <Icon name={t.icon} />
