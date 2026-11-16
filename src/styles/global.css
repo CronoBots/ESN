@@ -1018,6 +1018,65 @@ a.row:active {
   font-variant-numeric: tabular-nums;
 }
 
+/* Comparaison (fiche d'une épreuve) : nageurs comparés, raccourcis, recherche */
+.compare-bar {
+  margin-top: 16px;
+}
+
+.compare-label {
+  margin: 0 2px 8px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compare-chips .chip svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.compare-chips .chip.active svg {
+  opacity: 0.7;
+}
+
+.compare-chips .line-key {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Case cochée d'un sélecteur (comparaison) */
+.pick-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--text-3);
+  color: #fff;
+}
+
+.pick-mark.on {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.pick-mark svg {
+  width: 15px;
+  height: 15px;
+}
+
 /* ------------------------------------------------------------ Forms */
 
 .field {

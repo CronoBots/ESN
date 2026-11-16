@@ -252,7 +252,7 @@ export function openFollow(onDone?: () => void) {
   else openClubCode(() => openFollowPicker(onDone));
 }
 
-const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child';
+export const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child';
 
 /** Bouton cœur : suivre / ne plus suivre. */
 export function FollowButton({ swimmer }: { swimmer: Swimmer }) {
@@ -278,7 +278,7 @@ const byYearName = (a: Swimmer, b: Swimmer) =>
   (a.birthYear ?? 9999) - (b.birthYear ?? 9999) ||
   `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'fr', { sensitivity: 'base' });
 
-function matches(sw: Swimmer, q: string) {
+export function matches(sw: Swimmer, q: string) {
   if (!q) return true;
   const hay = normName(`${sw.firstName}${sw.lastName}`);
   return normName(q)
@@ -314,7 +314,7 @@ function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: ClubFi
   return sections.filter((s) => s.items.length);
 }
 
-function SearchField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+export function SearchField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
     <div className="search-field">
       <Icon name="search" aria-hidden="true" />

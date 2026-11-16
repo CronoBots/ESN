@@ -12,6 +12,7 @@ import { formatDelta, formatTime, pacePer100 } from '../lib/time';
 import { navigate } from '../router';
 import type { Course, Stroke } from '../store/types';
 import { findResultsNow } from './autoResults';
+import { addCompare, openComparePicker, type CompareCandidate } from '../components/ComparePicker';
 
 const COMPARE_COLORS = ['var(--chart-line)', 'var(--chart-2)', 'var(--chart-3)'];
 
@@ -25,9 +26,20 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
 
   const history = useMemo(() => eventHistory(data.swims, swimmerId, course, distance, stroke), [data.swims, swimmerId, course, distance, stroke]);
   const stats = useMemo(() => eventStats(history, include), [history, include]);
-  const others = sortSwimmers(data.swimmers).filter(
-    (s) => s.id !== swimmerId && data.swims.some((x) => x.swimmerId === s.id && x.course === course && x.distance === distance && x.stroke === stroke && countsForRecords(x, include)),
-  );
+  // Nageurs ayant nagé cette épreuve, avec leur meilleur temps (un seul passage sur les courses)
+  const candidates = useMemo<CompareCandidate[]>(() => {
+    const bestBy = new Map<string, number>();
+    for (const x of data.swims) {
+      if (x.swimmerId === swimmerId || x.course !== course || x.distance !== distance || x.stroke !== stroke) continue;
+      if (x.timeCs == null || !countsForRecords(x, include)) continue;
+      const b = bestBy.get(x.swimmerId);
+      if (b == null || x.timeCs < b) bestBy.set(x.swimmerId, x.timeCs);
+    }
+    return data.swimmers.filter((s) => bestBy.has(s.id)).map((s) => ({ swimmer: s, bestCs: bestBy.get(s.id)! }));
+  }, [data.swims, data.swimmers, swimmerId, course, distance, stroke, include]);
+  const byId = new Map(candidates.map((c) => [c.swimmer.id, c]));
+  // Raccourcis : les nageurs suivis (pas encore comparés), les autres via la recherche
+  const shortcuts = sortSwimmers(candidates.map((c) => c.swimmer).filter((s) => (s.favorite || s.relation === 'child') && !compareIds.includes(s.id))).slice(0, 3);
 
   if (!swimmer) return <Empty icon="person" title="Nageur introuvable" />;
 
@@ -119,24 +131,48 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                 </div>
               </div>
 
-              {others.length > 0 && (
-                <div className="chips" style={{ marginTop: 14 }}>
-                  <span className="muted small" style={{ alignSelf: 'center', marginRight: 2, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    Comparer :
-                  </span>
-                  {others.map((o) => {
-                    const on = compareIds.includes(o.id);
-                    return (
-                      <button
-                        key={o.id}
-                        className={`chip${on ? ' active' : ''}`}
-                        onClick={() => setCompareIds((ids) => (on ? ids.filter((x) => x !== o.id) : [...ids, o.id].slice(-2)))}
-                      >
+              {candidates.length > 0 && (
+                <div className="compare-bar">
+                  <div className="compare-label">Comparer avec</div>
+                  <div className="compare-chips">
+                    {compareIds.map((id, i) => {
+                      const c = byId.get(id);
+                      if (!c) return null;
+                      return (
+                        <button
+                          key={id}
+                          className="chip active"
+                          onClick={() => setCompareIds((ids) => ids.filter((x) => x !== id))}
+                          aria-label={`Retirer ${fullName(c.swimmer)} de la comparaison`}
+                        >
+                          <span className="line-key" style={{ background: COMPARE_COLORS[(i + 1) % COMPARE_COLORS.length] }} />
+                          {c.swimmer.firstName}
+                          <Icon name="close" />
+                        </button>
+                      );
+                    })}
+                    {shortcuts.map((o) => (
+                      <button key={o.id} className="chip" onClick={() => setCompareIds((ids) => addCompare(ids, o.id))}>
                         <Avatar swimmer={o} size={20} />
                         {o.firstName}
                       </button>
-                    );
-                  })}
+                    ))}
+                    <button
+                      className="chip"
+                      onClick={() =>
+                        openComparePicker({
+                          main: swimmer,
+                          eventName: eventLabel(distance, stroke),
+                          candidates,
+                          initial: compareIds,
+                          onDone: setCompareIds,
+                        })
+                      }
+                    >
+                      <Icon name="search" />
+                      {compareIds.length || shortcuts.length ? 'Autre nageur' : 'Choisir un nageur'}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -147,7 +183,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                   ariaLabel={`Progression sur ${eventLabel(distance, stroke)} : ${valid.length} temps, record ${formatTime(best!.timeCs)}`}
                 />
                 <div className="muted small center" style={{ padding: '4px 0 8px' }}>
-                  La courbe descend quand le temps s’améliore · cercle doré : record · touchez la courbe pour le détail
+                  La courbe descend quand le temps s’améliore · cercle doré : record · touchez la courbe pour le détail
                 </div>
               </div>
             </div>
