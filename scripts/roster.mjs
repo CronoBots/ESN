@@ -68,9 +68,15 @@ if (cmd === 'code') {
 } else if (cmd === 'manquants') {
   const code = args[0] ?? process.env.ESN_CODE;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
-  const done = await publishedHistory(code);
+  const published = await publishedHistory(code);
+  // Historique provisoire (ligne « @@PARTIEL ») : meilleurs temps seulement, reste à compléter
+  const done = published.filter((a) => !/^@@PARTIEL/m.test(a.text));
   const missing = roster.members.filter((m) => !m.former && !done.some((a) => sameMember(a, m)));
-  console.log(`${missing.length} membres actifs sans historique publié (sur ${roster.members.filter((m) => !m.former).length})`);
+  const partial = missing.filter((m) => published.some((a) => sameMember(a, m))).length;
+  console.log(
+    `${missing.length} membres actifs sans historique complet publié (sur ${roster.members.filter((m) => !m.former).length})` +
+      (partial ? `, dont ${partial} avec un historique provisoire (meilleurs temps)` : ''),
+  );
   console.log('groupe;nom;prénom;année;sexe');
   for (const m of missing) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender].join(';'));
 } else if (cmd === 'historique') {

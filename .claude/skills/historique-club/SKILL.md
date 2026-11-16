@@ -43,6 +43,7 @@ BEL - Ecole Seraing Natation
 ```
 
 - `@@GENDER:` : `F` ou `M`.
+- `@@PARTIEL` (ligne facultative) : historique provisoire, avec seulement les meilleurs temps ESN relevés dans les classements « Meilleurs à vie » du club. Ces pages de classement ne comptent pas dans la limite de pages de swimrankings. `manquants` liste encore ce nageur ; son historique complet remplacera ce fichier.
 - Épreuve : `50m Libre`, `100m Dos`, `200m Brasse`, `100m Papillon`, `200m 4 nages`…
 - Bassin : `25m` ou `50m`. Temps : `m:ss.cc` ou `ss.cc`. Points : nombre, ou vide. Date : `11 oct 2025`.
 - Colonnes séparées par une **tabulation**, une course par ligne, sans ligne d'en-tête de tableau.
