@@ -2,7 +2,7 @@ import type { Course, Gender, Round, Stroke } from '../store/types';
 import { makeISO } from './dates';
 import { isValidEvent } from './events';
 import { computePoints } from './points';
-import { normName } from './results';
+import { editDistance, normName } from './results';
 
 /**
  * Lecture d'une feuille de résultats affichée à la piscine (« Liste
@@ -164,14 +164,6 @@ function tokenTime(tok: string): number | null {
   return null;
 }
 
-function editDistance(a: string, b: string): number {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++)
-    for (let j = 1; j <= b.length; j++)
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return d[a.length][b.length];
-}
 
 /**
  * La ligne concerne-t-elle ce nageur ? « NOM, Prénom » avec tolérance aux

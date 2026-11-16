@@ -6,7 +6,31 @@ import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './len
 import { computePbFlags } from './stats';
 import { nameKeys, normName, sameSwimmer, type ReportMeet } from './results';
 import { findSwimmerEntry, findSwimmerResult, lapsToSplits, parseSheetHeader } from './resultSheet';
-import { estimateHeatStarts, parseResultSheet, parseStartSheet, type EventSheet, type SheetRow } from './heatSheet';
+import { estimateHeatStarts, parseResultSheet, parseStartSheet, splitName, type EventSheet, type SheetRow } from './heatSheet';
+
+/** Nageur du club repéré dans une compétition. */
+export interface ClubCandidate {
+  firstName: string;
+  lastName: string;
+  birthYear?: number;
+  gender: Swimmer['gender'];
+  swimrankingsId?: string;
+}
+
+const yearOf = (yy?: string) => (yy ? (Number(yy) < 40 ? 2000 : 1900) + Number(yy) : undefined);
+
+/** Nageurs du club dans une feuille (liste des séries ou résultats). */
+function clubRows(text: string, isResult: boolean, gender: Swimmer['gender'] | undefined, club: RegExp): ClubCandidate[] {
+  if (!gender) return [];
+  const rows = isResult ? parseResultSheet(text).results.flatMap((g) => g.rows) : parseStartSheet(text).heats.flatMap((h) => h.rows);
+  const out: ClubCandidate[] = [];
+  for (const r of rows) {
+    if (!club.test((r.club ?? '').trim())) continue;
+    const n = splitName(r.name);
+    if (n) out.push({ ...n, birthYear: yearOf(r.yy), gender });
+  }
+  return out;
+}
 import { isValidEvent } from './events';
 import type { ImportReport } from '../store/store';
 
@@ -26,7 +50,7 @@ export interface Progress {
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
 /** 2 : lecture des feuilles PDF (résultats et listes de départ). */
-export const SYNC_ENGINE = 4; // 3 : fiche swimrankings reliée ; 4 : séries en direct (identifiant live, heures de série)
+export const SYNC_ENGINE = 5; // 3 : fiche swimrankings reliée ; 4 : séries en direct ; 5 : nouveaux nageurs du club ajoutés
 
 export interface LiveMeet {
   id: string;
@@ -161,7 +185,8 @@ export async function readMeetPdfs(
   m: LiveMeet,
   swimmers: Swimmer[],
   club?: RegExp,
-): Promise<{ found: Map<string, PdfSwim[]>; complete: boolean } | null> {
+  members?: RegExp,
+): Promise<{ found: Map<string, PdfSwim[]>; complete: boolean; candidates: ClubCandidate[] } | null> {
   const fresh = m.status !== 'finished';
   const res = await fetch(`${LIVE_BASE}/${m.id}/`, { cache: fresh ? 'no-cache' : 'default' });
   if (!res.ok) return null;
@@ -171,8 +196,10 @@ export async function readMeetPdfs(
   const old = (m.endDate ?? m.startDate ?? '') < new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
   const complete = m.status === 'finished' && docs.results.size > 0 && (docs.results.size >= docs.starts.size || old);
   const found = new Map<string, PdfSwim[]>();
+  const candidates: ClubCandidate[] = [];
   // Aucun nageur du club inscrit : rien à lire
-  if (club && docs.stats && !club.test(await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh))) return { found, complete: m.status === 'finished' };
+  if (club && docs.stats && !club.test(await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh)))
+    return { found, complete: m.status === 'finished', candidates };
   const events = [...new Set([...docs.results.keys(), ...docs.starts.keys()])].sort((a, b) => a - b);
   const course = m.course ?? 'SCM';
   await mapLimit(events, 4, async (no) => {
@@ -182,8 +209,10 @@ export async function readMeetPdfs(
     const flat = normName(text);
     const header = parseSheetHeader([text]);
     if (!header.distance || !header.stroke || !isValidEvent(header.distance, header.stroke, course)) return;
+    if (members) candidates.push(...clubRows(text, isResult, header.gender, members));
     for (const sw of swimmers) {
-      if (!flat.includes(normName(sw.lastName)) || (header.gender && header.gender !== sw.gender)) continue;
+      // Tri rapide (nom ou prénom sur la feuille) ; la lecture de la ligne tolère une lettre d'écart dans le nom
+      if (!(flat.includes(normName(sw.lastName)) || flat.includes(normName(sw.firstName))) || (header.gender && header.gender !== sw.gender)) continue;
       const base = {
         eventNo: header.eventNo ?? no,
         distance: header.distance,
@@ -207,7 +236,7 @@ export async function readMeetPdfs(
       if (swim) found.set(sw.id, [...(found.get(sw.id) ?? []), swim]);
     }
   });
-  return { found, complete };
+  return { found, complete, candidates };
 }
 
 /* ------------------------------------------------------------------------ */
@@ -328,6 +357,8 @@ export interface LiveSyncResult {
   added: number;
   /** Épreuves au programme ajoutées (listes de départ). */
   entries: number;
+  /** Nageurs du club trouvés dans les compétitions et ajoutés à la liste. */
+  newMembers: Swimmer[];
   entrySwimmers: { swimmer: Swimmer; added: number }[];
   pbs: number;
   swimmers: { swimmer: Swimmer; added: number }[];
@@ -371,7 +402,7 @@ export function syncLive(opts: { force?: boolean; onProgress?: (p: Progress) => 
 }
 
 async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p: Progress) => void }): Promise<LiveSyncResult> {
-  const result: LiveSyncResult = { added: 0, entries: 0, entrySwimmers: [], pbs: 0, swimmers: [] };
+  const result: LiveSyncResult = { added: 0, entries: 0, entrySwimmers: [], newMembers: [], pbs: 0, swimmers: [] };
   const state = getState();
   const cfg = state.settings.liveSync;
   if ((!cfg.enabled && !force) || !state.swimmers.length) return result;
@@ -392,6 +423,7 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
     ...upcoming,
   ];
   const found = new Map<string, ImportReport[]>();
+  const candidates: ClubCandidate[] = [];
   const profile = new Map<string, Partial<Swimmer>>();
   let done = 0;
   onProgress?.({ done, total: todo.length });
@@ -406,12 +438,18 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
         // Pas de fichier LENEX : feuilles PDF (nageurs du club, compétitions récentes ou à venir)
         const report = liveMeetReport(m);
         if (!club || !report || report.startDate < recent) return;
-        const pdf = await readMeetPdfs(m, pending, club);
+        const pdf = await readMeetPdfs(m, pending, club, CLUB.member);
         if (!pdf) return; // rien de publié : on réessaiera
+        candidates.push(...pdf.candidates);
         for (const [id, swims] of pdf.found) found.set(id, [...(found.get(id) ?? []), { meet: report, swims }]);
         if (pdf.complete) processed[m.id] = [...new Set([...(processed[m.id] ?? []), ...pending.map((s) => s.id)])];
         return;
       }
+      // Nageurs du club pas encore dans la liste
+      if (club)
+        for (const a of l.athletes)
+          if (a.gender && CLUB.member.test((a.club ?? '').trim()))
+            candidates.push({ firstName: a.firstName, lastName: a.lastName.toUpperCase(), birthYear: a.birthYear, gender: a.gender, swimrankingsId: a.swrid });
       // Index des nageurs de la compétition (des centaines) : recherche directe par nom
       const index = new Map<string, LenexAthlete[]>();
       for (const x of l.athletes) for (const k of nameKeys(x)) index.set(k, [...(index.get(k) ?? []), x]);
@@ -433,6 +471,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   );
 
   const added: Swim[] = [];
+  // Nouveaux nageurs du club : ajoutés à la liste ; leurs résultats sont cherchés à la recherche suivante
+  if (club && candidates.length) result.newMembers = actions.addClubSwimmers(candidates);
   // Un seul enregistrement pour tous les nageurs du club
   batch(() => {
     for (const sw of swimmers) {

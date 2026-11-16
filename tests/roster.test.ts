@@ -103,3 +103,44 @@ describe('historique du club', () => {
     expect((await decryptHistory(enc, 'esn 7kq4 m2xp')).athletes[0].text).toBe(text);
   });
 });
+
+describe('nouveaux nageurs du club trouvés en compétition', async () => {
+  const { actions, getState } = await import('../src/store/store');
+  const { splitName } = await import('../src/lib/heatSheet');
+
+  it('lit les noms des feuilles', () => {
+    expect(splitName('DUPONT, Hugo')).toEqual({ lastName: 'DUPONT', firstName: 'Hugo' });
+    expect(splitName('GARCIA GARCIA Léa')).toEqual({ lastName: 'GARCIA GARCIA', firstName: 'Léa' });
+    expect(splitName('Léa')).toBeNull();
+  });
+
+  it('les ajoute à la liste et les garde quand la liste publiée change', () => {
+    actions.resetAll();
+    actions.applyRoster(validateRoster({ updated: '2026-11-15', members: parseRosterCsv(';DUPONT;Emma;2012;F') }), 'ESN-TEST', 'v1');
+    const added = actions.addClubSwimmers([
+      { firstName: 'Emma', lastName: 'DUPONT', birthYear: 2012, gender: 'F' },
+      { firstName: 'Hugo', lastName: 'MARTIN', birthYear: 2013, gender: 'M' },
+    ]);
+    expect(added.map((s) => s.firstName)).toEqual(['Hugo']);
+    expect(getState().swimmers.find((s) => s.firstName === 'Hugo')).toMatchObject({ member: true, discovered: true });
+    // Nouvelle liste publiée sans lui : il reste dans la liste du club
+    actions.applyRoster(validateRoster({ updated: '2026-11-20', members: parseRosterCsv(';DUPONT;Emma;2012;F') }), 'ESN-TEST', 'v2');
+    expect(getState().swimmers.find((s) => s.firstName === 'Hugo')).toMatchObject({ member: true });
+    // Liste publiée avec lui : il devient un membre comme les autres
+    actions.applyRoster(validateRoster({ updated: '2026-11-21', members: parseRosterCsv(';DUPONT;Emma;2012;F\n;MARTIN;Hugo;2013;M') }), 'ESN-TEST', 'v3');
+    expect(getState().swimmers.filter((s) => s.firstName === 'Hugo')).toHaveLength(1);
+    expect(getState().swimmers.find((s) => s.firstName === 'Hugo')).toMatchObject({ member: true, discovered: false });
+  });
+});
+
+describe('noms écrits autrement sur les feuilles', async () => {
+  const { actions, getState } = await import('../src/store/store');
+  it('ne crée pas de doublon pour une lettre d’écart', () => {
+    actions.resetAll();
+    actions.applyRoster(validateRoster({ updated: '2026-11-15', members: parseRosterCsv(';ASOUMANOU;Léa;2015;F') }), 'ESN-TEST', 'v1');
+    expect(actions.addClubSwimmers([{ firstName: 'Léa', lastName: 'ASSOUMANOU', birthYear: 2015, gender: 'F' }])).toHaveLength(0);
+    // Autre année de naissance : quelqu'un d'autre
+    expect(actions.addClubSwimmers([{ firstName: 'Léa', lastName: 'ASSOUMANOU', birthYear: 2013, gender: 'F' }])).toHaveLength(1);
+    expect(getState().swimmers).toHaveLength(2);
+  });
+});

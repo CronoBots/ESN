@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import type { AppData, Goal, LiveSyncSettings, Meet, Settings, Swim, Swimmer } from './types';
-import { sameSwimmer, type ReportMeet, type ReportSwim } from '../lib/results';
+import { closeSwimmer, sameSwimmer, type ReportMeet, type ReportSwim } from '../lib/results';
 import type { Roster } from '../lib/roster';
+import { CLUB } from '../club';
 import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
 import { uid } from '../lib/id';
 
@@ -360,8 +361,14 @@ export const actions = {
       }
       const used = new Set([...s.swims.map((x) => x.swimmerId), ...s.goals.map((g) => g.swimmerId)]);
       const next = swimmers
-        .filter((sw) => !sw.member || kept.has(sw.id) || used.has(sw.id) || sw.relation === 'child' || sw.favorite)
-        .map((sw) => (sw.member && !kept.has(sw.id) ? { ...sw, member: false, group: undefined } : sw));
+        .filter((sw) => !sw.member || kept.has(sw.id) || sw.discovered || used.has(sw.id) || sw.relation === 'child' || sw.favorite)
+        .map((sw) =>
+          kept.has(sw.id) && sw.discovered
+            ? { ...sw, discovered: false }
+            : sw.member && !kept.has(sw.id) && !sw.discovered
+              ? { ...sw, member: false, group: undefined }
+              : sw,
+        );
       return {
         ...s,
         swimmers: next,
@@ -402,6 +409,41 @@ export const actions = {
       const selectedSwimmerId = followed.some((sw) => sw.id === sel) ? sel : (followed[0]?.id ?? sel);
       return { ...s, swimmers, settings: { ...s.settings, selectedSwimmerId } };
     });
+  },
+
+  /**
+   * Nageurs du club trouvés dans une compétition (résultats officiels, listes
+   * de départ) qui ne sont pas encore dans la liste : ajoutés à la liste du club.
+   */
+  addClubSwimmers(list: { firstName: string; lastName: string; birthYear?: number; gender: Swimmer['gender']; swimrankingsId?: string }[]): Swimmer[] {
+    const added: Swimmer[] = [];
+    setState((s) => {
+      const swimmers = [...s.swimmers];
+      for (const c of list) {
+        // Déjà dans la liste, éventuellement écrit autrement sur la feuille (une lettre près)
+        if (swimmers.some((sw) => closeSwimmer(c, sw))) continue;
+        const sw: Swimmer = {
+          id: uid(),
+          firstName: c.firstName,
+          lastName: c.lastName,
+          gender: c.gender,
+          birthYear: c.birthYear,
+          swimrankingsId: c.swimrankingsId,
+          club: CLUB.name,
+          nation: 'BEL',
+          color: swimmers.length % 8,
+          relation: 'followed',
+          favorite: false,
+          member: true,
+          discovered: true,
+          createdAt: Date.now(),
+        };
+        swimmers.push(sw);
+        added.push(sw);
+      }
+      return added.length ? { ...s, swimmers } : s;
+    });
+    return added;
   },
 
   /** Oublie le code du club (les nageurs et leurs résultats restent). */

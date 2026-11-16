@@ -15,6 +15,8 @@ export const CLUB = {
   sections: ['Natation sportive', 'Masters', 'Natation artistique', 'Water-polo', 'École de nage', 'École sportive'],
   /** Le club dans les feuilles des compétitions (« Ecole Seraing Natation a.s.b.l. », « Esn »). */
   match: /seraing|\besn\b/i,
+  /** Nageur du club dans une feuille ou un fichier de résultats (pour l'ajouter à la liste). */
+  member: /ecole\s+seraing|^esn$/i,
   /** Pays des compétitions suivies sur live.swimrankings.net. */
   liveNation: 'BEL',
 };

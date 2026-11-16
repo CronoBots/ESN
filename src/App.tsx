@@ -99,6 +99,11 @@ export function App() {
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
     const notify = (r: LiveSyncResult) => {
+      if (r.newMembers.length) {
+        const n = r.newMembers.length;
+        // Après le message des résultats, pour qu'on ait le temps de lire les deux
+        setTimeout(() => overlay.toast(`${n} nouveau${n > 1 ? 'x' : ''} nageur${n > 1 ? 's' : ''} de l’ESN dans la liste du club`, '🏊'), r.added || r.entries ? 3500 : 0);
+      }
       if (!r.added) {
         if (r.entries) overlay.toast(resultsMessage({ added: r.entries, swimmers: r.entrySwimmers }, 'programme'), '📋');
         return;

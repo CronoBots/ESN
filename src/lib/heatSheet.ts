@@ -44,6 +44,18 @@ export interface EventSheet {
 
 const TIME = /^(?:(\d{1,2}):)?(\d{1,2})[.,](\d{2})$/;
 
+/** « DUPONT, Hugo », « GARCIA GARCIA Cassandra » → nom (majuscules) et prénom. */
+export function splitName(name: string): { lastName: string; firstName: string } | null {
+  const comma = /^([^,]+),\s*(.+)$/.exec(name.trim());
+  if (comma) return { lastName: comma[1].trim().toUpperCase(), firstName: comma[2].trim() };
+  const words = name.trim().split(/\s+/);
+  const upper = (w: string) => /^[A-ZÀ-ÖØ-Þ'’-]{2,}$/.test(w);
+  let i = 0;
+  while (i < words.length - 1 && upper(words[i])) i++;
+  if (!i) return null;
+  return { lastName: words.slice(0, i).join(' '), firstName: words.slice(i).join(' ') };
+}
+
 export function timeCs(t: string): number | undefined {
   const m = TIME.exec(t.trim());
   return m ? (Number(m[1] ?? 0) * 60 + Number(m[2])) * 100 + Number(m[3]) : undefined;
