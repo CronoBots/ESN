@@ -179,7 +179,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
           </div>
           <div className="hero-stat">
             <b>{summary.meets}</b>
-            <span>{summary.meets > 1 ? 'Compétitions' : 'Compétition'}</span>
+            <span>{summary.meets > 1 ? 'Meetings' : 'Meeting'}</span>
           </div>
           <div className="hero-stat">
             <b>{summary.bestPoints?.points ?? '–'}</b>
