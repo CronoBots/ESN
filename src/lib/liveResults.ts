@@ -25,7 +25,7 @@ export interface Progress {
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
 /** 2 : lecture des feuilles PDF (résultats et listes de départ). */
-export const SYNC_ENGINE = 2;
+export const SYNC_ENGINE = 3; // 3 : fiche swimrankings reliée depuis les résultats officiels
 
 export interface LiveMeet {
   id: string;
@@ -298,7 +298,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   const today = todayISO();
   const all = await listLiveMeets();
   const meets = all.filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
-  const processed = { ...cfg.processed };
+  // Nouvelle version de la recherche : toutes les compétitions sont relues (sans doublon)
+  const processed = (cfg.engine ?? 1) < SYNC_ENGINE ? {} : { ...cfg.processed };
   const swimmers = state.swimmers;
   // Nageurs du club : on lit aussi les feuilles PDF (compétitions récentes sans fichier LENEX, programmes à venir)
   const club = swimmers.some((s) => s.member) ? CLUB.match : undefined;
@@ -340,6 +341,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
         const patch: Partial<Swimmer> = { ...profile.get(sw.id) };
         if (!sw.birthYear && a.birthYear) patch.birthYear = a.birthYear;
         if (!sw.club && a.club) patch.club = a.club;
+        // Fiche swimrankings reliée automatiquement (identifiant présent dans les résultats officiels)
+        if (!sw.swimrankingsId && a.swrid) patch.swimrankingsId = a.swrid;
         if (Object.keys(patch).length) profile.set(sw.id, patch);
       }
       if (m.status === 'finished') processed[m.id] = [...new Set([...(processed[m.id] ?? []), ...pending.map((s) => s.id)])];

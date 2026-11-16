@@ -85,7 +85,7 @@ export function SwimmerProfile({ id }: { id: string }) {
             {swimmer.swimrankingsId ? (
               <Row title="Profil sur swimrankings.net" href={swimrankingsUrl(swimmer.swimrankingsId)} external />
             ) : (
-              <Row title="Lier le profil swimrankings.net" accent chevron onClick={() => openSwimmerForm(swimmer)} />
+              !swimmer.member && <Row title="Lier le profil swimrankings.net" accent chevron onClick={() => openSwimmerForm(swimmer)} />
             )}
             {age != null && <Row title="Âge" value={age} />}
             {swimmer.birthYear && <Row title="Année de naissance" value={swimmer.birthYear} />}

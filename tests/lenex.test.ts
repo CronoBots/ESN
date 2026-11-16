@@ -39,7 +39,7 @@ const LEF = `<?xml version="1.0" encoding="UTF-8"?>
       <CLUBS>
         <CLUB name="Club Exemple Natation" code="CEN">
           <ATHLETES>
-            <ATHLETE firstname="Emma" lastname="Dupont" birthdate="2015-06-26" gender="F" license="CEN/123/15">
+            <ATHLETE firstname="Emma" lastname="Dupont" birthdate="2015-06-26" gender="F" license="CEN/123/15" swrid="1234567">
               <RESULTS>
                 <RESULT eventid="11" points="206" swimtime="00:06:29.33" resultid="501" heatid="901" lane="4" entrytime="00:06:40.00" />
                 <RESULT eventid="13" points="205" swimtime="00:01:24.62" resultid="502" heatid="902" lane="2">
@@ -98,7 +98,7 @@ describe('LENEX', () => {
     expect(r.meet).toMatchObject({ name: "Meeting d'automne", city: 'Liège', course: 'SCM', startDate: '2026-10-10', endDate: '2026-10-11' });
     expect(r.athletes).toHaveLength(1);
     const a = r.athletes[0];
-    expect(a).toMatchObject({ firstName: 'Emma', lastName: 'Dupont', birthYear: 2015, gender: 'F', club: 'Club Exemple Natation' });
+    expect(a).toMatchObject({ firstName: 'Emma', lastName: 'Dupont', birthYear: 2015, gender: 'F', club: 'Club Exemple Natation', swrid: '1234567' });
     // relais et forfait (WDR) ignorés
     expect(a.swims).toHaveLength(3);
     expect(a.swims[0]).toMatchObject({ eventNo: 3, distance: 400, stroke: 'FREE', date: '2026-10-10', startTime: '09:41', timeCs: 38933, points: 206, place: 11, heat: 1, lane: 4, entryCs: 40000, round: 'TIM' });

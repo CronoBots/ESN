@@ -95,6 +95,8 @@ export interface LenexAthlete {
   birthYear?: number;
   gender?: Gender;
   license?: string;
+  /** Identifiant swimrankings.net du nageur (attribut LENEX « swrid »). */
+  swrid?: string;
   club?: string;
   swims: LenexSwim[];
 }
@@ -204,6 +206,7 @@ export function parseLenex(xml: string): LenexMeet | null {
         birthYear: bd && /^\d{4}/.test(bd) ? +bd.slice(0, 4) : undefined,
         gender: a.attrs.gender === 'F' ? 'F' : a.attrs.gender === 'M' ? 'M' : undefined,
         license: a.attrs.license,
+        swrid: /^\d+$/.test(a.attrs.swrid ?? '') ? a.attrs.swrid : undefined,
         club: clubName,
         swims,
       });
