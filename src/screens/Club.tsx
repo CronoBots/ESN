@@ -16,8 +16,8 @@ import { SyncBanner } from './autoResults';
 const ROSTER_URL = './data/club-roster.json';
 /** Historique swimrankings des membres, chiffré avec le même code. */
 const HISTORY_URL = './data/club-history.json';
-/** 2 : noms des compétitions repris tels quels (chiffres compris). */
-const HISTORY_PARSER = 2;
+/** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ». */
+const HISTORY_PARSER = 3;
 
 const letters = (s: string) => normName(s);
 

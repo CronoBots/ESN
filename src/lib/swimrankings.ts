@@ -95,7 +95,7 @@ type Token =
   | { t: 'EOL' };
 
 const MONTH_ALT =
-  'janv(?:ier)?|jan(?:uary|uari|uar)?|f[ée]vr?(?:ier)?|feb(?:ruary|ruari|ruar)?|mars|mar(?:ch)?|m[äa]rz|maart|mrt|avr(?:il)?|apr(?:il)?|mai|may|mei|juin|june?|juni|juil(?:let)?|july?|juli|ao[ûu]t|aug(?:ust(?:us)?)?|sept?(?:embre|ember)?|oct(?:obre|ober)?|okt(?:ober)?|nov(?:embre|ember)?|d[ée]c(?:embre|ember)?|dez(?:ember)?';
+  'janv(?:ier)?|jan(?:uary|uari|uar)?|f[ée]vr?(?:ier)?|feb(?:ruary|ruari|ruar)?|mars|mar(?:ch)?|m[äa]rz|maart|mrt|avr(?:il)?|apr(?:il)?|mai|may|mei|juin|june?|juni|juil(?:let)?|july?|juli|ao[ûu]t?|aug(?:ust(?:us)?)?|sept?(?:embre|ember)?|oct(?:obre|ober)?|okt(?:ober)?|nov(?:embre|ember)?|d[ée]c(?:embre|ember)?|dez(?:ember)?';
 
 const TOKEN_RE = new RegExp(
   [

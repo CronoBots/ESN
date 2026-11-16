@@ -159,4 +159,10 @@ describe('format d’import en colonnes', () => {
     expect(r.swims.map((s) => s.meet)).toEqual(['Interclubs U15', '4e édition de la Dernière Chance']);
     expect(r.swims.map((s) => s.city)).toEqual(['Namur', 'Waremme']);
   });
+
+  it('lit les dates d’août abrégées « aoû » (swimrankings en français)', () => {
+    const r = parseSwimrankings('DUPONT, Emma (1995)\n100m Brasse\t25m\t1:16.47\t542\t4 aoû 2009\tLiège\tMeeting d’été');
+    expect(r.swims).toHaveLength(1);
+    expect(r.swims[0]).toMatchObject({ date: '2009-08-04', timeCs: 7647, meet: 'Meeting d’été' });
+  });
 });
