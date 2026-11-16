@@ -73,10 +73,7 @@ export function ProgressChart({
     const range = Math.max(yMax - yMin, 100);
     yMin -= range * 0.12;
     yMax += range * 0.12;
-    const step = niceStep((yMax - yMin) / 4);
-    const tickStart = Math.ceil(yMin / step) * step;
-    const yTicks: number[] = [];
-    for (let v = tickStart; v <= yMax; v += step) yTicks.push(v);
+    const yTicks = timeTicks(yMin, yMax);
 
     // Repères temporels
     const xTicks: { t: number; label: string }[] = [];
@@ -162,7 +159,7 @@ export function ProgressChart({
         <g className="axis">
           {model.yTicks.map((v) => (
             <text key={v} x={pad.left - 8} y={sy(v) + 4} textAnchor="end">
-              {formatTime(Math.round(v))}
+              {formatTime(Math.round(v)).replace(/\.00$/, '')}
             </text>
           ))}
           {model.xTicks.map((tk) => (
@@ -284,9 +281,19 @@ export function ProgressChart({
   );
 }
 
-function niceStep(raw: number): number {
-  const candidates = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 3000, 6000, 12000, 30000];
-  return candidates.find((c) => c >= raw) ?? 60000;
+/**
+ * Repères de l'axe des temps (centièmes) : le plus grand pas « rond » qui donne
+ * encore au moins 3 repères dans la plage, pour que chaque point soit lisible.
+ */
+function timeTicks(min: number, max: number): number[] {
+  const steps = [60000, 30000, 12000, 6000, 3000, 2000, 1000, 500, 250, 200, 100, 50, 25, 20, 10];
+  let ticks: number[] = [];
+  for (const step of steps) {
+    ticks = [];
+    for (let v = Math.ceil(min / step) * step; v <= max; v += step) ticks.push(v);
+    if (ticks.length >= 3) break;
+  }
+  return ticks;
 }
 
 /** Barres horizontales (points par nage). */

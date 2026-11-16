@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { goBack } from '../router';
 import { STROKE_BY_ID } from '../lib/events';
@@ -337,7 +337,9 @@ export function StrokeTag({ stroke, distance, size = 40 }: { stroke: Stroke; dis
   return (
     <span
       className="stroke-tag"
-      style={{ background: `var(${info.colorVar})`, width: size, height: size, fontSize: size < 36 ? 10 : 12 }}
+      style={
+        { '--tag-color': `var(${info.colorVar})`, width: size, height: size, fontSize: size < 36 ? 10 : 12 } as CSSProperties
+      }
       aria-hidden="true"
     >
       {distance ?? info.short}

@@ -40,12 +40,15 @@
   --brand-blue: #002ca4;
   --hero: linear-gradient(140deg, #014716 0%, #015b1c 34%, #002ca4 100%);
 
-  /* Couleurs d'identité des nages (palette validée daltonisme) */
+  /* Couleurs d'identité des nages. Validées daltonisme (protan/deutan) et vision
+     normale entre voisines dans l'ordre d'affichage Libre, Dos, Brasse, Papillon,
+     4 nages, en clair (fond #fff) et en sombre (fond #1c1c1e). Le nom de la nage
+     accompagne toujours la couleur. Changer une teinte = refaire la validation. */
   --stroke-free: #2a78d6;
-  --stroke-fly: #eb6834;
   --stroke-back: #1baf7a;
-  --stroke-im: #6250d6;
-  --stroke-breast: #008300;
+  --stroke-breast: #6250d6;
+  --stroke-fly: #008300;
+  --stroke-im: #e87ba4;
 
   /* Graphiques */
   --chart-line: #2a78d6;
@@ -94,10 +97,10 @@
     --brand-blue: #628cf0;
     --hero: linear-gradient(140deg, #013d13 0%, #024f19 36%, #0a2a8a 100%);
     --stroke-free: #3987e5;
-    --stroke-fly: #d95926;
     --stroke-back: #199e70;
-    --stroke-im: #9085e9;
-    --stroke-breast: #0ca30c;
+    --stroke-breast: #9085e9;
+    --stroke-fly: #0ca30c;
+    --stroke-im: #d55181;
     --chart-line: #3987e5;
     --chart-2: #d95926;
     --chart-3: #199e70;
@@ -133,10 +136,10 @@
   --brand-blue: #628cf0;
   --hero: linear-gradient(140deg, #013d13 0%, #024f19 36%, #0a2a8a 100%);
   --stroke-free: #3987e5;
-  --stroke-fly: #d95926;
   --stroke-back: #199e70;
-  --stroke-im: #9085e9;
-  --stroke-breast: #0ca30c;
+  --stroke-breast: #9085e9;
+  --stroke-fly: #0ca30c;
+  --stroke-im: #d55181;
   --chart-line: #3987e5;
   --chart-2: #d95926;
   --chart-3: #199e70;
@@ -547,6 +550,16 @@ a {
   overflow: hidden;
 }
 
+/* Carte cliquable (<button class="card">) : sans la bordure par défaut du bouton */
+button.card {
+  border: 0;
+  transition: transform 0.15s var(--ease);
+}
+
+button.card:active {
+  transform: scale(0.985);
+}
+
 .card.pad {
   padding: 16px;
 }
@@ -767,6 +780,10 @@ a.row:active {
   width: 40px;
   height: 40px;
   border-radius: 11px;
+  /* Couleur de la nage assombrie de 20 % : le chiffre blanc garde un contraste
+     d'au moins 4,5:1 sur les cinq teintes, en clair comme en sombre. */
+  background: var(--tag-color, var(--fill-2));
+  background: color-mix(in oklab, var(--tag-color, var(--fill-2)), black 20%);
   color: #fff;
   font-size: 12px;
   font-weight: 800;
@@ -1682,6 +1699,16 @@ textarea.textinput {
   font-size: clamp(17px, 5.4vw, 22px);
 }
 
+/* Sur téléphone, un intitulé de tuile étroite peut passer sur deux lignes
+   (« Saison 2026/27 ») : on réserve deux lignes à chaque intitulé pour que les
+   valeurs restent alignées d'une tuile à l'autre. */
+@media (max-width: 599px) {
+  .tiles.three .tile-label {
+    min-height: 2.6em;
+    line-height: 1.3;
+  }
+}
+
 .tile-sub.good {
   color: var(--success);
   font-weight: 600;
@@ -1753,6 +1780,26 @@ textarea.textinput {
 
 .meter.gold > div {
   background: var(--gold-bg);
+}
+
+/* Mini-courbe des tuiles d'épreuve */
+.sparkline {
+  position: relative;
+  height: 36px;
+}
+
+.sparkline svg {
+  display: block;
+  overflow: visible;
+}
+
+.sparkline-dot {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border: 2px solid var(--card);
+  border-radius: 50%;
 }
 
 /* Graphique */

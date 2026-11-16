@@ -290,7 +290,7 @@ function ResultPhotos({ close, meetId: initialMeet, swimmerId }: { close: () => 
                       >
                         {on && <Icon name="check" />}
                       </button>
-                      {h.stroke && h.distance ? <StrokeTag stroke={h.stroke} distance={h.distance} size={34} /> : <span className="stroke-tag" style={{ background: 'var(--fill-2)', width: 34, height: 34 }}>?</span>}
+                      {h.stroke && h.distance ? <StrokeTag stroke={h.stroke} distance={h.distance} size={34} /> : <span className="stroke-tag" style={{ background: 'var(--fill-2)', color: 'var(--text-2)', width: 34, height: 34 }}>?</span>}
                       <div className="row-body">
                         <div className="row-title">
                           {h.distance && h.stroke ? eventLabel(h.distance, h.stroke) : 'Épreuve non lue'}

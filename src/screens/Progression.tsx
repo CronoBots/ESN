@@ -27,13 +27,20 @@ function Sparkline({ swims, color }: { swims: Swim[]; color: string }) {
   const sx = (x: number) => 3 + ((x - x0) / (x1 - x0 || 1)) * (W - 6);
   // Plus rapide = plus bas : la courbe descend quand le temps s'améliore
   const sy = (y: number) => 4 + ((y1 - y) / (y1 - y0 || 1)) * (H - 8);
-  const d = swims.map((s, i) => `${i ? 'L' : 'M'}${sx(xs[i]).toFixed(1)},${sy(s.timeCs!).toFixed(1)}`).join('');
-  const last = swims[swims.length - 1];
+  const pts = swims.map((s, i) => ({ x: sx(xs[i]), y: sy(s.timeCs!) }));
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+  const last = pts[pts.length - 1];
+  // La courbe s'étire en largeur ; le point final est posé en HTML pour rester rond.
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" aria-hidden="true" style={{ overflow: 'visible' }}>
-      <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      <circle cx={sx(xs[xs.length - 1])} cy={sy(last.timeCs!)} r={3.5} fill={color} stroke="var(--card)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className="sparkline" aria-hidden="true">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none">
+        <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <span
+        className="sparkline-dot"
+        style={{ left: `${(last.x / W) * 100}%`, top: last.y, background: color }}
+      />
+    </div>
   );
 }
 
