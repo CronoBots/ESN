@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Meet, Swim, Swimmer } from '../store/types';
-import { Section } from './ui';
+import { Section, Segmented } from './ui';
 import { loadEventSheet } from '../lib/liveResults';
-import type { EventSheet, SheetRow } from '../lib/heatSheet';
+import { overallRanking, type EventSheet, type SheetRow } from '../lib/heatSheet';
 import { normName } from '../lib/results';
 import { formatDate, todayISO } from '../lib/dates';
 import { formatTime } from '../lib/time';
@@ -22,6 +22,24 @@ function isSwimmer(row: SheetRow, sw: Swimmer): boolean {
   if (!n.includes(normName(sw.lastName)) || !n.includes(normName(sw.firstName))) return false;
   return !(row.yy && sw.birthYear && row.yy !== String(sw.birthYear % 100).padStart(2, '0'));
 }
+
+function HeatRow({ row, mine, lead, time, sub, pts }: { row: SheetRow; mine: boolean; lead: string | number; time: string; sub: string; pts?: number }) {
+  return (
+    <div className={`row heat-row${mine ? ' mine' : ''}`}>
+      <span className="lane tnum">{lead}</span>
+      <div className="row-body">
+        <div className="row-title">{displayName(row.name)}</div>
+        {sub && <div className="row-sub">{sub}</div>}
+      </div>
+      <span className="row-end heat-end">
+        <span className="tnum heat-time">{time}</span>
+        {pts != null && <span className="heat-pts tnum">{pts} pts</span>}
+      </span>
+    </div>
+  );
+}
+
+const statusLabel = (r: SheetRow) => (r.status === 'DSQ' ? 'Disq.' : r.status === 'DNS' ? 'Forfait' : r.status === 'DNF' ? 'Abandon' : '—');
 
 function useSheet(meet: Meet, swim: Swim) {
   const today = todayISO();
@@ -47,13 +65,16 @@ function useSheet(meet: Meet, swim: Swim) {
 }
 
 /**
- * Pendant une compétition : la série du nageur (tous les nageurs, lignes,
- * clubs, temps d'engagement, heure estimée), son record personnel, puis le
- * classement de sa catégorie dès que les résultats sont publiés.
+ * Pendant et après une compétition : la série du nageur ou toutes les séries
+ * de l'épreuve (lignes, clubs, temps d'engagement, heures estimées), son
+ * record personnel, puis le classement final dès que les résultats sont
+ * publiés : général (toutes catégories) ou par catégorie.
  */
 export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim; swimmer: Swimmer; pb?: Swim }) {
   const { sheet, live } = useSheet(meet, swim);
-  const [allGroups, setAllGroups] = useState(false);
+  const [heatView, setHeatView] = useState<'mine' | 'all'>('mine');
+  const [rankView, setRankView] = useState<'overall' | 'category'>('overall');
+  const overall = useMemo(() => overallRanking(sheet?.results ?? []), [sheet]);
 
   const heat = useMemo(() => {
     if (!sheet) return undefined;
@@ -64,7 +85,19 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
 
   const groups = sheet?.results ?? [];
   const mineGroup = groups.find((g) => g.rows.some((r) => isSwimmer(r, swimmer)));
-  const shownGroups = allGroups ? groups : mineGroup ? [mineGroup] : groups.slice(0, 1);
+  // Par catégorie : celle du nageur d'abord
+  const byCategory = mineGroup ? [mineGroup, ...groups.filter((g) => g !== mineGroup)] : groups;
+  const showAllHeats = heatView === 'all' || !heat;
+  const mineOverall = overall.find((r) => isSwimmer(r, swimmer));
+  const mineCat = mineGroup?.rows.find((r) => isSwimmer(r, swimmer));
+  const placeNote = [
+    mineOverall?.overall ? `${swimmer.firstName} : ${placeLabel(mineOverall.overall)} sur ${overall.length} au général` : null,
+    groups.length > 1 && mineCat?.place
+      ? `${placeLabel(mineCat.place)} sur ${mineGroup!.rows.length}${mineGroup!.category ? ` en ${mineGroup!.category.charAt(0).toLowerCase()}${mineGroup!.category.slice(1)}` : ' dans sa catégorie'}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   if (!meet.liveId || !swim.eventNo) return null;
   if (sheet === undefined) {
@@ -99,78 +132,105 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
         </div>
       </div>
 
-      {heat && (
-        <Section title={`Série ${heat.heat}${heat.total ? ` sur ${heat.total}` : ''}`} action={heat.start ? <span className="muted">≈ {heat.start}</span> : undefined}>
-          <div className="list">
-            {heat.rows.map((r, i) => {
-              const mine = isSwimmer(r, swimmer);
-              return (
-                <div key={i} className={`row heat-row${mine ? ' mine' : ''}`}>
-                  <span className="lane tnum" aria-label={`Ligne ${r.lane ?? '?'}`}>
-                    {r.lane ?? '–'}
-                  </span>
-                  <div className="row-body">
-                    <div className="row-title">{displayName(r.name)}</div>
-                    <div className="row-sub">{[r.club, fullYear(r.yy)].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  <span className="row-end tnum heat-time">
-                    {r.timeCs != null ? formatTime(r.timeCs) : r.status !== 'OK' ? r.status : r.entryCs ? formatTime(r.entryCs) : 'NT'}
-                  </span>
+      {sheet.heats.length > 0 && (
+        <Section
+          title={showAllHeats ? `Séries · ${sheet.heats.length}` : `Série ${heat!.heat}${heat!.total ? ` sur ${heat!.total}` : ''}`}
+          action={!showAllHeats && heat?.start ? <span className="muted">≈ {heat.start}</span> : undefined}
+        >
+          {heat && sheet.heats.length > 1 && (
+            <div className="heat-switch">
+              <Segmented
+                value={heatView}
+                onChange={setHeatView}
+                ariaLabel="Séries affichées"
+                options={[
+                  { id: 'mine', label: 'Sa série' },
+                  { id: 'all', label: `Toutes les séries (${sheet.heats.length})` },
+                ]}
+              />
+            </div>
+          )}
+          {(showAllHeats ? sheet.heats : [heat!]).map((h) => (
+            <div key={h.heat} className="heat-block">
+              {showAllHeats && (
+                <div className="heat-cat">
+                  Série {h.heat}
+                  {h.total ? ` sur ${h.total}` : ''}
+                  {h.start ? ` · ≈ ${h.start}` : ''}
                 </div>
-              );
-            })}
-          </div>
+              )}
+              <div className="list">
+                {h.rows.map((r, i) => (
+                  <HeatRow
+                    key={i}
+                    row={r}
+                    mine={isSwimmer(r, swimmer)}
+                    lead={r.lane ?? '–'}
+                    sub={[r.club, fullYear(r.yy)].filter(Boolean).join(' · ')}
+                    time={r.timeCs != null ? formatTime(r.timeCs) : r.status !== 'OK' ? statusLabel(r) : r.entryCs ? formatTime(r.entryCs) : 'NT'}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
           <div className="section-foot">
-            {heat.rows.some((r) => r.timeCs != null)
-              ? 'À droite : temps réalisé dans la série.'
-              : 'À droite : temps d’engagement (meilleur temps annoncé par chaque club). Heure estimée d’après les temps des séries précédentes.'}
+            {sheet.heats.some((h) => h.rows.some((r) => r.timeCs != null))
+              ? 'À gauche : la ligne ; à droite : le temps réalisé (ou d’engagement si la série n’a pas encore nagé).'
+              : 'À gauche : la ligne ; à droite : le temps d’engagement (meilleur temps annoncé par chaque club). Heures estimées d’après les séries précédentes.'}
           </div>
         </Section>
       )}
 
       {groups.length > 0 && (
-        <Section
-          title={mineGroup?.category && !allGroups ? `Résultats · ${mineGroup.category}` : 'Résultats'}
-          action={
-            groups.length > 1 ? (
-              <button className="section-link" onClick={() => setAllGroups((v) => !v)}>
-                {allGroups ? 'Sa catégorie' : 'Toutes les catégories'}
-              </button>
-            ) : undefined
-          }
-        >
-          {shownGroups.map((g, gi) => (
-            <div key={gi} style={gi ? { marginTop: 14 } : undefined}>
-              {allGroups && g.category && <div className="heat-cat">{g.category}</div>}
-              <div className="list">
-                {g.rows.map((r, i) => {
-                  const mine = isSwimmer(r, swimmer);
-                  return (
-                    <div key={i} className={`row heat-row${mine ? ' mine' : ''}`}>
-                      <span className="lane tnum">{r.place ?? '–'}</span>
-                      <div className="row-body">
-                        <div className="row-title">{displayName(r.name)}</div>
-                        <div className="row-sub">
-                          {[r.club, fullYear(r.yy), r.points != null ? `${r.points} pts` : null].filter(Boolean).join(' · ')}
-                        </div>
-                      </div>
-                      <span className="row-end tnum heat-time">
-                        {r.timeCs != null ? formatTime(r.timeCs) : r.status === 'DSQ' ? 'Disq.' : r.status === 'DNS' ? 'Forfait' : 'Abandon'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          {mineGroup && (
-            <div className="section-foot">
-              {(() => {
-                const r = mineGroup.rows.find((x) => isSwimmer(x, swimmer));
-                return r?.place ? `${swimmer.firstName} : ${placeLabel(r.place)} sur ${mineGroup.rows.length}${mineGroup.category ? ` (${mineGroup.category.charAt(0).toLowerCase()}${mineGroup.category.slice(1)})` : ''}.` : '';
-              })()}
+        <Section title="Classement final">
+          {groups.length > 1 && (
+            <div className="heat-switch">
+              <Segmented
+                value={rankView}
+                onChange={setRankView}
+                ariaLabel="Classement affiché"
+                options={[
+                  { id: 'overall', label: 'Général' },
+                  { id: 'category', label: `Par catégorie (${groups.length})` },
+                ]}
+              />
             </div>
           )}
+          {rankView === 'overall' || groups.length === 1 ? (
+            <div className="list">
+              {overall.map((r, i) => (
+                <HeatRow
+                  key={i}
+                  row={r}
+                  mine={isSwimmer(r, swimmer)}
+                  lead={r.overall ?? '–'}
+                  sub={[r.club, fullYear(r.yy), groups.length > 1 ? r.category : null].filter(Boolean).join(' · ')}
+                  pts={r.points}
+                  time={r.timeCs != null && r.status === 'OK' ? formatTime(r.timeCs) : statusLabel(r)}
+                />
+              ))}
+            </div>
+          ) : (
+            byCategory.map((g, gi) => (
+              <div key={gi} className="heat-block">
+                {g.category && <div className="heat-cat">{g.category}</div>}
+                <div className="list">
+                  {g.rows.map((r, i) => (
+                    <HeatRow
+                      key={i}
+                      row={r}
+                      mine={isSwimmer(r, swimmer)}
+                      lead={r.place ?? '–'}
+                      sub={[r.club, fullYear(r.yy)].filter(Boolean).join(' · ')}
+                      pts={r.points}
+                      time={r.timeCs != null && r.status === 'OK' ? formatTime(r.timeCs) : statusLabel(r)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+          {placeNote && <div className="section-foot">{placeNote}</div>}
         </Section>
       )}
     </>

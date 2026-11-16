@@ -18,7 +18,7 @@ export function SwimmerProfile({ id }: { id: string }) {
   const pbFlags = usePbFlags();
   const swimmer = data.swimmers.find((s) => s.id === id);
   const trophies = useMemo(
-    () => (swimmer ? achievements(data.swims, swimmer, data.goals, data.meets, pbFlags) : []),
+    () => (swimmer ? achievements(data.swims, swimmer, data.meets, pbFlags) : []),
     [data.swims, swimmer, data.goals, data.meets, pbFlags],
   );
 

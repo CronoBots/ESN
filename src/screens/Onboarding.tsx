@@ -9,7 +9,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
   { icon: 'chart', title: 'Progression compétition après compétition', text: 'Points, records battus et courbes nage par nage, saison par saison.' },
   { icon: 'trophy', title: 'Records et classements', text: 'Meilleurs temps à vie ou de la saison, en 25\u00a0m et en 50\u00a0m.' },
   { icon: 'calendar', title: 'Programme des compétitions', text: 'Épreuves, séries, lignes, rappels dans le calendrier.' },
-  { icon: 'target', title: 'Objectifs & temps limites', text: 'Estimation de la date d’atteinte, badges à débloquer.' },
+  { icon: 'stopwatch', title: 'Séries et classements', text: 'Toutes les séries d’une épreuve, heure estimée et classement final.' },
 ];
 
 export function Onboarding() {

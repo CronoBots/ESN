@@ -9,12 +9,12 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 
 | | |
 |---|---|
-| 📈 **Progression nage par nage** | Courbe par épreuve et par bassin (la courbe descend quand le temps s'améliore), escalier des records, ligne d'objectif, comparaison avec d'autres nageurs. |
+| 📈 **Progression nage par nage** | Courbe par épreuve et par bassin (la courbe descend quand le temps s'améliore), escalier des records, comparaison avec d'autres nageurs. |
 | 📊 **Statistiques** | Progression totale, sur 12 mois, tendance par mois, régularité, allure aux 100 m, points World Aquatics, tableau saison par saison, plus belles progressions. |
 | 🏆 **Records** | Meilleurs temps à vie ou de la saison, en petit et grand bassin, comme sur swimrankings.net. |
 | 🥇 **Classements** | Classement par épreuve entre vos enfants et les nageurs suivis (coéquipiers, amis), par sexe et par année de naissance. |
 | 📅 **Compétitions** | Programme de chaque compétition dès la publication des listes de départ : n° d'épreuve, heure estimée de la série, série, ligne, temps d'engagement, record personnel. Série complète (autres nageurs, clubs, engagements) et classement de la catégorie en direct. Export vers le calendrier du téléphone avec rappel 30 min avant chaque course. |
-| 🎯 **Objectifs** | Temps limites ou chronos à battre, jauge de progression, **estimation de la date d'atteinte** au rythme actuel. |
+| ⏱️ **Séries et classements** | Toutes les séries d’une épreuve (lignes, clubs, temps d’engagement, heures estimées) et le **classement final**, général ou par catégorie. |
 | 🎖️ **Trophées** | 19 badges à débloquer (premier record, coup du chapeau, polyvalence, 300 points…). |
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | ❤️ **Nageurs suivis** | Pas de saisie : on choisit dans la liste du club les nageurs à suivre (cœur) — ses enfants, leurs coéquipiers. Ils s'affichent sur l'accueil et dans les sélecteurs. |

@@ -67,7 +67,7 @@ export function Progression() {
   }, [data.swims, swimmer, course, include]);
 
   const trophies = useMemo(
-    () => (swimmer ? achievements(data.swims, swimmer, data.goals, data.meets, pbFlags) : []),
+    () => (swimmer ? achievements(data.swims, swimmer, data.meets, pbFlags) : []),
     [data.swims, swimmer, data.goals, data.meets, pbFlags],
   );
 

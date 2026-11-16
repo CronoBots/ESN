@@ -287,7 +287,6 @@ export interface Achievement {
 export function achievements(
   swims: Swim[],
   swimmer: Swimmer,
-  goals: Goal[],
   meets: Meet[],
   pbFlags: Map<string, PbInfo>,
 ): Achievement[] {
@@ -419,19 +418,6 @@ export function achievements(
     progress: { value: Math.min(meetIds.length, 10), target: 10 },
   });
 
-  const goalDates = goals
-    .filter((g) => g.swimmerId === swimmer.id)
-    .map((g) => goalAchievedDate(g, swims, false))
-    .filter(Boolean)
-    .sort() as string[];
-  out.push({
-    id: 'goal',
-    icon: '🏆',
-    title: 'Objectif atteint',
-    description: 'Atteindre un objectif fixé',
-    unlocked: goalDates.length > 0,
-    date: goalDates[0],
-  });
 
   return out;
 }

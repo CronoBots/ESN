@@ -151,20 +151,6 @@ export function Settings() {
         <Section title="Préférences">
           <div className="list">
             <div className="field">
-              <span className="label">Apparence</span>
-              <div style={{ flex: 1, maxWidth: 240, marginLeft: 'auto' }}>
-                <Segmented
-                  value={s.theme}
-                  onChange={(v) => actions.updateSettings({ theme: v })}
-                  options={[
-                    { id: 'auto', label: 'Auto' },
-                    { id: 'light', label: 'Clair' },
-                    { id: 'dark', label: 'Sombre' },
-                  ]}
-                />
-              </div>
-            </div>
-            <div className="field">
               <span className="label">Bassin par défaut</span>
               <div style={{ flex: 1, maxWidth: 200, marginLeft: 'auto' }}>
                 <Segmented value={s.defaultCourse} onChange={(v) => actions.updateSettings({ defaultCourse: v })} options={COURSES.map((c) => ({ id: c.id, label: c.label }))} />
@@ -209,7 +195,7 @@ export function Settings() {
               onClick={async () => {
                 const ok = await overlay.confirm({
                   title: 'Effacer toutes les données ?',
-                  message: 'Nageurs, courses, compétitions et objectifs seront supprimés de cet appareil. Avec le code du club, la liste et les résultats reviendront automatiquement.',
+                  message: 'Nageurs, courses et compétitions seront supprimés de cet appareil. Avec le code du club, la liste et les résultats reviendront automatiquement.',
                   confirmLabel: 'Tout effacer',
                   destructive: true,
                 });

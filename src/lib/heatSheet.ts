@@ -211,3 +211,35 @@ export function estimateHeatStarts(sheet: EventSheet, distance: number): EventSh
   });
   return { ...sheet, heats };
 }
+
+/** Ligne du classement général : la catégorie d'origine et la place toutes catégories confondues. */
+export interface OverallRow extends SheetRow {
+  category?: string;
+  overall?: number;
+}
+
+/**
+ * Classement final de l'épreuve, toutes catégories confondues : au temps
+ * (ex æquo à la même place), puis disqualifiés, forfaits et abandons. Un
+ * nageur présent dans plusieurs classements (catégorie et « toutes
+ * catégories ») n'apparaît qu'une fois.
+ */
+export function overallRanking(results: EventSheet['results']): OverallRow[] {
+  const seen = new Set<string>();
+  const rows: OverallRow[] = [];
+  for (const g of results) {
+    for (const r of g.rows) {
+      const key = `${r.name.toUpperCase()}|${r.yy ?? ''}|${(r.club ?? '').toUpperCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ ...r, category: g.category });
+    }
+  }
+  const timed = rows.filter((r) => r.status === 'OK' && r.timeCs != null).sort((a, b) => a.timeCs! - b.timeCs!);
+  let place = 0;
+  const ranked = timed.map((r, i) => {
+    if (i === 0 || r.timeCs !== timed[i - 1].timeCs) place = i + 1;
+    return { ...r, overall: place };
+  });
+  return [...ranked, ...rows.filter((r) => !(r.status === 'OK' && r.timeCs != null))];
+}

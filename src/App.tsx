@@ -75,21 +75,6 @@ function Screen({ path }: { path: string[] }) {
 export function App() {
   const route = useRoute();
   const data = useData();
-  const theme = data.settings.theme;
-
-  useEffect(() => {
-    const root = document.documentElement;
-    // En mode « auto », on ne touche pas à un thème posé par l'environnement d'accueil
-    if (theme !== 'auto') {
-      root.setAttribute('data-theme', theme);
-      root.dataset.nageoTheme = '1';
-    } else if (root.dataset.nageoTheme) {
-      root.removeAttribute('data-theme');
-      delete root.dataset.nageoTheme;
-    }
-    const dark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#1f4cc2' : '#2357d0'));
-  }, [theme]);
 
   const showOnboarding =
     data.swimmers.length === 0 &&

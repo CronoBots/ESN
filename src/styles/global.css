@@ -1,7 +1,8 @@
 /* =========================================================================
-   ESN Compétition — système de design « bassin »
-   Bleu ESN, encre et bleu nuit ; Barlow (texte) et Barlow Condensed (titres,
-   temps et chiffres, façon tableau d'affichage) ; listes groupées, verre dépoli.
+   ESN Compétition — système de design
+   Thème unique, neutre : fond gris clair, cartes blanches, texte presque noir ;
+   le bleu ESN pour la barre du haut, la carte du nageur et les actions.
+   Barlow (texte) et Barlow Condensed (titres, temps et chiffres).
    ========================================================================= */
 
 :root {
@@ -10,19 +11,19 @@
   --font-display: 'Barlow Condensed', 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Blanc de bassin : fond gris-bleu, cartes blanches, texte encre */
-  --bg: #eef2f7;
-  --bg-solid: #eef2f7;
+  /* Gris neutres (sans teinte) : fond, cartes, texte */
+  --bg: #f4f4f5;
+  --bg-solid: #f4f4f5;
   --card: #ffffff;
-  --card-2: #f3f6fa;
-  --card-3: #e6ebf2;
-  --fill: rgba(12, 20, 36, 0.06);
-  --fill-2: rgba(12, 20, 36, 0.1);
-  --separator: rgba(12, 20, 36, 0.1);
-  --text: #0c1424;
-  /* Contrastes vérifiés (WCAG AA, 4,5:1 et plus) sur le fond et les cartes, en clair comme en sombre */
-  --text-2: rgba(12, 20, 36, 0.66);
-  --text-3: rgba(12, 20, 36, 0.46);
+  --card-2: #f4f4f5;
+  --card-3: #e4e4e7;
+  --fill: rgba(24, 24, 27, 0.06);
+  --fill-2: rgba(24, 24, 27, 0.1);
+  --separator: rgba(24, 24, 27, 0.1);
+  --text: #18181b;
+  /* Contrastes vérifiés (WCAG AA, 4,5:1 et plus) sur le fond et les cartes */
+  --text-2: rgba(24, 24, 27, 0.68);
+  --text-3: rgba(24, 24, 27, 0.46);
   /* Bleu du logo ESN : liens, boutons, onglet actif */
   --accent: #2357d0;
   --accent-fill: #2357d0;
@@ -36,13 +37,13 @@
   --gold: #876203;
   --gold-bg: linear-gradient(135deg, #ffd85c, #f5b301);
   --gold-ink: #3d2b00;
-  --bar-bg: rgba(238, 242, 247, 0.8);
+  --bar-bg: rgba(244, 244, 245, 0.8);
   /* Verre dépoli de la barre d'onglets flottante */
   --glass: rgba(255, 255, 255, 0.82);
-  --glass-border: rgba(12, 20, 36, 0.06);
-  --glass-shadow: 0 10px 30px rgba(12, 20, 36, 0.12), 0 1px 3px rgba(12, 20, 36, 0.06);
+  --glass-border: rgba(24, 24, 27, 0.06);
+  --glass-shadow: 0 10px 30px rgba(24, 24, 27, 0.12), 0 1px 3px rgba(24, 24, 27, 0.06);
   /* Liseré + ombre douce : les cartes se détachent du fond sans trait dur */
-  --shadow: 0 0 0 0.5px rgba(12, 20, 36, 0.05), 0 1px 2px rgba(12, 20, 36, 0.04), 0 6px 20px rgba(12, 20, 36, 0.05);
+  --shadow: 0 0 0 0.5px rgba(24, 24, 27, 0.05), 0 1px 2px rgba(24, 24, 27, 0.04), 0 6px 20px rgba(24, 24, 27, 0.05);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.18);
   /* Identité ESN Seraing : vert du club + bleu du « S » */
   --brand-green: #015b1c;
@@ -52,7 +53,7 @@
 
   /* Couleurs d'identité des nages. Validées daltonisme (protan/deutan) et vision
      normale entre voisines dans l'ordre d'affichage Libre, Dos, Brasse, Papillon,
-     4 nages, en clair (fond #fff) et en sombre (fond #1c1c1e). Le nom de la nage
+     4 nages, sur fond blanc (validées aussi sur fond sombre). Le nom de la nage
      accompagne toujours la couleur. Changer une teinte = refaire la validation. */
   --stroke-free: #2a78d6;
   --stroke-back: #1baf7a;
@@ -71,7 +72,7 @@
   --chart-line: #2a78d6;
   --chart-2: #eb6834;
   --chart-3: #1baf7a;
-  --chart-grid: rgba(12, 20, 36, 0.1);
+  --chart-grid: rgba(24, 24, 27, 0.1);
   --chart-goal: #b88600;
 
   --radius: 16px;
@@ -85,107 +86,6 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    /* Nuit de bassin : noir bleuté, cartes bleu nuit */
-    --bg: #05080f;
-    --bg-solid: #05080f;
-    --card: #0f1522;
-    --card-2: #172033;
-    --card-3: #222c42;
-    --fill: rgba(148, 170, 210, 0.12);
-    --fill-2: rgba(148, 170, 210, 0.2);
-    --separator: rgba(148, 170, 210, 0.16);
-    --text: #f2f5fa;
-    --text-2: rgba(225, 232, 245, 0.66);
-    --text-3: rgba(225, 232, 245, 0.44);
-    --accent: #6993f8;
-    --accent-fill: #2e64de;
-    --accent-soft: rgba(105, 147, 248, 0.2);
-    --success: #30d158;
-    --success-soft: rgba(48, 209, 88, 0.18);
-    --danger: #ff453a;
-    --danger-soft: rgba(255, 69, 58, 0.18);
-    --warning: #ff9f0a;
-    --gold: #ffd60a;
-    --bar-bg: rgba(8, 12, 22, 0.8);
-    --glass: rgba(17, 24, 39, 0.78);
-    --glass-border: rgba(148, 170, 210, 0.16);
-    --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-    /* En sombre, un liseré à la place de l'ombre */
-    --shadow: 0 0 0 0.5px rgba(148, 170, 210, 0.12);
-    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
-    --brand-green: #4caf6a;
-    --brand-blue: #628cf0;
-    --brand-solid: #1f4cc2;
-    --stroke-free: #3987e5;
-    --stroke-back: #199e70;
-    --stroke-breast: #9085e9;
-    --stroke-fly: #0ca30c;
-    --stroke-im: #d55181;
-    --stroke-free-tag: #2575d1;
-    --stroke-back-tag: #08855d;
-    --stroke-breast-tag: #7467c8;
-    --stroke-fly-tag: #058805;
-    --stroke-im-tag: #c74475;
-    --chart-line: #3987e5;
-    --chart-2: #d95926;
-    --chart-3: #199e70;
-    --chart-grid: rgba(225, 232, 245, 0.1);
-    --chart-goal: #ffd60a;
-  }
-}
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  /* Nuit de bassin : noir bleuté, cartes bleu nuit */
-  --bg: #05080f;
-  --bg-solid: #05080f;
-  --card: #0f1522;
-  --card-2: #172033;
-  --card-3: #222c42;
-  --fill: rgba(148, 170, 210, 0.12);
-  --fill-2: rgba(148, 170, 210, 0.2);
-  --separator: rgba(148, 170, 210, 0.16);
-  --text: #f2f5fa;
-  --text-2: rgba(225, 232, 245, 0.66);
-  --text-3: rgba(225, 232, 245, 0.44);
-  --accent: #6993f8;
-  --accent-fill: #2e64de;
-  --accent-soft: rgba(105, 147, 248, 0.2);
-  --success: #30d158;
-  --success-soft: rgba(48, 209, 88, 0.18);
-  --danger: #ff453a;
-  --danger-soft: rgba(255, 69, 58, 0.18);
-  --warning: #ff9f0a;
-  --gold: #ffd60a;
-  --bar-bg: rgba(8, 12, 22, 0.8);
-  --glass: rgba(17, 24, 39, 0.78);
-  --glass-border: rgba(148, 170, 210, 0.16);
-  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-  /* En sombre, un liseré à la place de l'ombre */
-  --shadow: 0 0 0 0.5px rgba(148, 170, 210, 0.12);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
-  --brand-green: #4caf6a;
-  --brand-blue: #628cf0;
-  --brand-solid: #1f4cc2;
-  --stroke-free: #3987e5;
-  --stroke-back: #199e70;
-  --stroke-breast: #9085e9;
-  --stroke-fly: #0ca30c;
-  --stroke-im: #d55181;
-  --stroke-free-tag: #2575d1;
-  --stroke-back-tag: #08855d;
-  --stroke-breast-tag: #7467c8;
-  --stroke-fly-tag: #058805;
-  --stroke-im-tag: #c74475;
-  --chart-line: #3987e5;
-  --chart-2: #d95926;
-  --chart-3: #199e70;
-  --chart-grid: rgba(225, 232, 245, 0.1);
-  --chart-goal: #ffd60a;
 }
 
 *,
@@ -319,7 +219,7 @@ a {
     transform: translateY(-1px);
     box-shadow:
       var(--shadow),
-      0 10px 28px rgba(12, 20, 36, 0.08);
+      0 10px 28px rgba(24, 24, 27, 0.08);
   }
 }
 
@@ -1069,16 +969,6 @@ a.row:active {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
-:root[data-theme='dark'] .segmented button.active {
-  background: var(--card-3);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .segmented button.active {
-    background: var(--card-3);
-  }
-}
-
 .chips {
   display: flex;
   gap: 8px;
@@ -1397,28 +1287,8 @@ textarea.textinput {
   animation: sheet-up 0.38s var(--ease);
 }
 
-:root[data-theme='light'] .sheet,
-:root:not([data-theme='dark']) .sheet {
-  background: #f2f2f7;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .sheet {
-    background: #1c1c1e;
-  }
-  :root:not([data-theme='light']) .sheet .list,
-  :root:not([data-theme='light']) .sheet .card {
-    background: #2c2c2e;
-  }
-}
-
-:root[data-theme='dark'] .sheet {
-  background: #1c1c1e;
-}
-
-:root[data-theme='dark'] .sheet .list,
-:root[data-theme='dark'] .sheet .card {
-  background: #2c2c2e;
+.sheet {
+  background: var(--bg-solid);
 }
 
 .sheet.closing {
@@ -1538,16 +1408,6 @@ textarea.textinput {
   border-radius: 14px;
   background: var(--card);
   overflow: hidden;
-}
-
-:root[data-theme='dark'] .action-sheet .group {
-  background: #2c2c2e;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .action-sheet .group {
-    background: #2c2c2e;
-  }
 }
 
 .action-sheet .msg {
@@ -3031,23 +2891,6 @@ button.meet-nav-btn:active {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .brand-logo .on-light {
-    display: none;
-  }
-  :root:not([data-theme='light']) .brand-logo .on-dark {
-    display: block;
-  }
-}
-
-:root[data-theme='dark'] .brand-logo .on-light {
-  display: none;
-}
-
-:root[data-theme='dark'] .brand-logo .on-dark {
-  display: block;
-}
-
 /* ---------------------------------------------------------- Club */
 
 .search-field {
@@ -3240,9 +3083,29 @@ button.meet-nav-btn:active {
   color: #fff;
 }
 
+.heat-end {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
 .heat-time {
-  font-size: 16px;
+  font-family: var(--font-display);
+  font-size: 19px;
   font-weight: 600;
+}
+
+.heat-pts {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.heat-switch {
+  margin-bottom: 12px;
+}
+
+.heat-block + .heat-block {
+  margin-top: 16px;
 }
 
 .heat-cat {

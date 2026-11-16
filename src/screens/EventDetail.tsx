@@ -11,9 +11,7 @@ import { formatDate } from '../lib/dates';
 import { formatDelta, formatTime, pacePer100 } from '../lib/time';
 import { navigate } from '../router';
 import type { Course, Stroke } from '../store/types';
-import { openGoalForm } from './forms';
 import { findResultsNow } from './autoResults';
-import { GoalCard } from './Home';
 
 const COMPARE_COLORS = ['var(--chart-line)', 'var(--chart-2)', 'var(--chart-3)'];
 
@@ -27,9 +25,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
 
   const history = useMemo(() => eventHistory(data.swims, swimmerId, course, distance, stroke), [data.swims, swimmerId, course, distance, stroke]);
   const stats = useMemo(() => eventStats(history, include), [history, include]);
-  const goals = data.goals.filter(
-    (g) => g.swimmerId === swimmerId && g.course === course && g.distance === distance && g.stroke === stroke,
-  );
   const others = sortSwimmers(data.swimmers).filter(
     (s) => s.id !== swimmerId && data.swims.some((x) => x.swimmerId === s.id && x.course === course && x.distance === distance && x.stroke === stroke && countsForRecords(x, include)),
   );
@@ -65,7 +60,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
       })
       .filter((s): s is ChartSeries => !!s),
   ];
-  const goalCs = goals.length ? Math.max(...goals.map((g) => g.targetCs)) : null;
   const best = stats.best;
   const bestPts = best ? pointsFor(best, swimmer) : null;
   const otherCourse: Course = course === 'SCM' ? 'LCM' : 'SCM';
@@ -148,7 +142,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
               )}
 
               <div style={{ marginTop: 14 }}>
-                {series.length > 1 || goalCs ? (
+                {series.length > 1 ? (
                   <div className="legend" aria-hidden="true">
                     {series.map((s) => (
                       <span key={s.id}>
@@ -162,17 +156,10 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                         Record
                       </span>
                     )}
-                    {goalCs && (
-                      <span>
-                        <i className="dash" />
-                        Objectif {formatTime(goalCs)}
-                      </span>
-                    )}
                   </div>
                 ) : null}
                 <ProgressChart
                   series={series}
-                  goalCs={goalCs}
                   height={250}
                   ariaLabel={`Progression sur ${eventLabel(distance, stroke)} : ${valid.length} temps, record ${formatTime(best!.timeCs)}`}
                 />
@@ -238,38 +225,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
             </Section>
           </>
         )}
-
-        <Section
-          title="Objectif"
-          action={
-            <button className="section-link" onClick={() => openGoalForm({ swimmerId, preset: { distance, stroke, course } })}>
-              Ajouter
-            </button>
-          }
-        >
-          {goals.length ? (
-            <div className="stack">
-              {goals.map((g) => (
-                <GoalCard key={g.id} goal={g} />
-              ))}
-            </div>
-          ) : (
-            <button
-              className="card pad"
-              style={{ display: 'block', width: '100%', border: 0, textAlign: 'left' }}
-              onClick={() => openGoalForm({ swimmerId, preset: { distance, stroke, course } })}
-            >
-              <span className="hstack">
-                <Icon name="target" style={{ width: 26, height: 26, color: 'var(--accent)' }} />
-                <span className="grow">
-                  <b>Fixer un objectif sur cette épreuve</b>
-                  <br />
-                  <span className="muted small">Temps limite, chrono à battre… avec estimation de la date d’atteinte.</span>
-                </span>
-              </span>
-            </button>
-          )}
-        </Section>
 
         {history.length > 0 && (
           <Section title="Historique" footer={`${history.length} course${history.length > 1 ? 's' : ''} sur cette épreuve.`}>

@@ -6,15 +6,14 @@ import { Icon } from '../components/Icon';
 import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { StrokeBars } from '../components/Chart';
 import { navigate } from '../router';
-import { chronoCompare, countsForRecords, goalAchievedDate, projectGoal, swimmerSummary, eventHistory } from '../lib/stats';
+import { chronoCompare, swimmerSummary } from '../lib/stats';
 import { formatDate, formatMonthYear, formatRange, formatShortWeekday, relativeDay, sportAge, todayISO, seasonLabel, seasonOf } from '../lib/dates';
 import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
-import { openGoalForm } from './forms';
 import { InstallBanner } from './Install';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
-import type { Goal, Swimmer } from '../store/types';
+import type { Swimmer } from '../store/types';
 
 import { capitalize, deName } from '../lib/text';
 
@@ -142,7 +141,6 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
   );
   const timeline = useTimeline(swimmer);
   const lastMeet = [...timeline].reverse().find((e) => e.startDate <= today);
-  const goals = data.goals.filter((g) => g.swimmerId === swimmer.id);
   const syncing = useSyncStatus() != null;
   const maxPts = Math.max(400, ...summary.strokePoints.map((s) => s.points ?? 0));
 
@@ -366,44 +364,6 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
             </Section>
           )}
 
-          <Section
-            title="Objectifs"
-            action={
-              <button className="section-link" onClick={() => openGoalForm({ swimmerId: swimmer.id })}>
-                Ajouter
-              </button>
-            }
-          >
-            {goals.length === 0 ? (
-              <button
-                className="card pad"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  width: '100%',
-                  border: 0,
-                  textAlign: 'left',
-                }}
-                onClick={() => openGoalForm({ swimmerId: swimmer.id })}
-              >
-                <span className="empty-icon" style={{ width: 48, height: 48, borderRadius: 14 }}>
-                  <Icon name="target" style={{ width: 26, height: 26 }} />
-                </span>
-                <div className="grow">
-                  <div style={{ fontWeight: 600 }}>Fixez un objectif</div>
-                  <div className="muted small">Un temps limite, un chrono à battre… l’application estime quand il sera atteint.</div>
-                </div>
-              </button>
-            ) : (
-              <div className="stack">
-                {goals.map((g) => (
-                  <GoalCard key={g.id} goal={g} />
-                ))}
-              </div>
-            )}
-          </Section>
-
           {summary.races > 0 && (
             <Section title="Profil de nageur" footer="Meilleur score World Aquatics obtenu dans chaque nage (indicatif).">
               <div className="card pad">
@@ -525,65 +485,3 @@ function ClubCard() {
   );
 }
 
-export function GoalCard({ goal }: { goal: Goal }) {
-  const data = useData();
-  const include = data.settings.includeTraining;
-  const history = eventHistory(data.swims, goal.swimmerId, goal.course, goal.distance, goal.stroke);
-  const valid = history.filter((s) => countsForRecords(s, include));
-  const best = valid.length ? Math.min(...valid.map((s) => s.timeCs!)) : null;
-  const first = valid.length ? valid[0].timeCs! : null;
-  const achieved = goalAchievedDate(goal, data.swims, include);
-  const remaining = best != null ? best - goal.targetCs : null;
-  // Progression : du premier temps vers l'objectif
-  let pct = 0;
-  if (achieved) pct = 100;
-  else if (best != null && first != null && first > goal.targetCs)
-    pct = Math.max(0, Math.min(99, ((first - best) / (first - goal.targetCs)) * 100));
-  const projection = !achieved ? projectGoal(history, goal.targetCs, include) : null;
-
-  return (
-    <button
-      className="card pad"
-      style={{ display: 'block', width: '100%', border: 0, textAlign: 'left' }}
-      onClick={() => navigate(`/event/${goal.swimmerId}/${goal.course}/${goal.distance}/${goal.stroke}`)}
-    >
-      <div className="hstack">
-        <StrokeTag stroke={goal.stroke} distance={goal.distance} size={36} />
-        <div className="grow">
-          <div style={{ fontWeight: 600 }}>
-            {goal.label || `${eventLabel(goal.distance, goal.stroke)} en ${formatTime(goal.targetCs)}`}
-          </div>
-          <div className="muted small">
-            {eventLabel(goal.distance, goal.stroke)} · {courseLabel(goal.course)} · objectif {formatTime(goal.targetCs)}
-            {goal.deadline && ` · avant le ${formatDate(goal.deadline)}`}
-          </div>
-        </div>
-        <span
-          className="icon-btn"
-          role="button"
-          aria-label="Modifier l’objectif"
-          onClick={(e) => {
-            e.stopPropagation();
-            openGoalForm({ goal, swimmerId: goal.swimmerId });
-          }}
-        >
-          <Icon name="edit" style={{ width: 20, height: 20 }} />
-        </span>
-      </div>
-      <div className={`meter${achieved ? ' gold' : ''}`} style={{ marginTop: 12 }}>
-        <div style={{ width: `${pct}%` }} />
-      </div>
-      <div className="hstack between small" style={{ marginTop: 8 }}>
-        <span className="muted">{best != null ? `Record : ${formatTime(best)}` : 'Pas encore de temps'}</span>
-        <span style={{ fontWeight: 600 }} className={achieved ? 'gold' : ''}>
-          {achieved ? `🏆 Atteint le ${formatDate(achieved)}` : remaining != null ? `Encore ${formatTime(remaining)}` : ''}
-        </span>
-      </div>
-      {projection && (
-        <div className="small" style={{ marginTop: 6, color: 'var(--accent)' }}>
-          📈 Au rythme actuel : atteint vers {formatMonthYear(projection)}
-        </div>
-      )}
-    </button>
-  );
-}
