@@ -19,20 +19,27 @@
   --fill-2: rgba(120, 120, 128, 0.2);
   --separator: rgba(60, 60, 67, 0.18);
   --text: #000000;
-  --text-2: rgba(60, 60, 67, 0.62);
-  --text-3: rgba(60, 60, 67, 0.36);
-  --accent: #007aff;
+  /* Contrastes vérifiés (WCAG AA, 4,5:1) sur le fond gris #f2f2f7 et les cartes blanches */
+  --text-2: rgba(60, 60, 67, 0.74);
+  --text-3: rgba(60, 60, 67, 0.45);
+  /* Bleu du logo ESN : liens, boutons, onglet actif */
+  --accent: #2357d0;
+  --accent-fill: #2357d0;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(0, 122, 255, 0.12);
-  --success: #248a3d;
+  --accent-soft: rgba(35, 87, 208, 0.12);
+  --success: #117e32;
   --success-soft: rgba(52, 199, 89, 0.16);
   --danger: #d70015;
   --danger-soft: rgba(255, 59, 48, 0.12);
   --warning: #b25000;
-  --gold: #b88600;
+  --gold: #876203;
   --gold-bg: linear-gradient(135deg, #ffd85c, #f5b301);
   --gold-ink: #3d2b00;
-  --bar-bg: rgba(249, 249, 249, 0.82);
+  --bar-bg: rgba(242, 242, 247, 0.8);
+  /* Verre dépoli de la barre d'onglets flottante */
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.18);
   /* Identité ESN Seraing : vert du club + bleu du « S » */
@@ -67,7 +74,9 @@
   --radius: 14px;
   --radius-sm: 10px;
   --radius-lg: 20px;
-  --tabbar-h: 56px;
+  --tabbar-h: 62px;
+  /* Espace sous la barre d'onglets flottante (au-dessus de la barre d'accueil de l'iPhone) */
+  --tabbar-gap: max(10px, calc(var(--safe-bottom) - 6px));
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -88,16 +97,20 @@
     --separator: rgba(84, 84, 88, 0.55);
     --text: #ffffff;
     --text-2: rgba(235, 235, 245, 0.62);
-    --text-3: rgba(235, 235, 245, 0.32);
-    --accent: #0a84ff;
-    --accent-soft: rgba(10, 132, 255, 0.2);
+    --text-3: rgba(235, 235, 245, 0.45);
+    --accent: #6993f8;
+    --accent-fill: #2e64de;
+    --accent-soft: rgba(105, 147, 248, 0.2);
     --success: #30d158;
     --success-soft: rgba(48, 209, 88, 0.18);
     --danger: #ff453a;
     --danger-soft: rgba(255, 69, 58, 0.18);
     --warning: #ff9f0a;
     --gold: #ffd60a;
-    --bar-bg: rgba(22, 22, 24, 0.8);
+    --bar-bg: rgba(22, 22, 24, 0.78);
+    --glass: rgba(36, 36, 40, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow: none;
     --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
     --brand-green: #4caf6a;
@@ -132,16 +145,20 @@
   --separator: rgba(84, 84, 88, 0.55);
   --text: #ffffff;
   --text-2: rgba(235, 235, 245, 0.62);
-  --text-3: rgba(235, 235, 245, 0.32);
-  --accent: #0a84ff;
-  --accent-soft: rgba(10, 132, 255, 0.2);
+  --text-3: rgba(235, 235, 245, 0.45);
+  --accent: #6993f8;
+  --accent-fill: #2e64de;
+  --accent-soft: rgba(105, 147, 248, 0.2);
   --success: #30d158;
   --success-soft: rgba(48, 209, 88, 0.18);
   --danger: #ff453a;
   --danger-soft: rgba(255, 69, 58, 0.18);
   --warning: #ff9f0a;
   --gold: #ffd60a;
-  --bar-bg: rgba(22, 22, 24, 0.8);
+  --bar-bg: rgba(22, 22, 24, 0.78);
+  --glass: rgba(36, 36, 40, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: none;
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.6);
   --brand-green: #4caf6a;
@@ -246,7 +263,7 @@ a {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 8px calc(16px + var(--safe-right)) calc(var(--tabbar-h) + var(--safe-bottom) + 32px)
+  padding: 8px calc(16px + var(--safe-right)) calc(var(--tabbar-h) + var(--tabbar-gap) + 28px)
     calc(16px + var(--safe-left));
   animation: page-in 0.32s var(--ease);
 }
@@ -273,14 +290,17 @@ a {
   top: 0;
   z-index: 30;
   padding: calc(var(--safe-top) + 6px) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
-  background: var(--bar-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  background: transparent;
   border-bottom: 0.5px solid transparent;
-  transition: border-color 0.2s;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s;
 }
 
 .navbar.scrolled {
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   border-bottom-color: var(--separator);
 }
 
@@ -399,17 +419,34 @@ a {
 
 .tabbar {
   position: fixed;
+  left: calc(10px + var(--safe-left));
+  right: calc(10px + var(--safe-right));
+  bottom: var(--tabbar-gap);
+  z-index: 40;
+  display: flex;
+  gap: 2px;
+  max-width: 520px;
+  height: var(--tabbar-h);
+  margin: 0 auto;
+  padding: 4px;
+  border: 0.5px solid var(--glass-border);
+  border-radius: 28px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Fondu sous la barre flottante : le contenu qui défile ne s'arrête pas net */
+.tabbar-fade {
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 40;
-  display: flex;
-  justify-content: space-around;
-  padding: 6px calc(4px + var(--safe-right)) calc(var(--safe-bottom) + 4px) calc(4px + var(--safe-left));
-  background: var(--bar-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
-  border-top: 0.5px solid var(--separator);
+  z-index: 39;
+  height: calc(var(--tabbar-h) + var(--tabbar-gap) + 12px);
+  background: linear-gradient(to top, var(--bg-solid) 25%, transparent);
+  pointer-events: none;
 }
 
 .tab {
@@ -417,23 +454,35 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  max-width: 120px;
-  padding: 2px 0;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 1px;
   border: 0;
-  background: none;
-  color: var(--text-3);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition:
+    background-color 0.2s var(--ease),
+    color 0.2s var(--ease),
+    transform 0.15s var(--ease);
 }
 
 .tab svg {
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
+}
+
+.tab:active {
+  transform: scale(0.94);
 }
 
 .tab.active {
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
@@ -442,7 +491,8 @@ a {
 }
 
 @media (min-width: 900px) {
-  .tabbar {
+  .tabbar,
+  .tabbar-fade {
     display: none;
   }
   .page {
@@ -496,11 +546,9 @@ a {
     background: var(--fill);
   }
   .side-item.active {
-    background: var(--accent);
-    color: #fff;
-  }
-  .side-item.active svg {
-    color: #fff;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
   }
   .sidebar-foot {
     margin-top: auto;
@@ -639,7 +687,7 @@ a.row:active {
   height: 30px;
   border-radius: 8px;
   color: #fff;
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 
 .row-icon svg {
@@ -817,7 +865,7 @@ a.row:active {
   padding: 0 20px;
   border: 0;
   border-radius: 14px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-ink);
   font-size: 17px;
   font-weight: 600;
@@ -877,7 +925,7 @@ a.row:active {
 .fab {
   position: fixed;
   right: calc(18px + var(--safe-right));
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 22px);
+  bottom: calc(var(--tabbar-h) + var(--tabbar-gap) + 16px);
   z-index: 35;
   display: inline-flex;
   align-items: center;
@@ -886,7 +934,7 @@ a.row:active {
   padding: 0 22px 0 18px;
   border: 0;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
   font-size: 16px;
   font-weight: 700;
@@ -1206,7 +1254,7 @@ textarea.textinput {
   height: 0.85em;
   margin-left: 2px;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--accent-fill);
   vertical-align: -0.06em;
   animation: blink 1s steps(1) infinite;
 }
@@ -1801,7 +1849,7 @@ textarea.textinput {
 .meter > div {
   height: 100%;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-fill);
   transition: width 0.6s var(--ease);
 }
 
@@ -2200,7 +2248,7 @@ textarea.textinput {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -2212,7 +2260,7 @@ textarea.textinput {
   gap: 8px;
   padding: 10px 16px;
   border-radius: 12px;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff !important;
   font-weight: 700;
   cursor: grab;
@@ -2267,7 +2315,7 @@ textarea.textinput {
 
 .check.on {
   border-color: var(--accent);
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 
 .check svg {
@@ -2568,7 +2616,7 @@ textarea.textinput {
 }
 
 .date-block.accent {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -3116,7 +3164,7 @@ button.meet-nav-btn:active {
 }
 
 .heat-row.mine .lane {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 

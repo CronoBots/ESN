@@ -177,6 +177,7 @@ export function App() {
       <div className="main" key={route.path.join('/') || 'home'}>
         <Screen path={route.path} />
       </div>
+      <div className="tabbar-fade" aria-hidden="true" />
       <nav className="tabbar" aria-label="Navigation principale">
         {TABS.map((t) => (
           <button key={t.id} className={`tab${tab === t.id ? ' active' : ''}`} onClick={() => navigate(t.path)} aria-current={tab === t.id ? 'page' : undefined}>
