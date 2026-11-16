@@ -5,8 +5,12 @@ import type { Roster } from '../lib/roster';
 import { CLUB } from '../club';
 import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
 import { uid } from '../lib/id';
+import { idbGet, idbPut, openDb } from './idb';
 
+/** Ancien emplacement (localStorage) : lu une fois pour la reprise, puis effacé. Sert aussi de repli. */
 const STORAGE_KEY = 'nageo:data:v1';
+/** Clé des données dans IndexedDB. */
+const DATA_KEY = 'data';
 
 /**
  * Version de la lecture de la liste du club. 2 : anciens membres. Une liste
@@ -63,12 +67,105 @@ let saveError: string | null = null;
 let batching = 0;
 let dirty = false;
 
+/**
+ * Où les données sont enregistrées : IndexedDB dès que la base est ouverte
+ * (initStore), sinon localStorage (navigateur sans IndexedDB, tests).
+ */
+let backend: 'local' | 'idb' = 'local';
+let db: IDBDatabase | null = null;
+let writing = false;
+let rewrite = false;
+
+/** Autres onglets ouverts : prévenus après chaque enregistrement pour relire les données. */
+const channel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('esn-data') : null;
+
+function notify() {
+  listeners.forEach((l) => l());
+}
+
+/** Une écriture à la fois ; si l'état change pendant ce temps, on réécrit la dernière version ensuite. */
+function writeIdb() {
+  if (writing) {
+    rewrite = true;
+    return;
+  }
+  writing = true;
+  idbPut(db!, DATA_KEY, state)
+    .then(() => {
+      saveError = null;
+      channel?.postMessage('saved');
+    })
+    .catch((e) => {
+      saveError = e instanceof Error ? e.message : String(e);
+    })
+    .finally(() => {
+      writing = false;
+      if (rewrite) {
+        rewrite = false;
+        writeIdb();
+      }
+    });
+}
+
 function persist() {
+  if (backend === 'idb' && db) {
+    writeIdb();
+    return;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     saveError = null;
   } catch (e) {
     saveError = e instanceof Error ? e.message : String(e);
+  }
+}
+
+/**
+ * Ouvre IndexedDB et y charge les données, avant le premier affichage.
+ * Reprise : des données encore dans localStorage (ancienne version de
+ * l'application, ou session où IndexedDB était indisponible) sont les plus
+ * récentes ; elles passent dans IndexedDB, puis l'ancienne copie est effacée.
+ * Si la base tarde (certains iPhone au premier lancement), l'application
+ * démarre quand même et la charge dès qu'elle répond.
+ */
+export async function initStore(timeoutMs = 5000): Promise<void> {
+  const opening = openDb();
+  const first = await Promise.race([opening, new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), timeoutMs))]);
+  if (first === 'timeout') {
+    void opening.then((d) => d && attach(d));
+    return;
+  }
+  if (first) await attach(first);
+}
+
+async function attach(d: IDBDatabase) {
+  try {
+    let local = false;
+    try {
+      local = localStorage.getItem(STORAGE_KEY) != null;
+    } catch {
+      /* localStorage inaccessible */
+    }
+    if (local) {
+      await idbPut(d, DATA_KEY, state);
+    } else {
+      const stored = await idbGet<unknown>(d, DATA_KEY);
+      if (stored) state = normalizeData(stored);
+    }
+    db = d;
+    backend = 'idb';
+    if (local) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* sans effet : la copie IndexedDB fait foi */
+      }
+    }
+    notify();
+    // Demande au navigateur de ne pas effacer ces données en cas de manque de place
+    navigator.storage?.persist?.().catch(() => {});
+  } catch {
+    /* IndexedDB inutilisable : on reste sur localStorage */
   }
 }
 
@@ -112,10 +209,20 @@ function subscribe(l: () => void) {
 // Synchronisation entre onglets
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY) {
+    if (backend === 'local' && e.key === STORAGE_KEY) {
       state = load();
-      listeners.forEach((l) => l());
+      notify();
     }
+  });
+  channel?.addEventListener('message', () => {
+    if (!db) return;
+    idbGet<unknown>(db, DATA_KEY)
+      .then((stored) => {
+        if (!stored) return;
+        state = normalizeData(stored);
+        notify();
+      })
+      .catch(() => {});
   });
 }
 

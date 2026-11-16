@@ -67,7 +67,7 @@ Stack : React 19, TypeScript, Vite. Aucune dépendance d'exécution en dehors de
 ```
 src/
   lib/          logique métier (temps, épreuves, points, statistiques, résultats en direct, liste du club, calendrier)
-  store/        données (localStorage), actions, exemple de démonstration
+  store/        données (IndexedDB, repli localStorage), actions, exemple de démonstration
   components/   design system (barres, listes, feuilles, graphiques, séries en direct)
   screens/      écrans de l'application
 tests/          tests Vitest

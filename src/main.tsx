@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { initStore } from './store/store';
 // Polices embarquées (fonctionnent hors-ligne) : Barlow pour le texte, Barlow Condensed pour les titres et les temps
 import '@fontsource/barlow/latin-400.css';
 import '@fontsource/barlow/latin-500.css';
@@ -11,19 +12,24 @@ import '@fontsource/barlow-condensed/latin-700.css';
 import './styles/global.css';
 
 // Écran d'ouverture (logo) : visible au moins 0,9 s depuis le lancement, puis fondu
-const splash = document.getElementById('splash');
-if (splash) {
+function hideSplash() {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
   setTimeout(() => {
     splash.classList.add('hide');
     setTimeout(() => splash.remove(), 400);
   }, Math.max(0, 900 - performance.now()));
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Données lues dans IndexedDB avant le premier affichage (sous l'écran d'ouverture)
+initStore().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+  hideSplash();
+});
 
 // Service worker : application disponible hors-ligne (production uniquement)
 if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureContext) {
