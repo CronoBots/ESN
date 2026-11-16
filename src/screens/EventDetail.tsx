@@ -37,7 +37,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
       id: swimmer.id,
       label: swimmer.firstName,
       color: COMPARE_COLORS[0],
-      bestLine: compareIds.length === 0,
       points: valid.map((s) => ({
         date: s.date,
         cs: s.timeCs!,

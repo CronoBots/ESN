@@ -14,8 +14,6 @@ export interface ChartSeries {
   label: string;
   color: string;
   points: ChartPoint[];
-  /** Affiche la courbe « record » en escalier (meilleur temps à date). */
-  bestLine?: boolean;
 }
 
 const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -202,25 +200,9 @@ export function ProgressChart({
           const area = single
             ? `${path}L${pts[pts.length - 1].x.toFixed(1)},${pad.top + innerH}L${pts[0].x.toFixed(1)},${pad.top + innerH}Z`
             : null;
-          // Escalier du record
-          let best = Infinity;
-          const stepPts: string[] = [];
-          if (s.bestLine) {
-            pts.forEach((p, i) => {
-              if (p.p.cs < best) {
-                if (i > 0) stepPts.push(`L${p.x.toFixed(1)},${sy(best).toFixed(1)}`);
-                best = p.p.cs;
-                stepPts.push(`${i ? 'L' : 'M'}${p.x.toFixed(1)},${sy(best).toFixed(1)}`);
-              }
-            });
-            stepPts.push(`L${(width - pad.right).toFixed(1)},${sy(best).toFixed(1)}`);
-          }
           return (
             <g key={s.id}>
               {area && <path d={area} fill={s.color} opacity={0.1} />}
-              {s.bestLine && (
-                <path d={stepPts.join('')} fill="none" stroke="var(--text-3)" strokeWidth={1.5} strokeLinejoin="round" />
-              )}
               <path d={path} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
               {pts.map((p, i) => (
                 <circle
@@ -239,7 +221,7 @@ export function ProgressChart({
 
         {activeT != null && (
           <g pointerEvents="none">
-            <line x1={sx(activeT)} x2={sx(activeT)} y1={pad.top} y2={pad.top + innerH} stroke="var(--text-3)" strokeWidth={1} />
+            <line x1={sx(activeT)} x2={sx(activeT)} y1={pad.top} y2={pad.top + innerH} stroke="var(--text-3)" strokeWidth={1} strokeDasharray="3 3" />
             {readout.map(({ s, p }) =>
               p ? <circle key={s.id} cx={sx(p.t)} cy={sy(p.cs)} r={6} fill={s.color} stroke="var(--card)" strokeWidth={2} /> : null,
             )}
