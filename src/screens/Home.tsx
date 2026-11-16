@@ -84,15 +84,12 @@ export function Home() {
                 className={s.id === swimmer.id ? 'active' : ''}
                 onClick={() => actions.selectSwimmer(s.id)}
               >
-                <Avatar swimmer={s} size={52} />
+                <Avatar swimmer={s} size={30} />
                 <span className="name">{s.firstName}</span>
               </button>
             ))}
-            <button onClick={() => openFollow()} aria-label="Suivre d’autres nageurs">
-              <span className="add">
-                <Icon name="plus" style={{ width: 22, height: 22 }} />
-              </span>
-              <span className="name">Suivre</span>
+            <button className="add" onClick={() => openFollow()} aria-label="Suivre d’autres nageurs" title="Suivre d’autres nageurs">
+              <Icon name="plus" />
             </button>
           </div>
         )}

@@ -23,7 +23,8 @@ const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'aoû
 /**
  * Courbe de progression : axe vertical naturel (plus rapide = plus bas, la
  * courbe descend quand le temps s'améliore),
- * axe horizontal temporel, réticule + infobulle au survol / toucher / clavier.
+ * axe horizontal temporel, réticule au survol / toucher / clavier et lecture
+ * des temps au-dessus du tracé (jamais par-dessus les courbes).
  */
 export function ProgressChart({
   series,
@@ -131,11 +132,40 @@ export function ProgressChart({
   };
 
   const activeT = active != null ? xs[active] : null;
-  const activePoints = activeT != null ? flat.filter((p) => p.t === activeT) : [];
   const single = series.length === 1;
+  // Lecture : pour chaque série, son temps à la date pointée (ou le dernier
+  // connu avant), sinon son dernier temps. Hors du tracé : rien ne le masque.
+  const readout = series.map((s, si) => {
+    const pts = flat.filter((p) => p.si === si);
+    const at = activeT == null ? pts[pts.length - 1] : [...pts].reverse().find((p) => p.t <= activeT);
+    return { s, p: at, exact: activeT == null || at?.t === activeT };
+  });
 
   return (
     <div className="chart" ref={wrapRef}>
+      <div className={`chart-readout${single ? ' single' : ''}`}>
+        {readout.map(({ s, p, exact }) => (
+          <div key={s.id} className={`readout-row${exact ? '' : ' before'}`}>
+            {!single && <span className="line-key" style={{ background: s.color }} aria-hidden="true" />}
+            <span className="readout-value tnum">{p ? formatTime(p.cs) : '—'}</span>
+            <span className="readout-body">
+              <span className="readout-title">
+                <span className="t">{single ? (p?.label ?? (p ? formatDate(p.date) : '')) : s.label}</span>
+                {p?.pb && <span className="badge pb">PB</span>}
+              </span>
+              <span className="readout-sub">
+                {!p
+                  ? 'pas encore de temps à cette date'
+                  : single
+                    ? p.label
+                      ? formatDate(p.date)
+                      : ''
+                    : [formatDate(p.date), p.label].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
       <svg
         width={width}
         height={height}
@@ -183,7 +213,8 @@ export function ProgressChart({
           </g>
         )}
 
-        {series.map((s) => {
+        {/* Le nageur principal (1re série) est dessiné en dernier : jamais caché par un autre */}
+        {[...series].reverse().map((s) => {
           const pts = s.points.map((p) => ({
             x: sx(fromISO(p.date).getTime()),
             y: sy(p.cs),
@@ -232,47 +263,12 @@ export function ProgressChart({
         {activeT != null && (
           <g pointerEvents="none">
             <line x1={sx(activeT)} x2={sx(activeT)} y1={pad.top} y2={pad.top + innerH} stroke="var(--text-3)" strokeWidth={1} />
-            {activePoints.map((p, i) => (
-              <circle key={i} cx={sx(p.t)} cy={sy(p.cs)} r={6} fill={series[p.si].color} stroke="var(--card)" strokeWidth={2} />
-            ))}
+            {readout.map(({ s, p }) =>
+              p ? <circle key={s.id} cx={sx(p.t)} cy={sy(p.cs)} r={6} fill={s.color} stroke="var(--card)" strokeWidth={2} /> : null,
+            )}
           </g>
         )}
       </svg>
-      {activeT != null && activePoints.length > 0 && (
-        <div
-          className="chart-tip"
-          style={{
-            left: Math.min(Math.max(sx(activeT), 75), width - 75),
-            top: Math.max(0, Math.min(...activePoints.map((p) => sy(p.cs))) - 74),
-          }}
-        >
-          {activePoints.map((p, i) => (
-            <div key={i}>
-              <div className="v">
-                {!single && <span className="line-key" style={{ background: series[p.si].color }} />}
-                {formatTime(p.cs)}
-                {p.pb && (
-                  <span className="badge pb" style={{ marginLeft: 6 }}>
-                    PB
-                  </span>
-                )}
-              </div>
-              <div className="k">
-                {!single && `${series[p.si].label} · `}
-                {formatDate(p.date)}
-              </div>
-              {p.label && (
-                <div
-                  className="k"
-                  style={{ maxWidth: 200, whiteSpace: 'normal' }}
-                >
-                  {p.label}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

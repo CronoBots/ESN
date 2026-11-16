@@ -322,7 +322,7 @@ p,
 .large-brand {
   display: flex;
   justify-content: center;
-  padding: 22px 0 6px;
+  padding: 26px 0 10px;
 }
 
 .large-title-row {
@@ -1583,62 +1583,87 @@ textarea.textinput {
   user-select: none;
 }
 
+/* Accueil : nageurs suivis en pastilles, centrées sous le logo ; au-delà de
+   la largeur de l'écran, la rangée défile jusqu'aux bords avec un fondu */
 .switcher {
   display: flex;
-  gap: 14px;
+  gap: 8px;
+  margin: 0 calc(-16px - var(--safe-right)) 0 calc(-16px - var(--safe-left));
+  padding: 6px calc(16px + var(--safe-right)) 10px calc(16px + var(--safe-left));
   overflow-x: auto;
-  padding: 6px 2px 4px;
   scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
 
 .switcher::-webkit-scrollbar {
   display: none;
 }
 
+/* Centrage sans couper le début de la rangée quand elle déborde */
+.switcher > :first-child {
+  margin-left: auto;
+}
+
+.switcher > :last-child {
+  margin-right: auto;
+}
+
 .switcher button {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   flex-shrink: 0;
-  width: 64px;
+  height: 40px;
+  padding: 0 14px 0 5px;
   border: 0;
-  background: none;
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 0 0 0.5px var(--separator), 0 1px 3px rgba(24, 24, 27, 0.08);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .switcher button .avatar {
-  outline: 2.5px solid transparent;
-  outline-offset: 2px;
-  transition: outline-color 0.2s;
+  font-size: 11px !important;
 }
 
 .switcher button.active {
-  color: var(--text);
-  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(35, 87, 208, 0.3);
 }
 
 .switcher button.active .avatar {
-  outline-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
-.switcher .add {
-  display: inline-flex;
-  align-items: center;
+.switcher button.add {
   justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 1.5px dashed var(--text-3);
+  width: 40px;
+  padding: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--separator);
   color: var(--text-2);
 }
 
+.switcher button.add svg {
+  width: 20px;
+  height: 20px;
+}
+
+.switcher button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .switcher .name {
-  max-width: 72px;
-  overflow-wrap: break-word;
-  text-align: center;
+  max-width: 140px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Tuiles statistiques */
@@ -1874,6 +1899,82 @@ textarea.textinput {
   margin-right: 6px;
   border-radius: 1px;
   vertical-align: middle;
+}
+
+/* Lecture du graphique de progression : au-dessus du tracé, hauteur fixe
+   (une ligne par série), pour ne jamais masquer les courbes */
+.chart-readout {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 10px;
+  padding: 0 4px 10px;
+}
+
+.chart-readout.single {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* Les lignes partagent les colonnes : les temps s'alignent d'une série à l'autre */
+.readout-row {
+  display: contents;
+}
+
+.readout-row .line-key {
+  width: 14px;
+  height: 3px;
+  margin: 0;
+  border-radius: 2px;
+}
+
+.readout-value {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.readout-body {
+  display: grid;
+  min-width: 0;
+  min-height: 34px;
+  align-content: center;
+}
+
+.readout-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.readout-title .t {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.readout-title .badge {
+  flex-shrink: 0;
+}
+
+.readout-sub {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Série sans temps à la date pointée : son dernier temps connu, en retrait */
+.readout-row.before .readout-value {
+  color: var(--text-2);
 }
 
 .legend {

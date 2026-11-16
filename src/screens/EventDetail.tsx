@@ -122,7 +122,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
 
               {others.length > 0 && (
                 <div className="chips" style={{ marginTop: 14 }}>
-                  <span className="muted small" style={{ alignSelf: 'center', marginRight: 2 }}>
+                  <span className="muted small" style={{ alignSelf: 'center', marginRight: 2, whiteSpace: 'nowrap', flexShrink: 0 }}>
                     Comparer :
                   </span>
                   {others.map((o) => {
@@ -142,22 +142,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
               )}
 
               <div style={{ marginTop: 14 }}>
-                {series.length > 1 ? (
-                  <div className="legend" aria-hidden="true">
-                    {series.map((s) => (
-                      <span key={s.id}>
-                        <i style={{ background: s.color }} />
-                        {s.label}
-                      </span>
-                    ))}
-                    {series.length === 1 && (
-                      <span>
-                        <i style={{ background: 'var(--text-3)' }} />
-                        Record
-                      </span>
-                    )}
-                  </div>
-                ) : null}
                 <ProgressChart
                   series={series}
                   height={250}
