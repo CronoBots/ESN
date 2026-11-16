@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { goBack } from '../router';
 import { STROKE_BY_ID } from '../lib/events';
@@ -267,18 +267,11 @@ export function NavBar({
   left?: ReactNode;
   wide?: boolean;
 }) {
-  const [scrolled, setScrolled] = useState(false);
-  // Titre en grand dans la page ; la barre ne le montre (en petit) qu'en défilant
+  // Titre en grand dans la page ; sans titre en grand (fiches), il s'affiche dans la ligne des boutons
   const bigTitle = large;
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > (bigTitle ? 38 : 4));
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [bigTitle]);
   return (
     <>
-      <header className={`navbar${scrolled ? ' scrolled' : ''}${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}`}>
+      <header className={`navbar${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}`}>
         <div className="navbar-row">
           <div className="navbar-left">
             {back ? (

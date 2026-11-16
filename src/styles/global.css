@@ -251,28 +251,14 @@ p,
 /* ------------------------------------------------------------- Nav bar */
 
 /*
- * Barre du haut à la manière des apps d'Apple : au repos, seulement les boutons et le titre en grand
- * sur le fond clair de la page (le haut de l'écran, sous l'heure et la batterie, garde cette couleur
- * claire : rien à flouter) ; en défilant, une barre claire translucide apparaît avec le titre en petit.
+ * Pas de barre en haut de l'écran : les boutons (retour, ajouter…) et le titre défilent avec la page.
+ * Le contenu passe sous l'heure et la batterie et y reste visible, comme dans les apps d'iOS.
  */
 .navbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  position: relative;
+  z-index: 1;
   padding: calc(var(--safe-top) + 6px) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
-  border-bottom: 0.5px solid transparent;
-  background: transparent;
   color: var(--text);
-  transition:
-    background-color 0.2s,
-    border-color 0.2s;
-}
-
-.navbar.scrolled {
-  border-bottom-color: var(--separator);
-  background: var(--bar-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
 }
 
 .navbar-row {
@@ -304,7 +290,6 @@ p,
   transition: opacity 0.2s, transform 0.2s;
 }
 
-.navbar.scrolled .navbar-title,
 .navbar.no-large .navbar-title {
   opacity: 1;
   transform: none;
