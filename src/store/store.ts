@@ -140,7 +140,12 @@ export interface ImportReport {
 /* Outils d'import                                                           */
 /* ------------------------------------------------------------------------ */
 
-const normMeet = (t?: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9à-ÿ]/g, '');
+const normMeet = (t?: string) =>
+  (t ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 const dayMs = 86400000;
 
 /** Retrouve une compétition existante (même nom, dates proches, même bassin). */

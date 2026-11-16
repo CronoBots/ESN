@@ -14,7 +14,7 @@ export function SwimBadges({ swim, pb }: { swim: Swim; pb?: PbInfo }) {
     <>
       {swim.context === 'training' && <span className="badge training">ENTR.</span>}
       {pb?.isPB && <span className="badge pb">PB</span>}
-      {pb?.isFirst && <span className="badge first">1er</span>}
+      {pb?.isFirst && <span className="badge first">1er temps</span>}
     </>
   );
 }

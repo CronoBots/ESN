@@ -85,11 +85,11 @@ export function SwimmerProfile({ id }: { id: string }) {
             {swimmer.birthYear && <Row title="Année de naissance" value={swimmer.birthYear} />}
             <Row title="Sexe" value={swimmer.gender === 'F' ? 'Fille' : 'Garçon'} />
             <div className="field">
-              <span className="label grow">Suivre ce nageur</span>
+              <span className="label grow">{swimmer.gender === 'F' ? 'Suivre cette nageuse' : 'Suivre ce nageur'}</span>
               <Toggle
                 on={swimmer.favorite || swimmer.relation === 'child'}
                 onChange={(v) => actions.follow(id, v)}
-                label="Suivre ce nageur"
+                label={swimmer.gender === 'F' ? 'Suivre cette nageuse' : 'Suivre ce nageur'}
               />
             </div>
           </div>

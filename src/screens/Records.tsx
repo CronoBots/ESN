@@ -282,6 +282,7 @@ export function Rankings() {
                 type="button"
                 role="switch"
                 aria-checked={sameYear}
+                aria-label={`Même année que ${selected.firstName} (${selected.birthYear})`}
                 className={`toggle${sameYear ? ' on' : ''}`}
                 onClick={() => setSameYear((v) => !v)}
               />
@@ -290,7 +291,7 @@ export function Rankings() {
           {hasFormer && (
             <label className="hstack between" style={{ padding: '12px 4px 4px', fontSize: 15 }}>
               <span>Anciens membres</span>
-              <button type="button" role="switch" aria-checked={withFormer} className={`toggle${withFormer ? ' on' : ''}`} onClick={toggleFormer} />
+              <button type="button" role="switch" aria-checked={withFormer} aria-label="Anciens membres" className={`toggle${withFormer ? ' on' : ''}`} onClick={toggleFormer} />
             </label>
           )}
         </div>

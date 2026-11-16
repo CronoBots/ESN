@@ -226,8 +226,8 @@ export function About() {
         </Section>
         <Section title="Vos données">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
-            Tout est enregistré <b>uniquement sur votre appareil</b> : pas de compte, pas de serveur, pas de publicité. Utilisez
-            « Sauvegarder mes données » pour garder une copie ou transférer vers un autre appareil.
+            Tout est enregistré <b>uniquement sur votre appareil</b>&nbsp;: pas de compte, pas de serveur, pas de publicité. Sur un autre
+            téléphone, il suffit d’entrer le code du club&nbsp;: tout revient automatiquement.
           </div>
         </Section>
         <Section title="Points World Aquatics">

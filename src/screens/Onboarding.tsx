@@ -4,7 +4,7 @@ import { BrandLogo } from '../components/ui';
 import { openClubCode, openFollowPicker } from './Club';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
-  { icon: 'download', title: 'Résultats officiels automatiques', text: 'Ajoutez votre enfant : ses résultats de compétition arrivent tout seuls.' },
+  { icon: 'download', title: 'Résultats officiels automatiques', text: 'Suivez votre enfant : ses résultats de compétition arrivent tout seuls.' },
   { icon: 'chart', title: 'Progression compétition après compétition', text: 'Points, records battus et courbes nage par nage, saison par saison.' },
   { icon: 'trophy', title: 'Records et classements', text: 'Meilleurs temps à vie ou de la saison, en 25\u00a0m et en 50\u00a0m.' },
   { icon: 'calendar', title: 'Programme des compétitions', text: 'Épreuves, séries, lignes, rappels dans le calendrier.' },

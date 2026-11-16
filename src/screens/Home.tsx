@@ -395,7 +395,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                   <div className="tile-label">Podiums</div>
                   <div className="tile-value">{summary.podiums}</div>
                   <div className="tile-sub">
-                    dont {summary.wins} victoire{summary.wins > 1 ? 's' : ''}
+                    {summary.podiums === 0 ? 'en compétition' : summary.wins === 0 ? 'pas encore de victoire' : `dont ${summary.wins} victoire${summary.wins > 1 ? 's' : ''}`}
                   </div>
                 </div>
               </div>

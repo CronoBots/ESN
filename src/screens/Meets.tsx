@@ -75,6 +75,11 @@ export function Meets() {
   }, [data.meets, timeline, today]);
 
   const pastCount = timeline.filter((e) => e.startDate <= today).length;
+  // Autres compétitions du club : les 12 derniers mois d'abord, tout l'historique sur demande
+  const [allOthers, setAllOthers] = useState(false);
+  const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+  const recentOthers = others.filter((m) => m.startDate >= yearAgo);
+  const shownOthers = allOthers || recentOthers.length === 0 ? others : recentOthers;
 
   return (
     <>
@@ -82,7 +87,7 @@ export function Meets() {
         title="Compétitions"
         subtitle={
           swimmer && pastCount > 0
-            ? `${pastCount} compétition${pastCount > 1 ? 's' : ''} ${deName(swimmer.firstName)}, résultats compris`
+            ? `${pastCount} compétition${pastCount > 1 ? 's' : ''} nagée${pastCount > 1 ? 's' : ''} par ${swimmer.firstName}`
             : undefined
         }
       />
@@ -179,9 +184,9 @@ export function Meets() {
         )}
 
         {others.length > 0 && (
-          <Section title={swimmer ? `Sans résultat ${deName(swimmer.firstName)}` : 'Compétitions passées'}>
+          <Section title={swimmer ? 'Autres compétitions du club' : 'Compétitions passées'}>
             <div className="list">
-              {others.map((m) => (
+              {shownOthers.map((m) => (
                 <button key={m.id} className="row" onClick={() => navigate(`/meet/${m.id}`)}>
                   <DateBlock iso={m.startDate} />
                   <div className="row-body">
@@ -194,6 +199,12 @@ export function Meets() {
                 </button>
               ))}
             </div>
+            {shownOthers.length < others.length && (
+              <button className="btn ghost block" style={{ marginTop: 10 }} onClick={() => setAllOthers(true)}>
+                Voir les {others.length - shownOthers.length} compétitions plus anciennes
+              </button>
+            )}
+            {swimmer && <div className="section-foot">Compétitions où d’autres nageurs de l’ESN ont nagé.</div>}
           </Section>
         )}
 
