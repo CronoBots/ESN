@@ -318,6 +318,13 @@ p,
   display: none;
 }
 
+/* Accueil : logo du club centré, un peu sous la zone floue de l'heure et de la batterie */
+.large-brand {
+  display: flex;
+  justify-content: center;
+  padding: 22px 0 6px;
+}
+
 .large-title-row {
   display: flex;
   align-items: center;

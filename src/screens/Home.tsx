@@ -28,7 +28,7 @@ export function Home() {
   if (noChild) {
     return (
       <>
-        <NavBar title="Accueil" aside={<BrandLogo height={46} />} />
+        <NavBar title="Accueil" brand={<BrandLogo height={64} />} />
         <main className="page">
           <Empty
             icon="person"
@@ -53,7 +53,7 @@ export function Home() {
   if (!swimmer) {
     return (
       <>
-        <NavBar title="Accueil" aside={<BrandLogo height={46} />} />
+        <NavBar title="Accueil" brand={<BrandLogo height={64} />} />
         <main className="page">
           <Empty
             icon="person"
@@ -72,7 +72,7 @@ export function Home() {
 
   return (
     <>
-      <NavBar title="Accueil" wide aside={<BrandLogo height={46} />} />
+      <NavBar title="Accueil" wide brand={<BrandLogo height={64} />} />
       <main className="page wide">
         {swimmers.length > 0 && (
           <div className="switcher" role="tablist" aria-label="Choisir un nageur">
