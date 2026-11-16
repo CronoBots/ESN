@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
 import { fullName, hasClubMembers, isActiveMember, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
-import { Avatar, Empty, NavBar, Section, StrokeTag } from '../components/ui';
+import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { StrokeBars } from '../components/Chart';
@@ -28,7 +28,7 @@ export function Home() {
   if (noChild) {
     return (
       <>
-        <NavBar title="Accueil" />
+        <NavBar title="Accueil" aside={<BrandLogo height={46} />} />
         <main className="page">
           <Empty
             icon="person"
@@ -53,7 +53,7 @@ export function Home() {
   if (!swimmer) {
     return (
       <>
-        <NavBar title="Accueil" />
+        <NavBar title="Accueil" aside={<BrandLogo height={46} />} />
         <main className="page">
           <Empty
             icon="person"
@@ -72,17 +72,9 @@ export function Home() {
 
   return (
     <>
-      <NavBar
-        title="Accueil"
-        wide
-        right={
-          <button className="icon-btn" aria-label="Suivre des nageurs" onClick={() => openFollow()}>
-            <Icon name="plus" />
-          </button>
-        }
-      />
+      <NavBar title="Accueil" wide aside={<BrandLogo height={46} />} />
       <main className="page wide">
-        {swimmers.length > 1 && (
+        {swimmers.length > 0 && (
           <div className="switcher" role="tablist" aria-label="Choisir un nageur">
             {swimmers.map((s) => (
               <button

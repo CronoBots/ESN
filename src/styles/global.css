@@ -313,6 +313,23 @@ p,
   padding: 0 calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left));
 }
 
+/* Grand titre sans bouton au-dessus (accueil, onglets) : la ligne vide des boutons disparaît */
+.navbar.empty .navbar-row {
+  display: none;
+}
+
+.large-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.large-title-row .brand-logo {
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
 .large-head.wide {
   max-width: 1080px;
 }

@@ -258,6 +258,7 @@ export function NavBar({
   right,
   left,
   wide,
+  aside,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -266,12 +267,14 @@ export function NavBar({
   right?: ReactNode;
   left?: ReactNode;
   wide?: boolean;
+  /** À droite du grand titre (logo de l'accueil). */
+  aside?: ReactNode;
 }) {
   // Titre en grand dans la page ; sans titre en grand (fiches), il s'affiche dans la ligne des boutons
   const bigTitle = large;
   return (
     <>
-      <header className={`navbar${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}`}>
+      <header className={`navbar${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}${bigTitle && !back && !left && !right ? ' empty' : ''}`}>
         <div className="navbar-row">
           <div className="navbar-left">
             {back ? (
@@ -292,7 +295,10 @@ export function NavBar({
       </header>
       {large && (
         <div className={`large-head${wide ? ' wide' : ''}`}>
-          <h1 className="large-title">{title}</h1>
+          <div className="large-title-row">
+            <h1 className="large-title">{title}</h1>
+            {aside}
+          </div>
           {subtitle && <div className="large-subtitle">{subtitle}</div>}
         </div>
       )}
