@@ -131,7 +131,7 @@ describe('nouveaux nageurs du club trouvés en compétition', async () => {
 
   it('lit les noms des feuilles', () => {
     expect(splitName('DUPONT, Hugo')).toEqual({ lastName: 'DUPONT', firstName: 'Hugo' });
-    expect(splitName('GARCIA GARCIA Léa')).toEqual({ lastName: 'GARCIA GARCIA', firstName: 'Léa' });
+    expect(splitName('VAN DEN BERG Léa')).toEqual({ lastName: 'VAN DEN BERG', firstName: 'Léa' });
     expect(splitName('Léa')).toBeNull();
   });
 
@@ -158,10 +158,10 @@ describe('noms écrits autrement sur les feuilles', async () => {
   const { actions, getState } = await import('../src/store/store');
   it('ne crée pas de doublon pour une lettre d’écart', () => {
     actions.resetAll();
-    actions.applyRoster(validateRoster({ updated: '2026-11-15', members: parseRosterCsv(';ASOUMANOU;Léa;2015;F') }), 'ESN-TEST', 'v1');
-    expect(actions.addClubSwimmers([{ firstName: 'Léa', lastName: 'ASSOUMANOU', birthYear: 2015, gender: 'F' }])).toHaveLength(0);
+    actions.applyRoster(validateRoster({ updated: '2026-11-15', members: parseRosterCsv(';VERBRUGEN;Léa;2015;F') }), 'ESN-TEST', 'v1');
+    expect(actions.addClubSwimmers([{ firstName: 'Léa', lastName: 'VERBRUGGEN', birthYear: 2015, gender: 'F' }])).toHaveLength(0);
     // Autre année de naissance : quelqu'un d'autre
-    expect(actions.addClubSwimmers([{ firstName: 'Léa', lastName: 'ASSOUMANOU', birthYear: 2013, gender: 'F' }])).toHaveLength(1);
+    expect(actions.addClubSwimmers([{ firstName: 'Léa', lastName: 'VERBRUGGEN', birthYear: 2013, gender: 'F' }])).toHaveLength(1);
     expect(getState().swimmers).toHaveLength(2);
   });
 });

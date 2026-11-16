@@ -4,7 +4,7 @@ import type { Swim, Swimmer } from '../store/types';
 import { makeISO, monthFromToken, todayISO } from './dates';
 import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './lenex';
 import { computePbFlags } from './stats';
-import { nameKeys, normName, sameSwimmer, type ReportMeet } from './results';
+import { closeSwimmer, nameKeys, normName, sameSwimmer, type ReportMeet } from './results';
 import { findSwimmerEntry, findSwimmerResult, lapsToSplits, parseSheetHeader } from './resultSheet';
 import { estimateHeatStarts, parseResultSheet, parseStartSheet, splitName, type EventSheet, type SheetRow } from './heatSheet';
 
@@ -50,7 +50,7 @@ export interface Progress {
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
 /** 2 : lecture des feuilles PDF (résultats et listes de départ). */
-export const SYNC_ENGINE = 5; // 3 : fiche swimrankings reliée ; 4 : séries en direct ; 5 : nouveaux nageurs du club ajoutés
+export const SYNC_ENGINE = 6; // 3 : fiche swimrankings reliée ; 4 : séries en direct ; 5 : nouveaux nageurs du club ; 6 : noms à une lettre près
 
 export interface LiveMeet {
   id: string;
@@ -455,7 +455,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       const index = new Map<string, LenexAthlete[]>();
       for (const x of l.athletes) for (const k of nameKeys(x)) index.set(k, [...(index.get(k) ?? []), x]);
       for (const sw of pending) {
-        const a = (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw));
+        // Nom identique, sinon à une lettre près (« VERBRUGGEN » / « VERBRUGEN ») avec même prénom et même année
+        const a = (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw)) ?? l.athletes.find((x) => closeSwimmer(x, sw));
         if (!a) continue;
         const report = toImport(l, a);
         found.set(sw.id, [...(found.get(sw.id) ?? []), { ...report, meet: { ...report.meet, liveId: m.id } }]);

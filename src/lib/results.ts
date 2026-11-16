@@ -46,7 +46,7 @@ export function editDistance(a: string, b: string): number {
 }
 
 /**
- * Même nageur à une lettre près dans le nom (« ASSOUMANOU » / « ASOUMANOU ») :
+ * Même nageur à une lettre près dans le nom (« VERBRUGGEN » / « VERBRUGEN ») :
  * même prénom et même année de naissance, connue des deux côtés.
  */
 export function closeSwimmer(

@@ -44,7 +44,7 @@ export interface EventSheet {
 
 const TIME = /^(?:(\d{1,2}):)?(\d{1,2})[.,](\d{2})$/;
 
-/** « DUPONT, Hugo », « GARCIA GARCIA Cassandra » → nom (majuscules) et prénom. */
+/** « DUPONT, Hugo », « VAN DEN BERG Léa » → nom (majuscules) et prénom. */
 export function splitName(name: string): { lastName: string; firstName: string } | null {
   const comma = /^([^,]+),\s*(.+)$/.exec(name.trim());
   if (comma) return { lastName: comma[1].trim().toUpperCase(), firstName: comma[2].trim() };
