@@ -16,6 +16,10 @@ import { SyncBanner } from './autoResults';
 const ROSTER_URL = './data/club-roster.json';
 /** Historique swimrankings des membres, chiffré avec le même code. */
 const HISTORY_URL = './data/club-history.json';
+/** 2 : noms des compétitions repris tels quels (chiffres compris). */
+const HISTORY_PARSER = 2;
+
+const letters = (s: string) => normName(s);
 
 /**
  * Historique des nageurs du club (toutes leurs compétitions, relevées sur
@@ -28,7 +32,8 @@ export async function applyClubHistory(): Promise<number> {
   const res = await fetch(HISTORY_URL, { cache: 'no-cache' }).catch(() => null);
   if (!res?.ok) return 0;
   const enc: unknown = await res.json().catch(() => null);
-  if (!isEncryptedRoster(enc, 'esn-history') || enc.iv === club.historyVersion) return 0;
+  if (!isEncryptedRoster(enc, 'esn-history')) return 0;
+  if (enc.iv === club.historyVersion && (club.historyParser ?? 1) >= HISTORY_PARSER) return 0;
   const history = await decryptHistory(enc, club.code).catch(() => null);
   if (!history) return 0;
   let added = 0;
@@ -38,11 +43,29 @@ export async function applyClubHistory(): Promise<number> {
       if (!sw) continue;
       const parsed = parseSwimrankings(a.text);
       if (parsed.swims.length) added += actions.importSwimrankings({ swimmerId: sw.id }, parsed.swims).added;
+      // Noms de compétitions tronqués par une version précédente (« e édition… ») : on les rétablit
+      const state = getState();
+      for (const ps of parsed.swims) {
+        if (!ps.meet) continue;
+        const swim = state.swims.find(
+          (x) =>
+            x.swimmerId === sw.id &&
+            x.distance === ps.distance &&
+            x.stroke === ps.stroke &&
+            x.course === ps.course &&
+            x.timeCs === ps.timeCs &&
+            x.date === ps.date,
+        );
+        const meet = swim?.meetId ? state.meets.find((m) => m.id === swim.meetId) : undefined;
+        if (!meet || meet.name === ps.meet || !letters(ps.meet).includes(letters(meet.name))) continue;
+        const onlyHistory = state.swims.every((x) => x.meetId !== meet.id || x.source === 'swimrankings');
+        if (onlyHistory) actions.updateMeet(meet.id, { name: ps.meet });
+      }
       const id = a.swimrankingsId ?? parsed.athlete.swimrankingsId;
       if (id && !sw.swimrankingsId) actions.updateSwimmer(sw.id, { swimrankingsId: id });
     }
     const now = getState().settings.club;
-    if (now) actions.updateSettings({ club: { ...now, historyVersion: enc.iv } });
+    if (now) actions.updateSettings({ club: { ...now, historyVersion: enc.iv, historyParser: HISTORY_PARSER } });
   });
   return added;
 }

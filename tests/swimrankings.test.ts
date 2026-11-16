@@ -150,3 +150,13 @@ Calendrier
     expect(r.swims.find((s) => s.stroke === 'BACK')).toMatchObject({ timeCs: 4807, points: 139, city: 'Namur', meet: 'Meeting de Namur' });
   });
 });
+
+describe('format d’import en colonnes', () => {
+  it('garde les noms de compétition avec chiffres', () => {
+    const r = parseSwimrankings(
+      'DUPONT, Emma (2014)\n100m Libre\t25m\t1:31.08\t171\t11 oct 2025\tWaremme\t4e édition de la Dernière Chance\n50m Dos\t50m\t45.12\t180\t14 juin 2025\tNamur\tInterclubs U15',
+    );
+    expect(r.swims.map((s) => s.meet)).toEqual(['Interclubs U15', '4e édition de la Dernière Chance']);
+    expect(r.swims.map((s) => s.city)).toEqual(['Namur', 'Waremme']);
+  });
+});

@@ -285,6 +285,24 @@ export function parseSwimrankings(text: string): ParseResult {
   }
   finalize();
 
+  // Format d'import en colonnes (épreuve, bassin, temps, points, date, ville, compétition, séparés par
+  // des tabulations) : ville et compétition reprises telles quelles (« 4e édition… », « Interclubs U15 »)
+  const columns = new Map<string, { city?: string; meet?: string }>();
+  for (const line of text.split(/\r?\n/)) {
+    const c = line.split('\t');
+    if (c.length < 7) continue;
+    const time = tokenize(c[2]).find((t) => t.t === 'TIME');
+    const date = tokenize(c[4]).find((t) => t.t === 'DATE');
+    if (time?.t === 'TIME' && date?.t === 'DATE') columns.set(`${time.cs}|${date.iso}`, { city: c[5].trim() || undefined, meet: c[6].trim() || undefined });
+  }
+  if (columns.size) {
+    for (const s of swims) {
+      const c = columns.get(`${s.timeCs}|${s.date}`);
+      if (c?.meet) s.meet = cleanText(c.meet);
+      if (c?.city) s.city = cleanText(c.city);
+    }
+  }
+
   return { athlete: parseAthlete(text), swims: dedupe(swims) };
 }
 

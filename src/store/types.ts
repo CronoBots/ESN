@@ -123,6 +123,8 @@ export interface ClubAccess {
   expired?: boolean;
   /** Version de l'historique du club déjà appliquée. */
   historyVersion?: string;
+  /** Version de la lecture de l'historique (une nouvelle version le réapplique). */
+  historyParser?: number;
 }
 
 export interface LiveSyncSettings {
