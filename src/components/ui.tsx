@@ -248,6 +248,9 @@ export function SheetLayout({
 /* Barre de navigation                                                       */
 /* ------------------------------------------------------------------------ */
 
+/** Au-delà, le titre ne tient pas dans la barre du haut : il reste aussi en grand dans la page. */
+const LONG_TITLE = 22;
+
 export function NavBar({
   title,
   subtitle,
@@ -266,15 +269,17 @@ export function NavBar({
   wide?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
+  // Titre long (nom de compétition) : en grand dans la page, la barre ne le montre qu'en défilant
+  const bigTitle = large && title.length > LONG_TITLE;
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > (large ? 38 : 4));
+    const onScroll = () => setScrolled(window.scrollY > (bigTitle ? 38 : 4));
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [large]);
+  }, [bigTitle]);
   return (
     <>
-      <header className={`navbar${scrolled ? ' scrolled' : ''}${large ? '' : ' no-large'}${wide ? ' wide' : ''}`}>
+      <header className={`navbar${scrolled ? ' scrolled' : ''}${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}`}>
         <div className="navbar-row">
           <div className="navbar-left">
             {back ? (
@@ -295,7 +300,7 @@ export function NavBar({
       </header>
       {large && (
         <div className={`large-head${wide ? ' wide' : ''}`}>
-          <h1 className="large-title">{title}</h1>
+          <h1 className={`large-title${bigTitle ? '' : ' sr-only'}`}>{title}</h1>
           {subtitle && <div className="large-subtitle">{subtitle}</div>}
         </div>
       )}
@@ -318,12 +323,21 @@ const AVATAR_GRADIENTS = [
   ['#8e8e93', '#48484a'],
 ];
 
-export function Avatar({ swimmer, size = 44 }: { swimmer: Pick<Swimmer, 'firstName' | 'lastName' | 'color'>; size?: number }) {
+export function Avatar({
+  swimmer,
+  size = 44,
+  onBrand,
+}: {
+  swimmer: Pick<Swimmer, 'firstName' | 'lastName' | 'color'>;
+  size?: number;
+  /** Sur un fond bleu ESN : pastille blanche translucide au lieu du dégradé */
+  onBrand?: boolean;
+}) {
   const [a, b] = AVATAR_GRADIENTS[swimmer.color % AVATAR_GRADIENTS.length];
   const initials = `${swimmer.firstName?.[0] ?? ''}${swimmer.lastName?.[0] ?? ''}`.toUpperCase();
   return (
     <span
-      className="avatar"
+      className={`avatar${onBrand ? ' on-brand' : ''}`}
       style={{ width: size, height: size, fontSize: size * 0.38, background: `linear-gradient(135deg, ${a}, ${b})` }}
       aria-hidden="true"
     >

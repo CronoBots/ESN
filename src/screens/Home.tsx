@@ -159,7 +159,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
         onClick={() => navigate(`/swimmer/${swimmer.id}`)}
       >
         <div className="hero-top">
-          <Avatar swimmer={swimmer} size={58} />
+          <Avatar swimmer={swimmer} size={58} onBrand />
           <div className="grow">
             <div className="hero-name">{fullName(swimmer)}</div>
             <div className="hero-sub">

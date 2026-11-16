@@ -88,7 +88,7 @@ export function App() {
       delete root.dataset.nageoTheme;
     }
     const dark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#000000' : '#f2f2f7'));
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#1f4cc2' : '#2357d0'));
   }, [theme]);
 
   const showOnboarding =
