@@ -225,15 +225,21 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
             <Empty
               icon="stopwatch"
               title="Pas encore de résultat"
-              text={`Les résultats de compétition ${deName(swimmer.firstName)} sont ajoutés automatiquement dès leur publication par les organisateurs. Pour l’historique plus ancien, utilisez l’import.`}
+              text={
+                swimmer.member
+                  ? `Aucune compétition ${deName(swimmer.firstName)} publiée cette saison, et son historique des saisons passées n’a pas encore été ajouté par le club. Ses prochains résultats arriveront tout seuls.`
+                  : `Les résultats de compétition ${deName(swimmer.firstName)} sont ajoutés automatiquement dès leur publication par les organisateurs. Pour l’historique plus ancien, utilisez l’import.`
+              }
               action={
                 <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
                   <button className="btn block" onClick={() => findResultsNow(swimmer.firstName, swimmer.id)}>
                     <Icon name="sparkles" /> Rechercher ses résultats
                   </button>
-                  <button className="btn ghost block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>
-                    <Icon name="download" /> Importer depuis swimrankings
-                  </button>
+                  {!swimmer.member && (
+                    <button className="btn ghost block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>
+                      <Icon name="download" /> Importer depuis swimrankings
+                    </button>
+                  )}
                 </div>
               }
             />

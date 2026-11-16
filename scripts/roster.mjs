@@ -4,8 +4,10 @@
 //   node scripts/roster.mjs chiffrer membres.csv CODE    chiffre la liste avec ce code
 //   node scripts/roster.mjs verifier CODE                relit le fichier publié avec ce code
 //   node scripts/roster.mjs lire CODE                    affiche la liste des membres (sur votre ordinateur seulement)
+//   node scripts/roster.mjs manquants CODE               membres actifs dont l'historique n'est pas encore publié
 //   node scripts/roster.mjs historique DOSSIER CODE      chiffre l'historique swimrankings (un .txt par nageur)
-//                                                        dans public/data/club-history.json
+//                                                        dans public/data/club-history.json (fusionné avec
+//                                                        l'historique déjà publié : rien n'est perdu)
 //
 // membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut, une ligne par nageur.
 // Statut : « ancien » pour un ancien membre (liste à part, classements sur option), sinon vide.
@@ -13,7 +15,18 @@
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { decryptRoster, encryptHistory, encryptRoster, generateCode, historyHeader, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { decryptHistory, decryptRoster, encryptHistory, encryptRoster, generateCode, historyHeader, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { existsSync } from 'node:fs';
+
+/** Historique déjà publié (vide s'il n'y en a pas). */
+async function publishedHistory(code) {
+  if (!existsSync(HISTORY)) return [];
+  return (await decryptHistory(JSON.parse(readFileSync(HISTORY, 'utf8')), code)).athletes;
+}
+
+/** Même nageur : nom, prénom et année (sans accents ni casse), ou sans l'année si l'un ne l'a pas. */
+const sameMember = (a, b) =>
+  memberKey(a) === memberKey(b) || (!(a.birthYear && b.birthYear) && memberKey({ ...a, birthYear: undefined }) === memberKey({ ...b, birthYear: undefined }));
 
 const OUT = new URL('../public/data/club-roster.json', import.meta.url);
 const HISTORY = new URL('../public/data/club-history.json', import.meta.url);
@@ -52,6 +65,14 @@ if (cmd === 'code') {
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   console.log('groupe;nom;prénom;année;sexe;statut');
   for (const m of roster.members) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender, m.former ? 'ancien' : ''].join(';'));
+} else if (cmd === 'manquants') {
+  const code = args[0] ?? process.env.ESN_CODE;
+  const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
+  const done = await publishedHistory(code);
+  const missing = roster.members.filter((m) => !m.former && !done.some((a) => sameMember(a, m)));
+  console.log(`${missing.length} membres actifs sans historique publié (sur ${roster.members.filter((m) => !m.former).length})`);
+  console.log('groupe;nom;prénom;année;sexe');
+  for (const m of missing) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender].join(';'));
 } else if (cmd === 'historique') {
   const [dir, argCode] = args;
   const code = argCode ?? process.env.ESN_CODE;
@@ -68,6 +89,10 @@ if (cmd === 'code') {
     console.log(`${known ? '✓' : '⚠ pas dans la liste du club :'} ${f} : ${lines} temps`);
     athletes.push({ ...h, text });
   }
+  // Nageurs déjà publiés absents du dossier (autre ordinateur, dossier vidé…) : gardés tels quels
+  const kept = (await publishedHistory(code)).filter((a) => !athletes.some((b) => sameMember(a, b)));
+  if (kept.length) console.log(`${kept.length} nageurs de l'historique déjà publié gardés tels quels`);
+  athletes.push(...kept);
   mkdirSync(new URL('./', HISTORY), { recursive: true });
   writeFileSync(HISTORY, `${JSON.stringify(await encryptHistory({ updated: new Date().toISOString().slice(0, 10), athletes }, code))}\n`);
   console.log(`Historique de ${athletes.length} nageurs chiffré dans public/data/club-history.json`);

@@ -19,18 +19,18 @@ swimrankings.net a tout l'historique des nageurs, mais refuse les lectures autom
 
 1. **Préparer.** Tu travailles dans le dossier du dépôt ESN, sur l'ordinateur de l'utilisateur. Lis la skill du navigateur disponible (`built-in-browser` ou `chrome-browser`). Si `node_modules` manque : `npm install`.
 2. **Code du club.** Demande-le à l'utilisateur (format `ESN-XXXX-XXXX`). Garde-le seulement en mémoire pour les commandes.
-3. **Liste des membres.** `node scripts/roster.mjs lire CODE` affiche les nageurs (groupe ; nom ; prénom ; année ; sexe).
+3. **Qui relever.** `node scripts/roster.mjs manquants CODE` affiche les membres **actifs** dont l'historique n'est pas encore publié : ce sont eux à relever (les anciens membres, statut « ancien », ne sont relevés que si l'utilisateur le demande). Pour tout refaire, `node scripts/roster.mjs lire CODE` affiche toute la liste (groupe ; nom ; prénom ; année ; sexe ; statut).
 4. **Pour chaque nageur :**
    1. Recherche : `https://www.swimrankings.net/index.php?page=athleteSelect&nationId=0&athleteLastName=NOM` (nom en majuscules, sans accents si besoin). Choisis la ligne avec le même prénom, la même année de naissance et le club de Seraing (« Ecole Seraing Natation », « ESN »). Doute ou homonyme : demande à l'utilisateur. Introuvable : note-le et passe au suivant.
    2. Meilleurs temps : `https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=ID&athletePage=PBEST`, lis la page en texte (en-tête : NOM, Prénom, année, sexe si indiqué, club).
    3. Historique : pour chaque épreuve de la page, ouvre la liste de **tous** ses temps (lien de l'épreuve, ou menu « Tous les résultats » / « All results » puis chaque nage), en petit bassin (25 m) **et** en grand bassin (50 m). Relève chaque ligne : épreuve, bassin, temps, points, date, ville, compétition (nom complet : infobulle ou texte du lien si tronqué). Ignore les relais.
    4. Écris `historique/NOM_Prenom.txt` au format ci-dessous.
-5. **Chiffrer.** `node scripts/roster.mjs historique historique CODE` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste) et écrit `public/data/club-history.json`.
+5. **Chiffrer.** `node scripts/roster.mjs historique historique CODE` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste) et écrit `public/data/club-history.json`. L'historique déjà publié est fusionné : un nageur absent du dossier `historique/` garde ses temps publiés, un fichier présent les remplace.
 6. **Vérifier.** `git status` ne doit montrer que `public/data/club-history.json` ; `grep -c "NOM_D_UN_NAGEUR" public/data/club-history.json` doit renvoyer 0.
 7. **Publier.** `git add public/data/club-history.json`, commit « Historique du club (N nageurs) », `git push origin main`. La publication GitHub Pages met l'application à jour ; chaque membre reçoit l'historique à la prochaine ouverture (une seule fois par version publiée, sans doublon avec les résultats déjà présents).
 8. **Résumé** pour l'utilisateur : nombre de nageurs, de temps, période couverte, nageurs introuvables ou lignes illisibles.
 
-Pour une mise à jour plus tard, garde les fichiers de `historique/`, complète-les et refais les étapes 5 à 7.
+Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scripts/roster.mjs manquants CODE`, relève ces nageurs, puis refais les étapes 5 à 7. Avant de publier, récupère la dernière version (`git pull --rebase`) : l'application évolue aussi depuis d'autres sessions.
 
 ## Format d'un fichier `historique/NOM_Prenom.txt`
 
