@@ -91,3 +91,15 @@ describe('liste du club dans l’application', async () => {
     expect(s.settings.selectedSwimmerId).toBe(emma.id);
   });
 });
+
+describe('historique du club', () => {
+  it('lit l’en-tête d’un texte d’import et le chiffre', async () => {
+    const { historyHeader, encryptHistory, decryptHistory } = await import('../src/lib/roster');
+    const text = '@@URL:https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=1234567\n@@GENDER:F\nDUPONT, Emma (2014)\nBEL - Club\n100m Libre\t25m\t1:31.08\t171\t11 oct 2025\tLiège\tMeeting';
+    expect(historyHeader(text)).toEqual({ lastName: 'DUPONT', firstName: 'Emma', birthYear: 2014, swimrankingsId: '1234567' });
+    const enc = await encryptHistory({ updated: '2026-11-16', athletes: [{ ...historyHeader(text)!, text }] }, 'ESN-7KQ4-M2XP', 1000);
+    expect(enc.format).toBe('esn-history');
+    expect(JSON.stringify(enc)).not.toMatch(/DUPONT|1:31/);
+    expect((await decryptHistory(enc, 'esn 7kq4 m2xp')).athletes[0].text).toBe(text);
+  });
+});

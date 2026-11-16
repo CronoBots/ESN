@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { actions, getState, useData } from '../store/store';
+import { actions, batch, getState, useData } from '../store/store';
 import { fullName } from '../store/hooks';
 import { Avatar, BrandLogo, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate, useRoute } from '../router';
-import { decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptHistory, decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { parseSwimrankings } from '../lib/swimrankings';
+import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
 import { formatDate } from '../lib/dates';
 import type { Swimmer } from '../store/types';
@@ -12,6 +14,38 @@ import { SyncBanner } from './autoResults';
 
 /** Liste chiffrée des membres, publiée avec l'application (voir scripts/roster.mjs). */
 const ROSTER_URL = './data/club-roster.json';
+/** Historique swimrankings des membres, chiffré avec le même code. */
+const HISTORY_URL = './data/club-history.json';
+
+/**
+ * Historique des nageurs du club (toutes leurs compétitions, relevées sur
+ * swimrankings.net par le club) : ajouté une fois par version publiée.
+ * Renvoie le nombre de courses ajoutées.
+ */
+export async function applyClubHistory(): Promise<number> {
+  const club = getState().settings.club;
+  if (!club || club.expired) return 0;
+  const res = await fetch(HISTORY_URL, { cache: 'no-cache' }).catch(() => null);
+  if (!res?.ok) return 0;
+  const enc: unknown = await res.json().catch(() => null);
+  if (!isEncryptedRoster(enc, 'esn-history') || enc.iv === club.historyVersion) return 0;
+  const history = await decryptHistory(enc, club.code).catch(() => null);
+  if (!history) return 0;
+  let added = 0;
+  batch(() => {
+    for (const a of history.athletes) {
+      const sw = getState().swimmers.find((s) => s.member && sameSwimmer(a, s));
+      if (!sw) continue;
+      const parsed = parseSwimrankings(a.text);
+      if (parsed.swims.length) added += actions.importSwimrankings({ swimmerId: sw.id }, parsed.swims).added;
+      const id = a.swimrankingsId ?? parsed.athlete.swimrankingsId;
+      if (id && !sw.swimrankingsId) actions.updateSwimmer(sw.id, { swimrankingsId: id });
+    }
+    const now = getState().settings.club;
+    if (now) actions.updateSettings({ club: { ...now, historyVersion: enc.iv } });
+  });
+  return added;
+}
 
 /** « groupes A, B et C » (ou les noms des groupes s'ils sont personnalisés). */
 export function groupsLabel(groups: RosterGroup[]): string {
@@ -72,7 +106,9 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
   const enc = await fetchRoster();
   if (!enc) throw new Error('indisponible');
   const roster = await decryptRoster(enc, code);
-  return actions.applyRoster(roster, code.trim(), enc.iv);
+  const r = actions.applyRoster(roster, code.trim(), enc.iv);
+  void applyClubHistory();
+  return r;
 }
 
 /**
@@ -83,9 +119,14 @@ export async function refreshClubRoster(): Promise<number> {
   const club = getState().settings.club;
   if (!club) return 0;
   const enc = await fetchRoster();
-  if (!enc || enc.iv === club.version) return 0;
+  if (!enc || enc.iv === club.version) {
+    await applyClubHistory();
+    return 0;
+  }
   try {
-    return actions.applyRoster(await decryptRoster(enc, club.code), club.code, enc.iv).added;
+    const added = actions.applyRoster(await decryptRoster(enc, club.code), club.code, enc.iv).added;
+    await applyClubHistory();
+    return added;
   } catch (e) {
     // Le club a changé de code : on le redemandera
     if (e instanceof WrongCodeError) actions.updateSettings({ club: { ...club, version: enc.iv, expired: true } });

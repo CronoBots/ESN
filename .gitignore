@@ -10,3 +10,4 @@ playwright-report
 # Liste des membres en clair : ne jamais publier (seul public/data/club-roster.json, chiffré, est versionné)
 /membres*
 /roster/
+/historique/

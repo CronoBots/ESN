@@ -119,6 +119,8 @@ export interface ClubAccess {
   count: number;
   /** Nouvelle liste publiée avec un autre code : à redemander. */
   expired?: boolean;
+  /** Version de l'historique du club déjà appliquée. */
+  historyVersion?: string;
 }
 
 export interface LiveSyncSettings {

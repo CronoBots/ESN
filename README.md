@@ -54,6 +54,10 @@ Préparer ou mettre à jour la liste :
 
 Les nageurs ne sont jamais ajoutés à la main. Les parents entrent le code une fois (écran de bienvenue, Réglages › Le club) ou ouvrent le lien `https://cronobots.github.io/ESN/#/club?code=ESN-7KQ4-M2XP` partagé par le club, puis touchent le cœur des nageurs à suivre. Une nouvelle liste publiée avec le même code est appliquée automatiquement (nouveaux nageurs, changements de groupe) ; avec un nouveau code, l'application le redemande. Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.
 
+### Historique des nageurs (swimrankings.net)
+
+Le site des résultats en direct ne garde que les dernières semaines. L'historique complet est sur swimrankings.net, qui refuse les lectures automatiques : il se relève **dans le navigateur de l'utilisateur**, avec Claude sur son ordinateur (skill du projet `.claude/skills/historique-club`, app Claude avec navigateur intégré ou Claude in Chrome). Un fichier texte par nageur dans `historique/` (ignoré par git), puis `npm run roster -- historique historique CODE` écrit `public/data/club-history.json`, **chiffré** avec le code du club. Chaque membre le reçoit automatiquement à l'ouverture suivante (une fois par version, sans doublon).
+
 ## Points World Aquatics
 
 `points = 1000 × (temps de base / temps)³`. Les points officiels sont conservés pour les temps importés. Pour les temps saisis, ils sont calculés avec les temps de base de `src/lib/points.ts`, recoupés avec les points « FINA 2026 » de swimrankings.net. Ils restent indicatifs : à mettre à jour chaque saison.

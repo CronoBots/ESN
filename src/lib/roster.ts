@@ -30,8 +30,15 @@ export interface Roster {
   members: RosterMember[];
 }
 
+/** Historique swimrankings des nageurs du club (texte d'import par nageur). */
+export interface ClubHistory {
+  /** AAAA-MM-JJ */
+  updated: string;
+  athletes: { lastName: string; firstName: string; birthYear?: number; swimrankingsId?: string; text: string }[];
+}
+
 export interface EncryptedRoster {
-  format: 'esn-roster';
+  format: 'esn-roster' | 'esn-history';
   v: 1;
   kdf: 'PBKDF2-SHA-256';
   iterations: number;
@@ -88,23 +95,17 @@ async function deriveKey(code: string, salt: Uint8Array, iterations: number): Pr
   );
 }
 
-export async function encryptRoster(roster: Roster, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
+async function encryptJson(value: unknown, code: string, format: EncryptedRoster['format'], iterations: number): Promise<EncryptedRoster> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(code, salt, iterations);
   const data = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, new TextEncoder().encode(JSON.stringify(roster))),
+    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, new TextEncoder().encode(JSON.stringify(value))),
   );
-  return { format: 'esn-roster', v: 1, kdf: 'PBKDF2-SHA-256', iterations, salt: toB64(salt), iv: toB64(iv), data: toB64(data) };
+  return { format, v: 1, kdf: 'PBKDF2-SHA-256', iterations, salt: toB64(salt), iv: toB64(iv), data: toB64(data) };
 }
 
-export function isEncryptedRoster(x: unknown): x is EncryptedRoster {
-  const e = x as EncryptedRoster;
-  return !!e && e.format === 'esn-roster' && e.v === 1 && typeof e.data === 'string' && typeof e.iv === 'string' && typeof e.salt === 'string';
-}
-
-/** Déchiffre la liste ; WrongCodeError si le code ne correspond pas. */
-export async function decryptRoster(enc: EncryptedRoster, code: string): Promise<Roster> {
+async function decryptJson(enc: EncryptedRoster, code: string): Promise<unknown> {
   const key = await deriveKey(code, fromB64(enc.salt), enc.iterations);
   let plain: ArrayBuffer;
   try {
@@ -112,7 +113,42 @@ export async function decryptRoster(enc: EncryptedRoster, code: string): Promise
   } catch {
     throw new WrongCodeError();
   }
-  return validateRoster(JSON.parse(new TextDecoder().decode(plain)));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+export function encryptRoster(roster: Roster, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
+  return encryptJson(roster, code, 'esn-roster', iterations);
+}
+
+export function encryptHistory(history: ClubHistory, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
+  return encryptJson(history, code, 'esn-history', iterations);
+}
+
+export function isEncryptedRoster(x: unknown, format: EncryptedRoster['format'] = 'esn-roster'): x is EncryptedRoster {
+  const e = x as EncryptedRoster;
+  return !!e && e.format === format && e.v === 1 && typeof e.data === 'string' && typeof e.iv === 'string' && typeof e.salt === 'string';
+}
+
+/** Déchiffre la liste ; WrongCodeError si le code ne correspond pas. */
+export async function decryptRoster(enc: EncryptedRoster, code: string): Promise<Roster> {
+  return validateRoster(await decryptJson(enc, code));
+}
+
+/** Déchiffre l'historique du club ; WrongCodeError si le code ne correspond pas. */
+export async function decryptHistory(enc: EncryptedRoster, code: string): Promise<ClubHistory> {
+  const h = (await decryptJson(enc, code)) as ClubHistory;
+  if (!h || !Array.isArray(h.athletes)) throw new Error('Historique invalide');
+  return h;
+}
+
+/** En-tête d'un texte d'import swimrankings : « NOM, Prénom (AAAA) » et l'identifiant swimrankings. */
+export function historyHeader(text: string): { lastName: string; firstName: string; birthYear?: number; swimrankingsId?: string } | null {
+  const id = /athleteId=(\d+)/.exec(text)?.[1];
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^([^,@\t]+),\s*([^(\t]+?)\s*(?:\((\d{4})\))?\s*$/.exec(line.trim());
+    if (m) return { lastName: m[1].trim(), firstName: m[2].trim(), birthYear: m[3] ? Number(m[3]) : undefined, swimrankingsId: id };
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------------ */
