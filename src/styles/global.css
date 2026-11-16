@@ -103,23 +103,6 @@ html {
   background: var(--bg-solid);
 }
 
-/*
- * Haut de l'écran sur iPhone (iOS 26) : la zone floue sous l'heure et la batterie prend la couleur
- * d'un élément fixe collé en haut de l'écran, sinon celle du fond de page (gris clair → « blanc »).
- * Une bande fixe aux couleurs de la barre du haut, de la hauteur de cette zone, la garde bleue.
- */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 31;
-  height: var(--safe-top);
-  background: var(--brand-solid);
-  pointer-events: none;
-}
-
 body {
   margin: 0;
   min-height: 100dvh;
@@ -267,66 +250,29 @@ p,
 
 /* ------------------------------------------------------------- Nav bar */
 
+/*
+ * Barre du haut à la manière des apps d'Apple : au repos, seulement les boutons et le titre en grand
+ * sur le fond clair de la page (le haut de l'écran, sous l'heure et la batterie, garde cette couleur
+ * claire : rien à flouter) ; en défilant, une barre claire translucide apparaît avec le titre en petit.
+ */
 .navbar {
   position: sticky;
   top: 0;
   z-index: 30;
   padding: calc(var(--safe-top) + 6px) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
-  background: var(--brand-solid);
-  color: #fff;
-  transition: box-shadow 0.25s;
-}
-
-/*
- * Téléphone : barre du haut fixe. Sur iPhone (iOS 26), la zone floue sous l'heure et la batterie prend
- * la couleur de l'élément fixe collé en haut de l'écran : la barre bleue elle-même (une simple bande
- * décorative ne compte pas). L'espace qu'elle occupe est réservé par .navbar-spacer.
- */
-.navbar-spacer {
-  display: none;
-}
-
-@media (max-width: 899px) {
-  .navbar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    left: 0;
-  }
-  .navbar-spacer {
-    display: block;
-    flex-shrink: 0;
-    height: calc(var(--safe-top) + 56px);
-  }
+  border-bottom: 0.5px solid transparent;
+  background: transparent;
+  color: var(--text);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .navbar.scrolled {
-  box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.08),
-    0 6px 18px rgba(0, 0, 0, 0.12);
-}
-
-/* Boutons et logo de la barre en blanc */
-.navbar .icon-btn,
-.navbar .follow-btn,
-.navbar .follow-btn.on {
-  color: #fff;
-}
-
-.navbar .icon-btn.filled {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.navbar .brand-logo img {
-  filter: brightness(0) invert(1);
-}
-
-.navbar .brand-logo .on-dark {
-  display: none !important;
-}
-
-.navbar .brand-logo .on-light {
-  display: block !important;
+  border-bottom-color: var(--separator);
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
 }
 
 .navbar-row {
@@ -352,7 +298,7 @@ p,
   line-height: 1.1;
   text-wrap: balance;
   max-width: 64vw;
-  color: #fff;
+  color: var(--text);
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.2s, transform 0.2s;
@@ -396,10 +342,6 @@ p,
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.15;
-}
-
-.large-title.sr-only + .large-subtitle {
-  margin-top: 14px;
 }
 
 .large-subtitle {

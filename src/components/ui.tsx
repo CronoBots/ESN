@@ -249,7 +249,6 @@ export function SheetLayout({
 /* ------------------------------------------------------------------------ */
 
 /** Au-delà, le titre ne tient pas dans la barre du haut : il reste aussi en grand dans la page. */
-const LONG_TITLE = 22;
 
 export function NavBar({
   title,
@@ -269,8 +268,8 @@ export function NavBar({
   wide?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
-  // Titre long (nom de compétition) : en grand dans la page, la barre ne le montre qu'en défilant
-  const bigTitle = large && title.length > LONG_TITLE;
+  // Titre en grand dans la page ; la barre ne le montre (en petit) qu'en défilant
+  const bigTitle = large;
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > (bigTitle ? 38 : 4));
     onScroll();
@@ -298,10 +297,9 @@ export function NavBar({
           <div className="navbar-right">{right}</div>
         </div>
       </header>
-      <div className="navbar-spacer" aria-hidden="true" />
       {large && (
         <div className={`large-head${wide ? ' wide' : ''}`}>
-          <h1 className={`large-title${bigTitle ? '' : ' sr-only'}`}>{title}</h1>
+          <h1 className="large-title">{title}</h1>
           {subtitle && <div className="large-subtitle">{subtitle}</div>}
         </div>
       )}
