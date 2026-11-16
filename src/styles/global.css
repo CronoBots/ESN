@@ -277,6 +277,29 @@ p,
   transition: box-shadow 0.25s;
 }
 
+/*
+ * Téléphone : barre du haut fixe. Sur iPhone (iOS 26), la zone floue sous l'heure et la batterie prend
+ * la couleur de l'élément fixe collé en haut de l'écran : la barre bleue elle-même (une simple bande
+ * décorative ne compte pas). L'espace qu'elle occupe est réservé par .navbar-spacer.
+ */
+.navbar-spacer {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .navbar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+  }
+  .navbar-spacer {
+    display: block;
+    flex-shrink: 0;
+    height: calc(var(--safe-top) + 56px);
+  }
+}
+
 .navbar.scrolled {
   box-shadow:
     0 1px 0 rgba(0, 0, 0, 0.08),

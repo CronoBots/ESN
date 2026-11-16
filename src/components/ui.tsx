@@ -298,6 +298,7 @@ export function NavBar({
           <div className="navbar-right">{right}</div>
         </div>
       </header>
+      <div className="navbar-spacer" aria-hidden="true" />
       {large && (
         <div className={`large-head${wide ? ' wide' : ''}`}>
           <h1 className={`large-title${bigTitle ? '' : ' sr-only'}`}>{title}</h1>
