@@ -52,9 +52,9 @@ export function SwimmerProfile({ id }: { id: string }) {
       <main className="page">
         <div className="center" style={{ padding: '12px 0 4px' }}>
           <Avatar swimmer={swimmer} size={110} />
-          <h1 style={{ margin: '14px 0 2px', fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>{fullName(swimmer)}</h1>
-          <div style={{ fontWeight: 500 }}>
-            {[swimmer.nation, swimmer.club].filter(Boolean).join(' - ') || (swimmer.relation === 'child' ? 'Mon enfant' : 'Nageur suivi')}
+          <h1 style={{ margin: '14px 0 2px', fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em' }}>{fullName(swimmer)}</h1>
+          <div className="muted" style={{ fontSize: 15 }}>
+            {[swimmer.nation, swimmer.club].filter(Boolean).join(' · ') || (swimmer.relation === 'child' ? 'Mon enfant' : 'Nageur suivi')}
           </div>
           {swimmer.group && (
             <div style={{ marginTop: 8 }}>

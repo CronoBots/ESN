@@ -413,7 +413,6 @@ export function ColumnChart({
   // Repères de date : premier mois de chaque groupe, espacés d'au moins 54 px
   const xLabels: { i: number; text: string }[] = [];
   let lastX = -Infinity;
-  let lastYear = -1;
   let lastMonth = -1;
   shown.forEach((d, i) => {
     const dt = fromISO(d.date);
@@ -424,10 +423,9 @@ export function ColumnChart({
     const yy = String(dt.getFullYear()).slice(2);
     xLabels.push({
       i,
-      text: `${SHORT_MONTHS[dt.getMonth()]}${dt.getFullYear() !== lastYear ? ` ${yy}` : ''}`,
+      text: `${SHORT_MONTHS[dt.getMonth()]}\u00a0${yy}`,
     });
     lastX = cx(i);
-    lastYear = dt.getFullYear();
   });
 
   const pick = (clientX: number, rect: DOMRect) => {

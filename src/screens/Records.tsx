@@ -314,7 +314,7 @@ export function Rankings() {
                 const age = sportAge(r.swimmer.birthYear);
                 return (
                   <button key={r.swimmer.id} className="row rank-row" onClick={() => navigate(`/event/${r.swimmer.id}/${course}/${dist}/${stroke}`)}>
-                    <span style={{ width: 28, textAlign: 'center', fontWeight: 800, fontSize: i < 3 ? 22 : 16 }} className="tnum">
+                    <span style={{ width: 28, textAlign: 'center', fontWeight: 700, fontSize: i < 3 ? 22 : 16 }} className="tnum">
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                     </span>
                     <Avatar swimmer={r.swimmer} size={38} />
@@ -345,7 +345,7 @@ export function Rankings() {
         </Section>
         {STROKE_BY_ID[stroke] && !clubMode && (
           <div className="section-foot">
-            Astuce : importez la page swimrankings.net d’un coéquipier en tant que « nageur suivi » pour l’ajouter au classement.
+            Astuce : ajoutez des coéquipiers à vos nageurs suivis (Réglages) pour les comparer ici.
           </div>
         )}
       </main>

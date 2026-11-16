@@ -8,7 +8,7 @@ import { decryptHistory, decryptRoster, isEncryptedRoster, WrongCodeError, type 
 import { parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
-import { formatDate } from '../lib/dates';
+import { formatDate, formatDayMonth } from '../lib/dates';
 import type { Swimmer } from '../store/types';
 import { SyncBanner } from './autoResults';
 
@@ -290,6 +290,28 @@ const memberYears = (swimmers: Swimmer[]) =>
 
 const byYear = (list: Swimmer[], y: string) => list.filter((s) => String(s.birthYear ?? '') === y);
 
+/** À partir de cet âge, les membres actifs sont regroupés en une section « Adultes » :
+ * une section par année de naissance n'a de sens que pour les jeunes (catégories d'âge). */
+const ADULT_AGE = 20;
+const ADULTS = 'adults';
+
+/** Section d'un membre actif sans groupes : son année de naissance, ou « Adultes ». */
+const yearKey = (s: Swimmer) => (s.birthYear && s.birthYear <= new Date().getFullYear() - ADULT_AGE ? ADULTS : String(s.birthYear ?? ''));
+
+/** Sections des membres actifs sans groupes : « Adultes » d'abord, puis les années, l'année inconnue à la fin. */
+const activeYearKeys = (swimmers: Swimmer[]) => {
+  const keys = new Set(swimmers.map(yearKey));
+  return [...(keys.has(ADULTS) ? [ADULTS] : []), ...[...keys].filter((k) => k !== ADULTS).sort((a, b) => (a || '9999').localeCompare(b || '9999'))];
+};
+
+const yearTitle = (k: string) => (k === ADULTS ? 'Adultes' : k || 'Année inconnue');
+
+/** Anciens membres nés avant cette année : une seule section. */
+const FORMER_EARLY = 1980;
+
+/** L'année de naissance est-elle déjà le titre de la section (« 2012 », anciens « 1995 ») ? */
+const yearInTitle = (sectionId: string) => /^(former-)?d{4}$/.test(sectionId);
+
 /**
  * Membres actifs par groupe (A, B, C…) ou, sans groupes, par année de naissance ;
  * chaque section triée par année puis par nom. Puis les autres nageurs et les
@@ -300,17 +322,20 @@ function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: string
   const active = list.filter(isActiveMember);
   const former = list.filter(isFormerMember);
   if (filter === 'former') {
-    return memberYears(former)
-      .map((y) => ({ id: `former-${y || 'na'}`, title: y || 'Année inconnue', items: byYear(former, y) }))
-      .filter((s) => s.items.length);
+    // Anciens membres par année ; les plus anciennes (un ou deux nageurs par année) en une seule section
+    const early = former.filter((s) => s.birthYear && s.birthYear < FORMER_EARLY);
+    return [
+      { id: 'former-early', title: `Avant ${FORMER_EARLY}`, items: early },
+      ...memberYears(former.filter((s) => !early.includes(s))).map((y) => ({ id: `former-${y || 'na'}`, title: y || 'Année inconnue', items: byYear(former, y) })),
+    ].filter((s) => s.items.length);
   }
   const sections = groups.length
     ? groups
         .filter((g) => filter === 'all' || g.id === filter)
         .map((g) => ({ id: g.id, title: g.name, items: active.filter((s) => s.group === g.id) }))
-    : memberYears(active)
-        .filter((y) => filter === 'all' || y === filter)
-        .map((y) => ({ id: y || 'na', title: y || 'Année inconnue', items: byYear(active, y) }));
+    : activeYearKeys(active)
+        .filter((k) => filter === 'all' || k === filter)
+        .map((k) => ({ id: k || 'na', title: yearTitle(k), items: active.filter((s) => yearKey(s) === k) }));
   if (filter === 'all') {
     const others = list.filter((s) => !s.member || (!s.former && groups.length > 0 && !groups.some((g) => g.id === s.group)));
     if (others.length) sections.push({ id: 'others', title: 'Autres nageurs', items: others });
@@ -369,7 +394,7 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
                     <div className="row-title" style={on ? { fontWeight: 600 } : undefined}>
                       {fullName(sw)}
                     </div>
-                    {groups.length > 0 && sw.birthYear && <div className="row-sub">{sw.birthYear}</div>}
+                    {!yearInTitle(sec.id) && sw.birthYear && <div className="row-sub">{sw.birthYear}</div>}
                   </div>
                   <span className={`follow-mark${on ? ' on' : ''}`} aria-hidden="true">
                     <Icon name={on ? 'heartFill' : 'heart'} />
@@ -434,7 +459,7 @@ export function ClubScreen() {
   const activeMembers = members.filter(isActiveMember);
   const formerCount = members.length - activeMembers.length;
   const followedCount = members.filter(isFollowed).length;
-  const years = memberYears(activeMembers).filter(Boolean);
+  const years = activeYearKeys(activeMembers).filter(Boolean);
   const choices = [...(groups.length ? groups.map((g) => g.id) : years), ...(followedCount ? ['followed'] : []), ...(formerCount ? ['former'] : [])];
   const active = filter === 'all' || choices.includes(filter) ? filter : 'all';
   const sections = useMemo(() => {
@@ -513,7 +538,7 @@ export function ClubScreen() {
                     <span className="count">{formerCount}</span>
                   </>
                 ) : (
-                  (groups.length ? groupName(groups, v) : undefined) ?? v
+                  (groups.length ? groupName(groups, v) : undefined) ?? yearTitle(v)
                 )}
               </button>
             ),
@@ -539,13 +564,13 @@ export function ClubScreen() {
               {sec.items.map((sw) => {
                 const st = stats.get(sw.id);
                 const sub = [
-                  groups.length ? sw.birthYear : null, // sans groupes, l'année est déjà le titre de la section
+                  yearInTitle(sec.id) ? null : sw.birthYear, // l'année est souvent déjà le titre de la section
                   st?.count
                     ? `${st.count}\u00a0course${st.count > 1 ? 's' : ''}`
                     : st?.planned
                       ? `${st.planned}\u00a0épreuve${st.planned > 1 ? 's' : ''} au programme, résultats en attente`
                       : 'Pas encore de résultat',
-                  st?.last ? `dernière le ${formatDate(st.last)}` : null,
+                  st?.last ? `dernière le ${st.last.slice(0, 4) === String(new Date().getFullYear()) ? formatDayMonth(st.last) : formatDate(st.last)}` : null,
                 ].filter(Boolean);
                 return (
                   <div key={sw.id} className="row club-row">

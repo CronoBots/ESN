@@ -115,7 +115,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                   <div className="muted small" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>
                     Record personnel
                   </div>
-                  <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }} className="tnum">
+                  <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.05 }} className="tnum">
                     {formatTime(best!.timeCs)}
                   </div>
                   <div className="muted small" style={{ marginTop: 2 }}>

@@ -7,7 +7,7 @@ import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/Meet
 import { StrokeBars } from '../components/Chart';
 import { navigate } from '../router';
 import { chronoCompare, countsForRecords, goalAchievedDate, projectGoal, swimmerSummary, eventHistory } from '../lib/stats';
-import { formatDate, formatMonthYear, formatRange, relativeDay, sportAge, todayISO, seasonLabel, seasonOf } from '../lib/dates';
+import { formatDate, formatMonthYear, formatRange, formatShortWeekday, relativeDay, sportAge, todayISO, seasonLabel, seasonOf } from '../lib/dates';
 import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { openGoalForm } from './forms';
@@ -16,8 +16,7 @@ import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './auto
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Goal, Swimmer } from '../store/types';
 
-const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
-import { deName } from '../lib/text';
+import { capitalize, deName } from '../lib/text';
 
 export function Home() {
   const data = useData();
@@ -129,6 +128,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
       .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))[0];
   }, [data.meets, mine, today]);
   const upcomingEntries = upcoming ? mine.filter((s) => s.meetId === upcoming.id).sort(chronoCompare) : [];
+  const multiDay = !!upcoming?.endDate && upcoming.endDate !== upcoming.startDate;
   const awaiting = useMemo(() => awaitingMeets(data, swimmer.id), [data, swimmer.id]);
 
   const recentPBs = useMemo(
@@ -179,11 +179,11 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
           </div>
           <div className="hero-stat">
             <b>{summary.meets}</b>
-            <span>Compét.</span>
+            <span>Meetings</span>
           </div>
           <div className="hero-stat">
             <b>{summary.bestPoints?.points ?? '–'}</b>
-            <span>Max pts</span>
+            <span>Points max</span>
           </div>
         </div>
       </button>
@@ -275,21 +275,27 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                     </span>
                   </div>
                 </div>
-                <div className="chips" style={{ padding: '0 16px 14px', flexWrap: 'wrap' }}>
-                  {upcomingEntries.slice(0, 8).map((s) => (
-                    <span key={s.id} className="chip" style={{ boxShadow: 'none', background: 'var(--fill)' }}>
-                      <span
-                        className="stroke-dot"
-                        style={{
-                          background: `var(${STROKE_BY_ID[s.stroke].colorVar})`,
-                        }}
-                      />
-                      {eventLabel(s.distance, s.stroke)}
-                      {s.startTime && <span className="count">{s.startTime}</span>}
-                      {s.timeCs != null && <b className="tnum">{formatTime(s.timeCs)}</b>}
-                    </span>
-                  ))}
-                </div>
+                {upcomingEntries.length > 0 && (
+                  <span className="agenda">
+                    {upcomingEntries.slice(0, 8).map((s) => (
+                      <span key={s.id} className="agenda-row">
+                        <span className="agenda-time">
+                          {multiDay && s.date ? `${formatShortWeekday(s.date)} ` : ''}
+                          {s.startTime ?? ''}
+                        </span>
+                        <span className="stroke-dot" style={{ background: `var(${STROKE_BY_ID[s.stroke].colorVar})` }} />
+                        <span className="agenda-name">{eventLabel(s.distance, s.stroke)}</span>
+                        {s.timeCs != null && <b className="tnum">{formatTime(s.timeCs)}</b>}
+                      </span>
+                    ))}
+                    {upcomingEntries.length > 8 && (
+                      <span className="agenda-row agenda-more">
+                        + {upcomingEntries.length - 8} autre{upcomingEntries.length - 8 > 1 ? 's' : ''} épreuve
+                        {upcomingEntries.length - 8 > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </span>
+                )}
               </button>
             </Section>
           )}

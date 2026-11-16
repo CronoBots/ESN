@@ -338,7 +338,7 @@ export function StrokeTag({ stroke, distance, size = 40 }: { stroke: Stroke; dis
     <span
       className="stroke-tag"
       style={
-        { '--tag-color': `var(${info.colorVar})`, width: size, height: size, fontSize: size < 36 ? 10 : 12 } as CSSProperties
+        { '--tag-color': `var(${info.colorVar}-tag)`, width: size, height: size, fontSize: size < 36 ? 10 : 12 } as CSSProperties
       }
       aria-hidden="true"
     >

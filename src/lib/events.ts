@@ -26,7 +26,7 @@ export const COURSES: { id: Course; label: string; long: string }[] = [
 ];
 
 export function courseLabel(c: Course): string {
-  return c === 'SCM' ? '25 m' : '50 m';
+  return c === 'SCM' ? '25\u00a0m' : '50\u00a0m';
 }
 
 const DISTANCES: Record<Stroke, number[]> = {

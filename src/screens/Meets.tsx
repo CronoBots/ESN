@@ -14,9 +14,8 @@ import { overlay } from '../components/ui';
 import { DateBlock, EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { SwimmerChips } from './Records';
 import { findResultsNow, SyncBanner } from './autoResults';
-import { deName, placeLabel } from '../lib/text';
+import { capitalize, deName, placeLabel } from '../lib/text';
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Order = 'recent' | 'chrono';
 const ORDER_KEY = 'nageo.meetsOrder';

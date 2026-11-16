@@ -5,11 +5,12 @@ import { Empty, NavBar, Row, Section, StrokeTag, overlay } from '../components/u
 import { Icon } from '../components/Icon';
 import { SwimBadges } from '../components/SwimRow';
 import { eventLabel, ROUND_LABEL, STATUS_LABEL, courseLabel } from '../lib/events';
-import { formatDate } from '../lib/dates';
+import { formatDate, formatLongDay } from '../lib/dates';
 import { formatDelta, formatTime, pacePer100, speed } from '../lib/time';
 import { personalBests, pointsFor, swimKey } from '../lib/stats';
 import { HeatPanel } from '../components/HeatPanel';
 import { navigate } from '../router';
+import { capitalize } from '../lib/text';
 
 export function SwimDetail({ id }: { id: string }) {
   const data = useData();
@@ -83,9 +84,19 @@ export function SwimDetail({ id }: { id: string }) {
               {swimmer ? fullName(swimmer) : ''} · {courseLabel(swim.course)}
             </span>
           </div>
-          <div className="rt" style={{ marginTop: 12 }}>
-            {t != null ? formatTime(t) : swim.status === 'OK' ? 'À nager' : '—'}
-          </div>
+          {t == null && swim.status === 'OK' ? (
+            <>
+              <div className="rt pending">À nager</div>
+              <div className="rt-when">
+                {capitalize(formatLongDay(swim.date))}
+                {swim.startTime ? ` · ${swim.startTime}` : ''}
+              </div>
+            </>
+          ) : (
+            <div className="rt" style={{ marginTop: 12 }}>
+              {t != null ? formatTime(t) : '—'}
+            </div>
+          )}
           <div className="hstack" style={{ justifyContent: 'center', marginTop: 10, gap: 6 }}>
             <SwimBadges swim={swim} pb={pb} />
             {pb?.deltaCs != null && swim.status === 'OK' && (
@@ -199,15 +210,15 @@ export function SwimDetail({ id }: { id: string }) {
             )}
             <Row title="Bassin" value={courseLabel(swim.course)} />
             {swim.context === 'competition' && <Row title="Tour" value={ROUND_LABEL[swim.round]} />}
-            <Row title="Statut" value={STATUS_LABEL[swim.status]} />
-            {(swim.eventNo || swim.heat || swim.lane != null) && (
+            {/* Course pas encore nagée : ni statut ni chronométrage à afficher */}
+            {(t != null || swim.status !== 'OK') && <Row title="Statut" value={STATUS_LABEL[swim.status]} />}
+            {swim.eventNo ? <Row title="Épreuve" value={`n°\u00a0${swim.eventNo}`} /> : null}
+            {swim.heat || swim.lane != null ? (
               <Row
-                title="Épreuve / série / ligne"
-                value={[swim.eventNo ? `n° ${swim.eventNo}` : null, swim.heat ? `série ${swim.heat}` : null, swim.lane != null ? `ligne ${swim.lane}` : null]
-                  .filter(Boolean)
-                  .join(' · ')}
+                title={swim.heat && swim.lane != null ? 'Série et ligne' : swim.heat ? 'Série' : 'Ligne'}
+                value={[swim.heat ? `série ${swim.heat}` : null, swim.lane != null ? `ligne ${swim.lane}` : null].filter(Boolean).join(' · ')}
               />
-            )}
+            ) : null}
             {swim.place && <Row title="Classement" value={`${swim.place}${swim.place === 1 ? 're' : 'e'}`} />}
             <Row
               title="Engagement"
@@ -217,7 +228,7 @@ export function SwimDetail({ id }: { id: string }) {
                   : 'NT'
               }
             />
-            <Row title="Chronométrage" value={swim.timing === 'manual' ? 'Manuel' : 'Électronique'} />
+            {t != null && <Row title="Chronométrage" value={swim.timing === 'manual' ? 'Manuel' : 'Électronique'} />}
             <Row title="Source" value={swim.source === 'swimrankings' ? 'swimrankings.net' : swim.source === 'live' ? 'Résultats officiels (organisateur)' : swim.source === 'club' ? 'Résultats du club' : 'Saisie manuelle'} />
           </div>
           {swim.notes && (

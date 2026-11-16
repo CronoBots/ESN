@@ -7,3 +7,6 @@ export function deName(name: string): string {
 export function placeLabel(place: number): string {
   return `${place}${place === 1 ? 're' : 'e'}\u00a0place`;
 }
+
+/** « samedi 14 novembre » → « Samedi 14 novembre » */
+export const capitalize = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);

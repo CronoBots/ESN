@@ -30,25 +30,30 @@ export function isValidISO(iso: string | undefined | null): iso is string {
 export function formatDate(iso: string | undefined): string {
   if (!iso) return '';
   const d = fromISO(iso);
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()}\u00a0${MONTHS_SHORT[d.getMonth()]}\u00a0${d.getFullYear()}`;
 }
 
 /** "14 nov." */
 export function formatDayMonth(iso: string): string {
   const d = fromISO(iso);
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+  return `${d.getDate()}\u00a0${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+/** "sam." */
+export function formatShortWeekday(iso: string): string {
+  return `${DAYS_LONG[fromISO(iso).getDay()].slice(0, 3)}.`;
 }
 
 /** "samedi 14 novembre" */
 export function formatLongDay(iso: string): string {
   const d = fromISO(iso);
-  return `${DAYS_LONG[d.getDay()]} ${d.getDate()} ${MONTHS_LONG[d.getMonth()]}`;
+  return `${DAYS_LONG[d.getDay()]} ${d.getDate()}\u00a0${MONTHS_LONG[d.getMonth()]}`;
 }
 
 /** "novembre 2026" */
 export function formatMonthYear(iso: string): string {
   const d = fromISO(iso);
-  return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+  return `${MONTHS_LONG[d.getMonth()]}\u00a0${d.getFullYear()}`;
 }
 
 /** "13 – 15 nov. 2026" */
@@ -57,10 +62,10 @@ export function formatRange(start: string, end?: string): string {
   const a = fromISO(start);
   const b = fromISO(end);
   if (a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()) {
-    return `${a.getDate()} – ${b.getDate()} ${MONTHS_SHORT[b.getMonth()]} ${b.getFullYear()}`;
+    return `${a.getDate()}\u00a0–\u00a0${b.getDate()}\u00a0${MONTHS_SHORT[b.getMonth()]}\u00a0${b.getFullYear()}`;
   }
   if (a.getFullYear() === b.getFullYear()) {
-    return `${a.getDate()} ${MONTHS_SHORT[a.getMonth()]} – ${b.getDate()} ${MONTHS_SHORT[b.getMonth()]} ${b.getFullYear()}`;
+    return `${a.getDate()}\u00a0${MONTHS_SHORT[a.getMonth()]} – ${b.getDate()}\u00a0${MONTHS_SHORT[b.getMonth()]}\u00a0${b.getFullYear()}`;
   }
   return `${formatDate(start)} – ${formatDate(end)}`;
 }

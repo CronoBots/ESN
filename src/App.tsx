@@ -25,14 +25,19 @@ const TABS: { id: string; path: string; label: string; icon: IconName }[] = [
   { id: 'settings', path: '/settings', label: 'Réglages', icon: 'gear' },
 ];
 
+/** Onglet de la dernière page rattachée à un onglet : une fiche (course, nageur, club)
+ * ouverte depuis Compétitions garde Compétitions en surbrillance. */
+let lastTab = 'home';
+
 function activeTab(path: string[]): string {
   const p = path[0] ?? '';
-  if (p === 'meets' || p === 'meet') return 'meets';
-  if (p === 'records' || p === 'rankings' || p === 'event') return 'records';
-  if (p === 'progress') return 'progress';
-  if (p === 'settings' || p === 'about') return 'settings';
-  if (p === 'club') return 'home';
-  return 'home';
+  if (p === 'swim' || p === 'swimmer' || p === 'club' || p === 'event') return lastTab;
+  if (p === 'meets' || p === 'meet') lastTab = 'meets';
+  else if (p === 'records' || p === 'rankings') lastTab = 'records';
+  else if (p === 'progress') lastTab = 'progress';
+  else if (p === 'settings' || p === 'about') lastTab = 'settings';
+  else lastTab = 'home';
+  return lastTab;
 }
 
 function Screen({ path }: { path: string[] }) {
