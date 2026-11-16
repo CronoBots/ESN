@@ -35,11 +35,28 @@ initStore().finally(() => {
 if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureContext) {
   const hadController = !!navigator.serviceWorker.controller;
   let reloading = false;
-  // Nouvelle version installée : on recharge (une seule fois) pour l'utiliser tout de suite
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController || reloading) return;
+  const reload = () => {
+    if (reloading) return;
     reloading = true;
     window.location.reload();
+  };
+  // Nouvelle version du service worker. Au lancement, la page vient déjà du réseau : c'est la
+  // nouvelle version, rien à recharger (sinon l'écran d'ouverture passait deux fois). Si la page
+  // est plus ancienne (application revenue de l'arrière-plan), elle est rechargée quand elle
+  // repasse en arrière-plan : jamais sous les yeux.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    const entry = document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.src;
+    (entry ? caches.match(entry, { ignoreSearch: true }) : Promise.resolve(undefined))
+      .then((current) => {
+        if (current) return;
+        if (document.visibilityState === 'hidden') reload();
+        else
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') reload();
+          });
+      })
+      .catch(() => {});
   });
   window.addEventListener('load', () => {
     navigator.serviceWorker
