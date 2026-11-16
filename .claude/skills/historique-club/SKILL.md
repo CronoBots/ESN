@@ -12,7 +12,7 @@ swimrankings.net a tout l'historique des nageurs, mais refuse les lectures autom
 - Ne demande, ne saisis et n'utilise jamais d'identifiant ou de mot de passe swimrankings : les pages des nageurs sont publiques.
 - Vérification anti-robot (« Just a moment », « Vérifiez que vous êtes humain ») : demande à l'utilisateur de la valider lui-même dans le navigateur, attends, puis continue. Ne tente jamais de la contourner (pas de changement d'agent utilisateur, pas d'outil de scraping, pas de requête directe au serveur avec curl, pas de proxy).
 - Une page à la fois, à un rythme normal de lecture. Seulement les nageurs de la liste du club.
-- Le dépôt GitHub est **public** : aucun nom ni temps en clair n'y est ajouté. Le dossier `historique/` est ignoré par git ; seul `public/data/club-history.json` (chiffré) est publié. N'écris jamais le code du club dans un fichier du dépôt.
+- Le dépôt GitHub est **public** : aucun nom ni temps en clair n'y est ajouté, **ni dans les fichiers, ni dans les messages de commit** (écris « Historique du club (N nageurs) », jamais un nom de nageur ; dans le code et les tests, seulement des noms fictifs). Le dossier `historique/` est ignoré par git ; seul `public/data/club-history.json` (chiffré) est publié. N'écris jamais le code du club dans un fichier du dépôt.
 - N'invente jamais un temps : une ligne illisible est signalée, pas devinée.
 
 ## Étapes
