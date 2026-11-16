@@ -83,8 +83,8 @@ function InstallHelp({ close }: { close: () => void }) {
         <div className="callout" style={{ marginTop: 14 }}>
           <Icon name="info" />
           <div>
-            Sur iPhone, l’application installée a son propre espace de stockage : si vous aviez déjà saisi des temps dans Safari,
-            faites une sauvegarde (Réglages › Sauvegarder) puis restaurez-la dans l’application installée.
+            Sur iPhone, l’application installée a son propre espace de stockage : entrez à nouveau le code du club dans
+            l’application installée, et tous les nageurs et leurs résultats reviennent automatiquement.
           </div>
         </div>
       )}

@@ -40,7 +40,9 @@ export function normalizeData(raw: unknown): AppData {
     settings: {
       ...DEFAULT_SETTINGS,
       ...(d.settings ?? {}),
-      liveSync: { ...DEFAULT_SETTINGS.liveSync, ...(d.settings?.liveSync ?? {}) },
+      // Tout est automatique : la recherche des résultats ne peut plus être coupée, plus de temps d'entraînement saisis
+      includeTraining: false,
+      liveSync: { ...DEFAULT_SETTINGS.liveSync, ...(d.settings?.liveSync ?? {}), enabled: true },
     },
   };
 }

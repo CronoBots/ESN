@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractAthleteId, parseSwimrankings, bookmarkletCode } from '../src/lib/swimrankings';
+import { extractAthleteId, parseSwimrankings } from '../src/lib/swimrankings';
 
 // Texte tel que copié depuis la page « Meilleurs temps » (navigateur de bureau, cellules séparées par des tabulations)
 const DESKTOP_COPY = `Accueil
@@ -119,15 +119,6 @@ describe('extractAthleteId', () => {
     ).toBe('1234567');
     expect(extractAthleteId('1234567')).toBe('1234567');
     expect(extractAthleteId('bonjour')).toBeNull();
-  });
-});
-
-describe('bookmarkletCode', () => {
-  it('produit un javascript: valide', () => {
-    const code = bookmarkletCode('https://exemple.org/nageo/');
-    expect(code.startsWith('javascript:')).toBe(true);
-    const js = decodeURIComponent(code.slice('javascript:'.length));
-    expect(() => new Function(js)).not.toThrow();
   });
 });
 

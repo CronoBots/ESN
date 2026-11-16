@@ -10,9 +10,7 @@ import { formatDelta, formatTime } from '../lib/time';
 import { chronoCompare, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
 import type { Swim } from '../store/types';
-import { openMeetForm, openResultForm } from './forms';
 import { overlay } from '../components/ui';
-import { openResultPhotos } from './ResultPhotos';
 import { DateBlock, EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { SwimmerChips } from './Records';
 import { findResultsNow, SyncBanner } from './autoResults';
@@ -77,7 +75,6 @@ export function Meets() {
       .sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
   }, [data.meets, timeline, today]);
 
-  const newMeet = () => openMeetForm(undefined, (m) => navigate(`/meet/${m.id}`));
   const pastCount = timeline.filter((e) => e.startDate <= today).length;
 
   return (
@@ -88,11 +85,6 @@ export function Meets() {
           swimmer && pastCount > 0
             ? `${pastCount} compétition${pastCount > 1 ? 's' : ''} ${deName(swimmer.firstName)}, résultats compris`
             : undefined
-        }
-        right={
-          <button className="icon-btn" aria-label="Nouvelle compétition" onClick={newMeet}>
-            <Icon name="plus" />
-          </button>
         }
       />
       <main className="page">
@@ -208,10 +200,7 @@ export function Meets() {
 
         {data.meets.length === 0 && seasons.length === 0 && (
           <div className="section-foot" style={{ marginTop: 12 }}>
-            Une compétition à préparer ?{' '}
-            <button className="section-link" style={{ fontSize: 13 }} onClick={newMeet}>
-              Créer son programme
-            </button>
+            Les compétitions apparaissent toutes seules : programme dès la publication des listes de départ, puis résultats.
           </div>
         )}
       </main>
@@ -280,32 +269,9 @@ export function MeetDetail({ id }: { id: string }) {
         title={meet.name}
         subtitle={`${formatRange(meet.startDate, meet.endDate)}${meet.city ? ` · ${meet.city}` : ''}`}
         back="/meets"
-        right={
-          <button className="icon-btn" onClick={() => openMeetForm(meet)}>
-            Modifier
-          </button>
-        }
       />
       <main className="page">
         <div className="list">
-          {!isPast && (
-            <Row
-              icon="plus"
-              title="Ajouter une épreuve au programme"
-              chevron
-              onClick={() => openResultForm({ meetId: meet.id, entry: true })}
-            />
-          )}
-          {meet.startDate <= today && (
-            <Row
-              icon="upload"
-              iconBg="#bf5af2"
-              title="Photographier les résultats"
-              sub="Feuilles affichées à la piscine : les temps sont lus automatiquement"
-              chevron
-              onClick={() => openResultPhotos({ meetId: meet.id })}
-            />
-          )}
           {swims.length > 0 && !isPast && (
             <Row
               icon="bell"
@@ -360,8 +326,8 @@ export function MeetDetail({ id }: { id: string }) {
               title={isPast ? 'Pas encore de résultat' : 'Programme vide'}
               text={
                 isPast
-                  ? 'Les résultats sont ajoutés automatiquement dès leur publication. Vous pouvez aussi photographier les feuilles affichées à la piscine.'
-                  : 'Ajoutez les épreuves de votre enfant (numéro, heure, série, ligne) pour avoir son programme sous la main le jour J.'
+                  ? 'Les résultats sont ajoutés automatiquement dès leur publication par l’organisateur.'
+                  : 'Le programme (épreuves, séries, lignes, heures) apparaît tout seul dès que l’organisateur publie les listes de départ.'
               }
             />
           </div>
@@ -403,11 +369,7 @@ export function MeetDetail({ id }: { id: string }) {
                         <button
                           key={s.id}
                           className="row"
-                          onClick={() =>
-                            s.timeCs == null && s.status === 'OK'
-                              ? openResultForm({ swim: s, entry: true })
-                              : navigate(`/swim/${s.id}`)
-                          }
+                          onClick={() => navigate(`/swim/${s.id}`)}
                         >
                           <StrokeTag stroke={s.stroke} distance={s.distance} size={36} />
                           <div className="row-body">

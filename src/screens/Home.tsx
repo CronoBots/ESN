@@ -13,7 +13,6 @@ import { formatDelta, formatTime } from '../lib/time';
 import { openGoalForm } from './forms';
 import { InstallBanner } from './Install';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
-import { openResultPhotos } from './ResultPhotos';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Goal, Swimmer } from '../store/types';
 
@@ -211,10 +210,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
             ))}
           </div>
           <div className="section-foot">
-            L’organisateur n’a pas encore publié les résultats : ils s’ajouteront tout seuls dès leur publication.{' '}
-            <button className="section-link" style={{ fontSize: 13 }} onClick={() => openResultPhotos({ meetId: awaiting[0].meet.id })}>
-              Photographier les feuilles affichées
-            </button>
+            L’organisateur n’a pas encore publié les résultats : ils s’ajouteront tout seuls dès leur publication.
           </div>
         </Section>
       )}
@@ -228,18 +224,13 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               text={
                 swimmer.member
                   ? `Aucune compétition ${deName(swimmer.firstName)} publiée cette saison, et son historique des saisons passées n’a pas encore été ajouté par le club. Ses prochains résultats arriveront tout seuls.`
-                  : `Les résultats de compétition ${deName(swimmer.firstName)} sont ajoutés automatiquement dès leur publication par les organisateurs. Pour l’historique plus ancien, utilisez l’import.`
+                  : `Les résultats de compétition ${deName(swimmer.firstName)} sont ajoutés automatiquement dès leur publication par les organisateurs.`
               }
               action={
                 <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
                   <button className="btn block" onClick={() => findResultsNow(swimmer.firstName, swimmer.id)}>
                     <Icon name="sparkles" /> Rechercher ses résultats
                   </button>
-                  {!swimmer.member && (
-                    <button className="btn ghost block" onClick={() => navigate(`/import?swimmer=${swimmer.id}`)}>
-                      <Icon name="download" /> Importer depuis swimrankings
-                    </button>
-                  )}
                 </div>
               }
             />
@@ -284,20 +275,6 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                     </span>
                   </div>
                 </div>
-                {upcoming.startDate <= today && (
-                  <div style={{ padding: '0 16px 12px' }}>
-                    <span
-                      role="button"
-                      className="btn secondary small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openResultPhotos({ meetId: upcoming.id });
-                      }}
-                    >
-                      <Icon name="upload" /> Résultats affichés : photographier
-                    </span>
-                  </div>
-                )}
                 <div className="chips" style={{ padding: '0 16px 14px', flexWrap: 'wrap' }}>
                   {upcomingEntries.slice(0, 8).map((s) => (
                     <span key={s.id} className="chip" style={{ boxShadow: 'none', background: 'var(--fill)' }}>

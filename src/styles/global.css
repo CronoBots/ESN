@@ -3045,3 +3045,15 @@ button.meet-nav-btn:active {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
+
+/* Classements : nom complet sur 3 lignes au plus (petits écrans, noms composés) */
+.rank-row .row-title {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+@media (max-width: 380px) {
+  .rank-row .avatar {
+    display: none;
+  }
+}

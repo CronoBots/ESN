@@ -9,7 +9,6 @@ import { sportAge, seasonLabel, seasonOf } from '../lib/dates';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { achievements, chronoCompare } from '../lib/stats';
 import { STROKES, courseLabel } from '../lib/events';
-import { openSwimmerForm } from './forms';
 import type { Course, Stroke, Swim } from '../store/types';
 import { TrophyGrid } from './Progression';
 import { findResultsNow } from './autoResults';
@@ -47,11 +46,6 @@ export function SwimmerProfile({ id }: { id: string }) {
         right={
           <>
             <FollowButton swimmer={swimmer} />
-            {!swimmer.member && (
-              <button className="icon-btn" onClick={() => openSwimmerForm(swimmer)}>
-                Modifier
-              </button>
-            )}
           </>
         }
       />
@@ -85,7 +79,7 @@ export function SwimmerProfile({ id }: { id: string }) {
             {swimmer.swimrankingsId ? (
               <Row title="Profil sur swimrankings.net" href={swimrankingsUrl(swimmer.swimrankingsId)} external />
             ) : (
-              !swimmer.member && <Row title="Lier le profil swimrankings.net" accent chevron onClick={() => openSwimmerForm(swimmer)} />
+              null
             )}
             {age != null && <Row title="Âge" value={age} />}
             {swimmer.birthYear && <Row title="Année de naissance" value={swimmer.birthYear} />}
@@ -110,11 +104,10 @@ export function SwimmerProfile({ id }: { id: string }) {
               icon="sparkles"
               iconBg="#bf5af2"
               title="Résultats des compétitions"
-              sub={data.settings.liveSync.enabled ? 'Ajoutés automatiquement · toucher pour rechercher' : 'Recherche automatique désactivée (Réglages)'}
+              sub="Ajoutés automatiquement · toucher pour rechercher"
               chevron
-              onClick={() => findResultsNow(swimmer.firstName)}
+              onClick={() => findResultsNow(swimmer.firstName, swimmer.id)}
             />
-            <Row icon="download" iconBg="#5e5ce6" title="Importer depuis swimrankings.net" chevron onClick={() => navigate(`/import?swimmer=${id}`)} />
           </div>
         </Section>
 

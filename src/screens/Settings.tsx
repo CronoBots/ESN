@@ -1,5 +1,4 @@
-import { useRef } from 'react';
-import { actions, getState, loadDemo, normalizeData, useData } from '../store/store';
+import { actions, getState, loadDemo, useData } from '../store/store';
 import { fullName, isActiveMember, mySwimmers } from '../store/hooks';
 import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -10,7 +9,6 @@ import { formatDate, relativeDay, toISO, todayISO } from '../lib/dates';
 import { COURSES, eventLabel, ROUND_LABEL, STATUS_LABEL } from '../lib/events';
 import { formatTime } from '../lib/time';
 import { isStandalone, promptInstall } from './Install';
-import type { AppData } from '../store/types';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useState } from 'react';
@@ -30,19 +28,6 @@ async function shareOrDownload(name: string, content: string, type: string) {
   }
   downloadFile(name, content, type);
   return true;
-}
-
-export function exportBackup() {
-  const data = getState();
-  const name = `esn-competition-sauvegarde-${todayISO()}.json`;
-  shareOrDownload(name, JSON.stringify({ app: 'esn-competition', exportedAt: new Date().toISOString(), ...data }, null, 2), 'application/json').then(
-    (ok) => {
-      if (ok) {
-        actions.updateSettings({ lastBackupAt: Date.now() });
-        overlay.toast('Sauvegarde créée', '💾');
-      }
-    },
-  );
 }
 
 function exportCsv() {
@@ -84,44 +69,10 @@ function exportCsv() {
 
 export function Settings() {
   const data = useData();
-  const fileRef = useRef<HTMLInputElement>(null);
   const swimmers = mySwimmers(data.swimmers);
   const club = data.settings.club;
   const rosterAvailable = useRosterAvailable();
   const s = data.settings;
-  const lastBackup = s.lastBackupAt ? toISO(new Date(s.lastBackupAt)) : null;
-  const daysSince = s.lastBackupAt ? Math.floor((Date.now() - s.lastBackupAt) / 86400000) : null;
-
-  const onFile = async (file: File) => {
-    try {
-      const raw = JSON.parse(await file.text()) as AppData;
-      const parsed = normalizeData(raw);
-      if (!parsed.swimmers.length && !parsed.swims.length) throw new Error('vide');
-      overlay.actions({
-        title: 'Restaurer la sauvegarde ?',
-        message: `${parsed.swimmers.length} nageur(s), ${parsed.swims.length} course(s), ${parsed.meets.length} compétition(s).`,
-        actions: [
-          {
-            label: 'Ajouter à mes données',
-            onSelect: () => {
-              actions.mergeAll(parsed);
-              overlay.toast('Données fusionnées');
-            },
-          },
-          {
-            label: 'Remplacer toutes mes données',
-            destructive: true,
-            onSelect: () => {
-              actions.replaceAll({ ...parsed, settings: { ...parsed.settings, onboarded: true } });
-              overlay.toast('Sauvegarde restaurée');
-            },
-          },
-        ],
-      });
-    } catch {
-      overlay.toast('Fichier de sauvegarde invalide', '⚠️');
-    }
-  };
 
   return (
     <>
@@ -178,48 +129,22 @@ export function Settings() {
 
         <Section title="Résultats automatiques">
           <div className="list">
-            <div className="field">
-              <span className="label grow">Ajouter automatiquement les résultats des compétitions</span>
-              <Toggle on={s.liveSync.enabled} onChange={(v) => actions.updateLiveSync({ enabled: v })} label="Ajouter automatiquement les résultats des compétitions" />
-            </div>
             <SyncNowRow />
           </div>
           <div className="section-foot">
-            Les organisateurs publient les résultats officiels des compétitions sur live.swimrankings.net (format LENEX). L’application y retrouve
-            vos nageurs (nom, prénom, année de naissance) et ajoute leurs résultats sans doublon : dès qu’un nageur est ajouté, à chaque
-            ouverture, et toutes les 15 min pendant une compétition.
+            Tout est automatique : programme et résultats publiés par les organisateurs (live.swimrankings.net, fichiers officiels et
+            feuilles PDF), historique des saisons passées relevé par le club, nouveaux nageurs de l’ESN ajoutés à la liste. Vérification à
+            chaque ouverture, et toutes les 15 min pendant une compétition.
           </div>
         </Section>
 
         <Section title="Données">
           <div className="list">
-            <Row icon="download" iconBg="#5e5ce6" title="Importer depuis swimrankings.net" chevron onClick={() => navigate('/import')} />
-            <Row
-              icon="upload"
-              iconBg="#30d158"
-              title="Sauvegarder mes données"
-              sub={lastBackup ? `Dernière sauvegarde : ${relativeDay(lastBackup)}` : 'Aucune sauvegarde pour l’instant'}
-              chevron
-              onClick={exportBackup}
-            />
-            <Row icon="download" iconBg="#64d2ff" title="Restaurer une sauvegarde" chevron onClick={() => fileRef.current?.click()} />
             <Row icon="list" iconBg="#8e8e93" title="Exporter les résultats (Excel / CSV)" chevron onClick={exportCsv} />
           </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onFile(f);
-              e.target.value = '';
-            }}
-          />
           <div className="section-foot">
-            Vos données restent sur cet appareil (aucun compte, aucun serveur).{' '}
-            {daysSince == null || daysSince > 30 ? <b>Pensez à faire une sauvegarde régulièrement</b> : 'Sauvegarde à jour.'} Le fichier
-            permet aussi de transférer les données vers un autre téléphone ou de les partager avec l’autre parent.
+            Les données sont gardées sur cet appareil. Sur un autre téléphone, il suffit d’entrer le code du club : tout revient
+            automatiquement.
           </div>
         </Section>
 
@@ -244,10 +169,6 @@ export function Settings() {
               <div style={{ flex: 1, maxWidth: 200, marginLeft: 'auto' }}>
                 <Segmented value={s.defaultCourse} onChange={(v) => actions.updateSettings({ defaultCourse: v })} options={COURSES.map((c) => ({ id: c.id, label: c.label }))} />
               </div>
-            </div>
-            <div className="field">
-              <span className="label grow">Entraînements dans les records</span>
-              <Toggle on={s.includeTraining} onChange={(v) => actions.updateSettings({ includeTraining: v })} label="Compter les temps d’entraînement dans les records" />
             </div>
             <div className="field">
               <span className="label grow">Célébrer les records 🎉</span>
@@ -288,7 +209,7 @@ export function Settings() {
               onClick={async () => {
                 const ok = await overlay.confirm({
                   title: 'Effacer toutes les données ?',
-                  message: 'Nageurs, courses, compétitions et objectifs seront supprimés de cet appareil. Faites une sauvegarde avant.',
+                  message: 'Nageurs, courses, compétitions et objectifs seront supprimés de cet appareil. Avec le code du club, la liste et les résultats reviendront automatiquement.',
                   confirmLabel: 'Tout effacer',
                   destructive: true,
                 });
@@ -345,14 +266,14 @@ export function About() {
         <Section title="Points World Aquatics">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
             Points = 1000 × (temps de base ÷ temps)³. Le temps de base est le record du monde de l’épreuve (par bassin et par sexe).
-            Pour les temps importés de swimrankings.net, les points officiels sont conservés ; pour les temps saisis, ils sont calculés et
-            peuvent différer de quelques points du barème officiel de la saison.
+            Les points officiels publiés avec les résultats sont conservés ; à défaut, ils sont calculés et peuvent différer de quelques
+            points du barème officiel de la saison.
           </div>
         </Section>
         <Section title="swimrankings.net">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
-            L’application ESN Compétition n’est pas affiliée à swimrankings.net. L’import lit uniquement la page que vous ouvrez vous-même dans votre navigateur ;
-            aucune donnée n’est envoyée à un tiers.
+            L’application ESN Compétition n’est pas affiliée à swimrankings.net. Elle lit les résultats publiés par les organisateurs sur
+            live.swimrankings.net et l’historique relevé par le club ; aucune donnée n’est envoyée à un tiers.
           </div>
         </Section>
         <Section title="Hors-ligne">

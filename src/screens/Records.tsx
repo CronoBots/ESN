@@ -159,8 +159,7 @@ export function Records() {
               })
             )}
             <div className="section-foot" style={{ marginTop: 18 }}>
-              Points World Aquatics : officiels pour les temps importés de swimrankings.net, calculés (indicatifs) pour les temps saisis.
-              {!include && ' Les temps d’entraînement ne comptent pas dans les records (modifiable dans Réglages).'}
+              Points World Aquatics : officiels quand ils sont publiés, sinon calculés (indicatifs).
             </div>
           </>
         )}
@@ -314,7 +313,7 @@ export function Rankings() {
               {ranking.map((r, i) => {
                 const age = sportAge(r.swimmer.birthYear);
                 return (
-                  <button key={r.swimmer.id} className="row" onClick={() => navigate(`/event/${r.swimmer.id}/${course}/${dist}/${stroke}`)}>
+                  <button key={r.swimmer.id} className="row rank-row" onClick={() => navigate(`/event/${r.swimmer.id}/${course}/${dist}/${stroke}`)}>
                     <span style={{ width: 28, textAlign: 'center', fontWeight: 800, fontSize: i < 3 ? 22 : 16 }} className="tnum">
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                     </span>

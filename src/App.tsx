@@ -11,7 +11,6 @@ import { EventDetail } from './screens/EventDetail';
 import { Progression } from './screens/Progression';
 import { SwimDetail } from './screens/SwimDetail';
 import { SwimmerHistory, SwimmerProfile } from './screens/Swimmer';
-import { ImportScreen } from './screens/Import';
 import { About, Settings, APP_VERSION } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
 import { ClubScreen, refreshClubRoster } from './screens/Club';
@@ -31,7 +30,7 @@ function activeTab(path: string[]): string {
   if (p === 'meets' || p === 'meet') return 'meets';
   if (p === 'records' || p === 'rankings' || p === 'event') return 'records';
   if (p === 'progress') return 'progress';
-  if (p === 'settings' || p === 'import' || p === 'about') return 'settings';
+  if (p === 'settings' || p === 'about') return 'settings';
   if (p === 'club') return 'home';
   return 'home';
 }
@@ -57,8 +56,6 @@ function Screen({ path }: { path: string[] }) {
       return <SwimDetail id={b} key={b} />;
     case 'swimmer':
       return c === 'history' ? <SwimmerHistory id={b} key={`h${b}`} /> : <SwimmerProfile id={b} key={b} />;
-    case 'import':
-      return <ImportScreen />;
     case 'settings':
       return <Settings />;
     case 'about':
@@ -92,7 +89,6 @@ export function App() {
   const showOnboarding =
     data.swimmers.length === 0 &&
     !data.settings.onboarded &&
-    route.path[0] !== 'import' &&
     route.path[0] !== 'about' &&
     !(route.path[0] === 'club' && route.query.has('code'));
 

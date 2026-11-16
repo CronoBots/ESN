@@ -10,7 +10,6 @@ import { formatDelta, formatTime, pacePer100, speed } from '../lib/time';
 import { personalBests, pointsFor, swimKey } from '../lib/stats';
 import { HeatPanel } from '../components/HeatPanel';
 import { navigate } from '../router';
-import { openResultForm } from './forms';
 
 export function SwimDetail({ id }: { id: string }) {
   const data = useData();
@@ -75,11 +74,6 @@ export function SwimDetail({ id }: { id: string }) {
         title={eventLabel(swim.distance, swim.stroke)}
         back
         large={false}
-        right={
-          <button className="icon-btn" onClick={() => openResultForm({ swim })}>
-            Modifier
-          </button>
-        }
       />
       <main className="page">
         <div className="card result-hero">
