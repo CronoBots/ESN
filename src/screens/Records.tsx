@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { actions, useData } from '../store/store';
-import { fullName, hasClubMembers, mySwimmers, useSelectedSwimmer } from '../store/hooks';
+import { fullName, hasClubMembers, isFormerMember, mySwimmers, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, Segmented, StrokeDot, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
@@ -173,6 +173,17 @@ export function Records() {
 /* Classements                                                               */
 /* ======================================================================== */
 
+/** Anciens membres dans les classements (préférence de l'appareil, désactivée par défaut). */
+const FORMER_KEY = 'esn.rankingsFormer';
+
+function savedWithFormer(): boolean {
+  try {
+    return localStorage.getItem(FORMER_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function Rankings() {
   const data = useData();
   const selected = useSelectedSwimmer();
@@ -185,6 +196,17 @@ export function Rankings() {
   const clubMode = hasClubMembers(data.swimmers);
   const club = clubMode && groups.length > 0;
   const [group, setGroup] = useState<string>(() => (club && selected?.group ? selected.group : 'all'));
+  const hasFormer = data.swimmers.some(isFormerMember);
+  const [withFormer, setWithFormer] = useState(savedWithFormer);
+  const toggleFormer = () =>
+    setWithFormer((v) => {
+      try {
+        localStorage.setItem(FORMER_KEY, v ? '0' : '1');
+      } catch {
+        /* préférence non mémorisée */
+      }
+      return !v;
+    });
   const include = data.settings.includeTraining;
   const distances = distancesFor(stroke, course);
   const dist = distances.includes(distance) ? distance : distances[0];
@@ -192,6 +214,7 @@ export function Rankings() {
   const ranking = useMemo(() => {
     const rows: { swimmer: Swimmer; best: Swim }[] = [];
     for (const sw of data.swimmers) {
+      if (sw.former && !withFormer) continue;
       if (gender !== 'all' && sw.gender !== gender) continue;
       if (sameYear && selected?.birthYear && sw.birthYear !== selected.birthYear) continue;
       if (club && group !== 'all' && sw.group !== group) continue;
@@ -204,7 +227,7 @@ export function Rankings() {
       if (best) rows.push({ swimmer: sw, best });
     }
     return rows.sort((a, b) => a.best.timeCs! - b.best.timeCs!);
-  }, [data.swimmers, data.swims, gender, sameYear, selected, course, dist, stroke, include, club, group]);
+  }, [data.swimmers, data.swims, gender, sameYear, selected, course, dist, stroke, include, club, group, withFormer]);
 
   const leader = ranking[0]?.best.timeCs;
 
@@ -265,6 +288,12 @@ export function Rankings() {
               />
             </label>
           )}
+          {hasFormer && (
+            <label className="hstack between" style={{ padding: '12px 4px 4px', fontSize: 15 }}>
+              <span>Anciens membres</span>
+              <button type="button" role="switch" aria-checked={withFormer} className={`toggle${withFormer ? ' on' : ''}`} onClick={toggleFormer} />
+            </label>
+          )}
         </div>
 
         <Section title={`${eventLabel(dist, stroke)} · ${courseLabel(course)}`}>
@@ -295,7 +324,11 @@ export function Rankings() {
                         {fullName(r.swimmer)}
                       </div>
                       <div className="row-sub">
-                        {[age != null ? `${age}\u00a0ans` : null, club ? groupName(groups, r.swimmer.group) : clubMode ? r.swimmer.birthYear : r.swimmer.club]
+                        {[
+                          age != null ? `${age}\u00a0ans` : null,
+                          club ? groupName(groups, r.swimmer.group) : clubMode ? r.swimmer.birthYear : r.swimmer.club,
+                          r.swimmer.former ? 'ancien membre' : null,
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </div>

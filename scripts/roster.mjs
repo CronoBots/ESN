@@ -7,7 +7,8 @@
 //   node scripts/roster.mjs historique DOSSIER CODE      chiffre l'historique swimrankings (un .txt par nageur)
 //                                                        dans public/data/club-history.json
 //
-// membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M), une ligne par nageur.
+// membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut, une ligne par nageur.
+// Statut : « ancien » pour un ancien membre (liste à part, classements sur option), sinon vide.
 // Le code peut aussi être donné par la variable d'environnement ESN_CODE.
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
@@ -20,11 +21,14 @@ const [cmd, ...args] = process.argv.slice(2);
 
 function summary(roster) {
   const count = (n) => `${n} nageur${n > 1 ? 's' : ''}`;
-  const years = [...new Set(roster.members.map((m) => m.birthYear ?? '?'))].sort();
+  const active = roster.members.filter((m) => !m.former);
+  const former = roster.members.length - active.length;
+  const years = [...new Set(active.map((m) => m.birthYear ?? '?'))].sort();
   const lines = roster.groups.length
-    ? roster.groups.map((g) => `  ${g.name} : ${count(roster.members.filter((m) => m.group === g.id).length)}`)
-    : years.map((y) => `  ${y} : ${count(roster.members.filter((m) => (m.birthYear ?? '?') === y).length)}`);
-  return `${roster.members.length} nageurs (liste du ${roster.updated})\n${lines.join('\n')}`;
+    ? roster.groups.map((g) => `  ${g.name} : ${count(active.filter((m) => m.group === g.id).length)}`)
+    : years.map((y) => `  ${y} : ${count(active.filter((m) => (m.birthYear ?? '?') === y).length)}`);
+  if (former) lines.push(`  anciens membres : ${count(former)}`);
+  return `${active.length} nageurs${former ? ` et ${former} anciens membres` : ''} (liste du ${roster.updated})\n${lines.join('\n')}`;
 }
 
 if (cmd === 'code') {
@@ -46,8 +50,8 @@ if (cmd === 'code') {
 } else if (cmd === 'lire') {
   const code = args[0] ?? process.env.ESN_CODE;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
-  console.log('groupe;nom;prénom;année;sexe');
-  for (const m of roster.members) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender].join(';'));
+  console.log('groupe;nom;prénom;année;sexe;statut');
+  for (const m of roster.members) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender, m.former ? 'ancien' : ''].join(';'));
 } else if (cmd === 'historique') {
   const [dir, argCode] = args;
   const code = argCode ?? process.env.ESN_CODE;

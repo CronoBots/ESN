@@ -334,6 +334,7 @@ export const actions = {
             lastName: m.lastName,
             group: m.group,
             member: true,
+            former: m.former || undefined,
             birthYear: sw.birthYear ?? m.birthYear,
             club: sw.club || roster.club,
           };
@@ -352,6 +353,7 @@ export const actions = {
             favorite: false,
             group: m.group,
             member: true,
+            former: m.former || undefined,
             createdAt: now,
           };
           swimmers.push(sw);

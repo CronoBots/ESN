@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
-import { fullName, hasClubMembers, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
+import { fullName, hasClubMembers, isActiveMember, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
@@ -494,7 +494,7 @@ function ClubCard() {
   const available = useRosterAvailable();
   const club = data.settings.club;
   if (!club && !available) return null;
-  const members = data.swimmers.filter((s) => s.member);
+  const members = data.swimmers.filter(isActiveMember);
   return (
     <Section title="Le club">
       {club ? (

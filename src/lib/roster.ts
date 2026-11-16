@@ -20,6 +20,8 @@ export interface RosterMember {
   gender: 'F' | 'M';
   /** Groupe d'entraînement (A, B, C…), facultatif : sans groupe, les nageurs sont classés par année. */
   group?: string;
+  /** Ancien membre (a nagé pour le club, n'y est plus) : liste à part, classements sur option. */
+  former?: boolean;
 }
 
 export interface Roster {
@@ -175,7 +177,8 @@ export function validateRoster(raw: unknown): Roster {
     const key = memberKey({ lastName, firstName, birthYear });
     if (seen.has(key)) continue;
     seen.add(key);
-    members.push({ lastName, firstName, birthYear, gender, group });
+    const former = m.former === true || /^anc/i.test(clean(m.former));
+    members.push({ lastName, firstName, birthYear, gender, group, ...(former ? { former: true } : {}) });
   }
   const ids = [...new Set(members.map((m) => m.group).filter((g): g is string => !!g))].sort();
   const named = new Map((r.groups ?? []).map((g) => [clean(g.id).toUpperCase(), clean(g.name)]));
@@ -201,9 +204,12 @@ export function memberKey(m: { lastName: string; firstName: string; birthYear?: 
 
 /**
  * Liste en clair au format tableur (CSV, séparateur ; , ou tabulation) :
- * groupe ; nom ; prénom ; année de naissance ; sexe (F/M). Ligne d'en-tête facultative.
+ * groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut (« ancien »
+ * pour un ancien membre, sinon vide). Ligne d'en-tête facultative.
  */
-export function parseRosterCsv(text: string): { group: string; lastName: string; firstName: string; birthYear?: number; gender: string }[] {
+export function parseRosterCsv(
+  text: string,
+): { group: string; lastName: string; firstName: string; birthYear?: number; gender: string; former?: boolean }[] {
   const lines = text
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
@@ -218,11 +224,12 @@ export function parseRosterCsv(text: string): { group: string; lastName: string;
     const c = g.trim().toUpperCase()[0];
     return c === 'F' ? 'F' : c === 'M' || c === 'G' || c === 'H' ? 'M' : g;
   };
-  return (isHeader ? rows.slice(1) : rows).map(([group = '', lastName = '', firstName = '', year = '', gender = '']) => ({
+  return (isHeader ? rows.slice(1) : rows).map(([group = '', lastName = '', firstName = '', year = '', gender = '', status = '']) => ({
     group: group.replace(/^groupe\s*/i, ''),
     lastName,
     firstName,
     birthYear: year ? Number(year) : undefined,
     gender: sex(gender),
+    ...(/^anc/i.test(status.trim()) ? { former: true } : {}),
   }));
 }

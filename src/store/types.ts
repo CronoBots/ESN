@@ -29,6 +29,8 @@ export interface Swimmer {
   member?: boolean;
   /** Nageur du club trouvé automatiquement dans une compétition (pas encore dans la liste publiée). */
   discovered?: boolean;
+  /** Ancien membre du club (liste publiée) : à part dans la liste, dans les classements sur option. */
+  former?: boolean;
   createdAt: number;
 }
 

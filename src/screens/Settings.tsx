@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { actions, getState, loadDemo, normalizeData, useData } from '../store/store';
-import { fullName, mySwimmers } from '../store/hooks';
+import { fullName, isActiveMember, mySwimmers } from '../store/hooks';
 import { Avatar, BrandLogo, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
@@ -160,7 +160,7 @@ export function Settings() {
                     icon="users"
                     iconBg="var(--brand-green)"
                     title="Nageurs de l’ESN"
-                    value={`${data.swimmers.filter((s) => s.member).length}`}
+                    value={`${data.swimmers.filter(isActiveMember).length}`}
                     chevron
                     onClick={() => navigate('/club')}
                   />

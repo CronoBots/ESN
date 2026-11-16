@@ -412,7 +412,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   const meets = all.filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
   // Nouvelle version de la recherche : toutes les compétitions sont relues (sans doublon)
   const processed = (cfg.engine ?? 1) < SYNC_ENGINE ? {} : { ...cfg.processed };
-  const swimmers = state.swimmers;
+  // Anciens membres : leur historique au club suffit (pas de recherche de leurs résultats actuels, souvent ailleurs)
+  const swimmers = state.swimmers.filter((s) => !s.former);
   // Nageurs du club : on lit aussi les feuilles PDF (compétitions récentes sans fichier LENEX, programmes à venir)
   const club = swimmers.some((s) => s.member) ? CLUB.match : undefined;
   const soon = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);

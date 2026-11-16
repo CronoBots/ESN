@@ -26,6 +26,12 @@ export function sortSwimmers(list: Swimmer[]): Swimmer[] {
 /** Vrai quand la liste des membres du club est dans l'application. */
 export const hasClubMembers = (list: Swimmer[]) => list.some((s) => s.member);
 
+/** Membre actuel du club (dans la liste publiée, pas ancien membre). */
+export const isActiveMember = (s: Swimmer) => !!s.member && !s.former;
+
+/** Ancien membre du club (marqué comme tel dans la liste publiée). */
+export const isFormerMember = (s: Swimmer) => !!s.member && !!s.former;
+
 /**
  * Mes nageurs : mes enfants et mes favoris. Sans liste du club (quelques nageurs
  * seulement), tous les nageurs. `current` est ajouté s'il n'en fait pas partie.

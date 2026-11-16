@@ -75,6 +75,27 @@ describe('liste du club dans l’application', async () => {
     expect(names).toEqual(['Emma:A', 'Lucas:A']);
   });
 
+  it('garde les anciens membres à part', async () => {
+    const { isActiveMember, isFormerMember } = await import('../src/store/hooks');
+    const list = roster(';DUPONT;Emma;2012;F\n;MARTIN;Lucas;2011;M\n;PIRET;Julie;1998;F;ancien');
+    expect(list.members.map((m) => m.former ?? false)).toEqual([false, false, true]);
+    // Une liste publiée avant cette version (sans statut) reste lisible
+    expect(roster(';DUPONT;Emma;2012;F').members[0]).not.toHaveProperty('former');
+
+    actions.applyRoster(list, 'ESN-TEST', 'v3');
+    const julie = getState().swimmers.find((x) => x.firstName === 'Julie')!;
+    expect(julie).toMatchObject({ member: true, former: true });
+    expect(isFormerMember(julie)).toBe(true);
+    expect(getState().swimmers.filter(isActiveMember).map((x) => x.firstName)).toEqual(['Emma', 'Lucas']);
+
+    // Elle revient au club : la liste suivante la remet parmi les membres actifs
+    actions.applyRoster(roster(';DUPONT;Emma;2012;F\n;MARTIN;Lucas;2011;M\n;PIRET;Julie;1998;F'), 'ESN-TEST', 'v4');
+    expect(isActiveMember(getState().swimmers.find((x) => x.firstName === 'Julie')!)).toBe(true);
+
+    // Retour à la liste des tests suivants
+    actions.applyRoster(roster('A;DUPONT;Emma;2012;F\nA;MARTIN;Lucas;2011;M'), 'ESN-TEST', 'v5');
+  });
+
   it('suit des nageurs choisis dans la liste', () => {
     const lucas = getState().swimmers.find((x) => x.firstName === 'Lucas')!;
     actions.setFollowed([lucas.id]);
