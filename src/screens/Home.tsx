@@ -13,6 +13,7 @@ import { formatDelta, formatTime } from '../lib/time';
 import { InstallBanner } from './Install';
 import { LevelGoals } from '../components/Levels';
 import { QualifyingGoals } from '../components/Qualifying';
+import { MedalTally } from '../components/Medals';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
@@ -402,13 +403,11 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                   </div>
                   <div className="tile-sub">en compétition</div>
                 </div>
-                <div className="tile">
-                  <div className="tile-label">Podiums</div>
-                  <div className="tile-value">{summary.podiums}</div>
-                  <div className="tile-sub">
-                    {summary.podiums === 0 ? 'en compétition' : summary.wins === 0 ? 'pas encore de victoire' : `dont ${summary.wins} victoire${summary.wins > 1 ? 's' : ''}`}
-                  </div>
-                </div>
+                <button className="tile tile-button" onClick={() => navigate(`/swimmer/${swimmer.id}`)}>
+                  <div className="tile-label">Médailles</div>
+                  <div className="tile-value">{summary.medals.total}</div>
+                  <div className="tile-sub">{summary.medals.total === 0 ? 'en compétition' : <MedalTally count={summary.medals} />}</div>
+                </button>
               </div>
               {summary.lastRace && (
                 <div className="section-foot">

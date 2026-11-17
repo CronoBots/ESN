@@ -13,6 +13,7 @@ import { STROKES, courseLabel } from '../lib/events';
 import type { Course, Stroke, Swim } from '../store/types';
 import { TrophyGrid } from './Progression';
 import { findResultsNow } from './autoResults';
+import { SwimmerMedals } from '../components/Medals';
 
 export function SwimmerProfile({ id }: { id: string }) {
   const data = useData();
@@ -22,6 +23,7 @@ export function SwimmerProfile({ id }: { id: string }) {
     () => (swimmer ? achievements(data.swims, swimmer, data.meets, pbFlags) : []),
     [data.swims, swimmer, data.goals, data.meets, pbFlags],
   );
+  const meetsById = useMemo(() => new Map(data.meets.map((m) => [m.id, m])), [data.meets]);
 
   if (!swimmer) {
     return (
@@ -111,6 +113,8 @@ export function SwimmerProfile({ id }: { id: string }) {
             />
           </div>
         </Section>
+
+        <SwimmerMedals swimmer={swimmer} swims={data.swims} meetsById={meetsById} pbFlags={pbFlags} />
 
         <Section title="Trophées" action={<span className="muted small">{unlocked}/{trophies.length}</span>}>
           <TrophyGrid trophies={trophies} />
