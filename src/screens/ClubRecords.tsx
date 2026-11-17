@@ -5,7 +5,7 @@ import { Empty, NavBar, Section, Segmented, StrokeDot, StrokeTag } from '../comp
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { COURSES, STROKES, distancesFor, eventLabel } from '../lib/events';
-import { AGE_BANDS, ageAt, bandForAge, clubRecords, recordKey } from '../lib/clubRecords';
+import { AGE_BANDS, ageAt, bandForAge, clubRecords, recordComplete, recordKey } from '../lib/clubRecords';
 import { formatDate } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { pointsFor } from '../lib/stats';
@@ -110,6 +110,7 @@ export function ClubRecords() {
                             {swimmer.former ? ' · ancien membre' : ''}
                           </div>
                           <div className="row-sub">{[formatDate(swim.date), meet?.name].filter(Boolean).join(' · ')}</div>
+                          {!recordComplete(course, d, st.id) && <div className="row-sub record-partial">Meilleur temps connu : anciens membres pas encore relevés</div>}
                         </div>
                         <div className="row-end">
                           <div style={{ textAlign: 'right' }}>
@@ -126,6 +127,15 @@ export function ClubRecords() {
               </Section>
             );
           })
+        )}
+        {bandId !== 'all' && (
+          <div className="callout" style={{ marginTop: 16 }}>
+            <Icon name="info" />
+            <div>
+              Records par âge à prendre avec prudence : pour la plupart des anciens membres, seul leur meilleur temps à vie est
+              connu, pas leurs temps à chaque âge.
+            </div>
+          </div>
         )}
         <div className="section-foot" style={{ marginTop: 18 }}>
           Temps de compétition des nageurs de la liste du club, d’après swimrankings.net et les résultats officiels. L’âge est celui de

@@ -3266,8 +3266,85 @@ button.meet-nav-btn:active {
   color: var(--accent);
 }
 
+.record-partial {
+  font-size: 12px;
+  font-style: italic;
+}
+
 .record-row .badge.masters {
   margin-top: 3px;
+}
+
+/* Accueil : le dernier week-end de compétition du club */
+.weekend-card {
+  display: block;
+  width: 100%;
+  padding: 14px 16px 16px;
+  text-align: left;
+}
+
+.weekend-meets {
+  color: var(--text-2);
+  font-size: 14px;
+  text-wrap: pretty;
+}
+
+.weekend-tiles {
+  margin-top: 12px;
+}
+
+.weekend-card .weekend-tiles .tile {
+  background: var(--fill);
+  box-shadow: none;
+}
+
+.weekend-label {
+  margin: 14px 0 4px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.weekend-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 0.5px solid var(--separator);
+  font-size: 15px;
+}
+
+.weekend-progress-row:first-child {
+  border-top: 0;
+}
+
+.weekend-gain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.weekend-delta {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.weekend-records {
+  margin-top: 12px;
+}
+
+.weekend-swimmer {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 /* Page d'une épreuve : rappel des records du club */

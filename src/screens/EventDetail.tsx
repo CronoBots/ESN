@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../store/store';
 import { fullName, hasClubMembers, sortSwimmers, usePbFlags } from '../store/hooks';
-import { ageAt, bandForAge, clubRecords, recordKey, type ClubRecord } from '../lib/clubRecords';
+import { ageAt, bandForAge, clubRecords, recordComplete, recordKey, type ClubRecord } from '../lib/clubRecords';
 import { Avatar, Empty, NavBar, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ProgressChart, type ChartSeries } from '../components/Chart';
@@ -157,7 +157,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                       <span key={label} className="club-record-line">
                         <Icon name="trophy" aria-hidden="true" />
                         <span>
-                          Record du club {label} :{' '}
+                          {recordComplete(course, distance, stroke) ? 'Record du club' : 'Meilleur temps connu à l’ESN'} {label} :{' '}
                           {own ? (
                             <b>{swimmer.firstName} le détient ({formatTime(rec.swim.timeCs)})</b>
                           ) : (

@@ -12,6 +12,7 @@ import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { InstallBanner } from './Install';
 import { LevelGoals } from '../components/Levels';
+import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Swimmer } from '../store/types';
@@ -46,6 +47,8 @@ export function Home() {
               </div>
             }
           />
+          {/* La vie du club, même sans nageur suivi */}
+          <ClubWeekendCard />
         </main>
       </>
     );
@@ -300,6 +303,8 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
             </Section>
           )}
 
+          <ClubWeekendCard />
+
           <LevelGoals swimmer={swimmer} swims={data.swims} includeTraining={include} />
 
           {timeline.length >= 2 && (
@@ -444,6 +449,16 @@ function ClubCard() {
               <div className="row-sub">
                 {clubSummary(club.groups, members)}
               </div>
+            </div>
+            <Icon name="chevronRight" className="chev" />
+          </button>
+          <button className="row" onClick={() => navigate('/club-records')}>
+            <span className="row-icon" style={{ background: '#f5a400' }}>
+              <Icon name="trophy" />
+            </span>
+            <div className="row-body">
+              <div className="row-title">Records du club</div>
+              <div className="row-sub">Meilleurs temps de l’ESN, par épreuve et par âge</div>
             </div>
             <Icon name="chevronRight" className="chev" />
           </button>
