@@ -134,7 +134,7 @@ function steps(platform: Platform): Step[] {
             Ouvrez <b>ESN Compétition</b> depuis l’écran d’accueil.
           </>
         ),
-        note: 'Elle s’ouvre en plein écran, déjà reliée au club. Si elle demande le QR code : « Scanner le QR code », une seule fois.',
+        note: 'Elle s’ouvre en plein écran, directement sur les nageurs de l’ESN. Sur iPhone, choisissez à nouveau vos nageurs suivis la première fois.',
       },
     );
     return list;

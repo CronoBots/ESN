@@ -5,32 +5,32 @@ description: Récupère sur swimrankings.net l'historique complet (toutes les co
 
 # Historique swimrankings des nageurs du club
 
-swimrankings.net a tout l'historique des nageurs, mais refuse les lectures automatiques (vérification anti-robot). On lit donc les pages **dans le navigateur de l'utilisateur**, à son rythme, puis on publie l'historique **chiffré** avec le code du club : chaque membre le reçoit automatiquement dans l'application.
+swimrankings.net a tout l'historique des nageurs, mais refuse les lectures automatiques (vérification anti-robot). On lit donc les pages **dans le navigateur de l'utilisateur**, à son rythme, puis on publie l'historique **chiffré** avec la clé du club : chacun le reçoit automatiquement dans l'application.
 
 ## Règles
 
 - Ne demande, ne saisis et n'utilise jamais d'identifiant ou de mot de passe swimrankings : les pages des nageurs sont publiques.
 - Vérification anti-robot (« Just a moment », « Vérifiez que vous êtes humain ») : demande à l'utilisateur de la valider lui-même dans le navigateur, attends, puis continue. Ne tente jamais de la contourner (pas de changement d'agent utilisateur, pas d'outil de scraping, pas de requête directe au serveur avec curl, pas de proxy).
 - Une page à la fois, à un rythme normal de lecture. Seulement les nageurs de la liste du club.
-- Le dépôt GitHub est **public** : aucun nom ni temps en clair n'y est ajouté, **ni dans les fichiers, ni dans les messages de commit** (écris « Historique du club (N nageurs) », jamais un nom de nageur ; dans le code et les tests, seulement des noms fictifs). Le dossier `historique/` est ignoré par git ; seul `public/data/club-history.json` (chiffré) est publié. N'écris jamais le code du club dans un fichier du dépôt.
+- Le dépôt GitHub est **public** : aucun nom ni temps en clair n'y est ajouté, **ni dans les fichiers, ni dans les messages de commit** (écris « Historique du club (N nageurs) », jamais un nom de nageur ; dans le code et les tests, seulement des noms fictifs). Le dossier `historique/` est ignoré par git ; seul `public/data/club-history.json` (chiffré) est publié. La clé du club est publique (`src/club.ts`, `CLUB.accessKey`) : l'application est ouverte à tous, sans connexion ; le chiffrement évite seulement que les noms soient lisibles en clair dans le dépôt.
 - N'invente jamais un temps : une ligne illisible est signalée, pas devinée.
 
 ## Étapes
 
 1. **Préparer.** Tu travailles dans le dossier du dépôt ESN, sur l'ordinateur de l'utilisateur. Lis la skill du navigateur disponible (`built-in-browser` ou `chrome-browser`). Si `node_modules` manque : `npm install`.
-2. **Code du club.** Demande-le à l'utilisateur (format `ESN-XXXX-XXXX`). Garde-le seulement en mémoire pour les commandes.
-3. **Qui relever.** `node scripts/roster.mjs manquants CODE` affiche les membres **actifs** dont l'historique n'est pas encore publié : ce sont eux à relever (les anciens membres, statut « ancien », ne sont relevés que si l'utilisateur le demande). Pour tout refaire, `node scripts/roster.mjs lire CODE` affiche toute la liste (groupe ; nom ; prénom ; année ; sexe ; statut).
+2. **Clé du club.** Rien à demander : les commandes utilisent la clé de `src/club.ts` quand `CODE` est omis.
+3. **Qui relever.** `node scripts/roster.mjs manquants` affiche les membres **actifs** dont l'historique n'est pas encore publié : ce sont eux à relever (les anciens membres, statut « ancien », ne sont relevés que si l'utilisateur le demande). Pour tout refaire, `node scripts/roster.mjs lire` affiche toute la liste (groupe ; nom ; prénom ; année ; sexe ; statut).
 4. **Pour chaque nageur :**
    1. Recherche : `https://www.swimrankings.net/index.php?page=athleteSelect&nationId=0&athleteLastName=NOM` (nom en majuscules, sans accents si besoin). Choisis la ligne avec le même prénom, la même année de naissance et le club de Seraing (« Ecole Seraing Natation », « ESN »). Doute ou homonyme : demande à l'utilisateur. Introuvable : note-le et passe au suivant.
    2. Meilleurs temps : `https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=ID&athletePage=PBEST`, lis la page en texte (en-tête : NOM, Prénom, année, sexe si indiqué, club).
    3. Historique : pour chaque épreuve de la page, ouvre la liste de **tous** ses temps (lien de l'épreuve, ou menu « Tous les résultats » / « All results » puis chaque nage), en petit bassin (25 m) **et** en grand bassin (50 m). Relève chaque ligne : épreuve, bassin, temps, points, date, ville, compétition (nom complet : infobulle ou texte du lien si tronqué). Ignore les relais.
    4. Écris `historique/NOM_Prenom.txt` au format ci-dessous.
-5. **Chiffrer.** `node scripts/roster.mjs historique historique CODE` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste) et écrit `public/data/club-history.json`. L'historique déjà publié est fusionné : un nageur absent du dossier `historique/` garde ses temps publiés, un fichier présent les remplace.
+5. **Chiffrer.** `node scripts/roster.mjs historique historique` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste) et écrit `public/data/club-history.json`. L'historique déjà publié est fusionné : un nageur absent du dossier `historique/` garde ses temps publiés, un fichier présent les remplace.
 6. **Vérifier.** `git status` ne doit montrer que `public/data/club-history.json` ; `grep -c "NOM_D_UN_NAGEUR" public/data/club-history.json` doit renvoyer 0.
 7. **Publier.** `git add public/data/club-history.json`, commit « Historique du club (N nageurs) », `git push origin main`. La publication GitHub Pages met l'application à jour ; chaque membre reçoit l'historique à la prochaine ouverture (une seule fois par version publiée, sans doublon avec les résultats déjà présents).
 8. **Résumé** pour l'utilisateur : nombre de nageurs, de temps, période couverte, nageurs introuvables ou lignes illisibles.
 
-Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scripts/roster.mjs manquants CODE`, relève ces nageurs, puis refais les étapes 5 à 7. Avant de publier, récupère la dernière version (`git pull --rebase`) : l'application évolue aussi depuis d'autres sessions.
+Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scripts/roster.mjs manquants`, relève ces nageurs, puis refais les étapes 5 à 7. Avant de publier, récupère la dernière version (`git pull --rebase`) : l'application évolue aussi depuis d'autres sessions.
 
 **Même nageur deux fois dans la liste** (autre orthographe ou autre année de naissance sur swimrankings), quand l'utilisateur confirme que c'est la même personne :
 1. Garde la fiche qui a le plus de points au total.

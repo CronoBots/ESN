@@ -19,4 +19,12 @@ export const CLUB = {
   member: /ecole\s+seraing|^esn$/i,
   /** Pays des compétitions suivies sur live.swimrankings.net. */
   liveNation: 'BEL',
+  /**
+   * Clé de la liste et de l'historique du club (fichiers chiffrés de public/data).
+   * Application ouverte à tous, sans connexion (décision du club) : la clé est
+   * intégrée et publique. Le chiffrement sert seulement à ce que les noms des
+   * nageurs ne soient pas lisibles en clair dans le dépôt ni indexés par les
+   * moteurs de recherche. Nouvelle clé (scripts/roster.mjs) : la changer ici.
+   */
+  accessKey: 'ESN-2DY4-YWJF',
 };

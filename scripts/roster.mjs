@@ -13,12 +13,14 @@
 // Statut : « ancien » pour un ancien membre (liste à part, classements sur option), sinon vide.
 // Autres noms (facultatif) : le même nageur écrit autrement, « NOM, Prénom (AAAA) » séparés par « | » ;
 // dans l'application, une fiche à l'un de ces noms est réunie avec celle du membre.
-// Le code peut aussi être donné par la variable d'environnement ESN_CODE.
+// Le code peut aussi être donné par la variable d'environnement ESN_CODE ; sans code, c'est la clé publique
+// de l'application (src/club.ts, CLUB.accessKey : application ouverte à tous).
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { aliasesText, decryptHistory, decryptRoster, encryptHistory, encryptRoster, generateCode, historyHeader, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
 import { existsSync } from 'node:fs';
+import { CLUB } from '../src/club.ts';
 
 /** Historique déjà publié (vide s'il n'y en a pas). */
 async function publishedHistory(code) {
@@ -50,7 +52,7 @@ if (cmd === 'code') {
   console.log(generateCode());
 } else if (cmd === 'chiffrer') {
   const [file, argCode] = args;
-  const code = argCode ?? process.env.ESN_CODE;
+  const code = argCode ?? process.env.ESN_CODE ?? CLUB.accessKey;
   if (!file || !code) throw new Error('Usage : node scripts/roster.mjs chiffrer membres.csv CODE');
   const text = readFileSync(file, 'utf8');
   const raw = file.endsWith('.json') ? JSON.parse(text) : { members: parseRosterCsv(text) };
@@ -59,17 +61,17 @@ if (cmd === 'code') {
   writeFileSync(OUT, `${JSON.stringify(await encryptRoster(roster, code))}\n`);
   console.log(`Liste chiffrée dans public/data/club-roster.json\n${summary(roster)}`);
 } else if (cmd === 'verifier') {
-  const code = args[0] ?? process.env.ESN_CODE;
+  const code = args[0] ?? process.env.ESN_CODE ?? CLUB.accessKey;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   console.log(`Fichier publié lisible avec ce code\n${summary(roster)}`);
 } else if (cmd === 'lire') {
-  const code = args[0] ?? process.env.ESN_CODE;
+  const code = args[0] ?? process.env.ESN_CODE ?? CLUB.accessKey;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   console.log('groupe;nom;prénom;année;sexe;statut;autres noms');
   for (const m of roster.members)
     console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender, m.former ? 'ancien' : '', aliasesText(m.aliases)].join(';').replace(/;+$/, ''));
 } else if (cmd === 'manquants') {
-  const code = args[0] ?? process.env.ESN_CODE;
+  const code = args[0] ?? process.env.ESN_CODE ?? CLUB.accessKey;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   const published = await publishedHistory(code);
   // Historique provisoire (ligne « @@PARTIEL ») : meilleurs temps seulement, reste à compléter
@@ -84,7 +86,7 @@ if (cmd === 'code') {
   for (const m of missing) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender].join(';'));
 } else if (cmd === 'historique') {
   const [dir, argCode] = args;
-  const code = argCode ?? process.env.ESN_CODE;
+  const code = argCode ?? process.env.ESN_CODE ?? CLUB.accessKey;
   if (!dir || !code) throw new Error('Usage : node scripts/roster.mjs historique DOSSIER CODE');
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   const members = new Map(roster.members.map((m) => [memberKey(m), m]));

@@ -17,7 +17,7 @@ import { MedalTally } from '../components/Medals';
 import { SHOW_MEDAL_COUNTS } from '../lib/medals';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, useSyncStatus } from './autoResults';
-import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
+import { clubSummary, ensureClub, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Swimmer } from '../store/types';
 
 import { capitalize, deName } from '../lib/text';
@@ -441,7 +441,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
   );
 }
 
-/** Accès aux nageurs du club (ou au QR code du club si l'application n'est pas encore ouverte avec). */
+/** Accès aux nageurs du club (ou à leur chargement s'il n'a pas encore pu se faire). */
 function ClubCard() {
   const data = useData();
   const available = useRosterAvailable();
@@ -486,13 +486,13 @@ function ClubCard() {
           </button>
         </div>
       ) : (
-        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openClubCode(() => openFollowPicker())}>
+        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => void ensureClub().then((ok) => ok && openFollowPicker())}>
           <span className="row-icon club-card-icon" aria-hidden="true">
-            <Icon name="qr" />
+            <Icon name="users" />
           </span>
           <div className="grow">
             <div style={{ fontWeight: 600 }}>Tous les nageurs de l’ESN</div>
-            <div className="muted small">Scannez le QR code du club pour retrouver tous les nageurs et leurs résultats.</div>
+            <div className="muted small">Touchez pour charger la liste du club et retrouver tous les nageurs et leurs résultats.</div>
           </div>
           <Icon name="chevronRight" className="chev" />
         </button>

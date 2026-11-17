@@ -1,8 +1,8 @@
 import { Icon, type IconName } from '../components/Icon';
 import { navigate } from '../router';
 import { BrandLogo } from '../components/ui';
-import { canPasteLink, joinFromClipboard, openFollowPicker, scanToJoin } from './Club';
-import { isStandalone } from './Install';
+import { ensureClub } from './Club';
+import { useEffect, useState } from 'react';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
   { icon: 'download', title: 'Résultats officiels automatiques', text: 'Suivez votre enfant : ses résultats de compétition arrivent tout seuls.' },
@@ -13,8 +13,16 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
 ];
 
 export function Onboarding() {
-  // Application installée : l'appareil photo du téléphone ouvrirait Safari, on scanne depuis l'application
-  const installed = isStandalone();
+  // Écran affiché seulement pendant le premier chargement de la liste du club (ou s'il a échoué hors connexion)
+  const [loading, setLoading] = useState(true);
+  const retry = () => {
+    setLoading(true);
+    void ensureClub().then((ok) => {
+      if (ok) navigate('/', { replace: true });
+      else setLoading(false);
+    });
+  };
+  useEffect(retry, []);
   return (
     <main className="onboard">
       <BrandLogo height={110} />
@@ -28,30 +36,22 @@ export function Onboarding() {
         <span className="free-tag">✓ Gratuit · sans pub · sans compte</span>
       </div>
       <div className="onboard-actions">
-        <div className="onboard-join">
+        <div className="onboard-join" role="status">
           <span className="join-icon" aria-hidden="true">
-            <Icon name="qr" />
+            <Icon name={loading ? 'users' : 'info'} />
           </span>
           <div>
-            <b>{installed ? 'Reliez l’application au club' : 'Scannez le QR code de l’ESN'}</b>
+            <b>{loading ? 'Chargement des nageurs de l’ESN…' : 'Connexion internet nécessaire'}</b>
             <span>
-              {installed
-                ? 'Scannez une seule fois le QR code de l’ESN (affiche du club, téléphone d’un autre parent) : tous les nageurs du club apparaissent.'
-                : 'Avec l’appareil photo du téléphone, ou touchez le lien reçu du club : l’application s’ouvre aussitôt, sans compte ni mot de passe.'}
+              {loading
+                ? 'Quelques secondes, la première fois seulement.'
+                : 'Les nageurs du club se chargent dès que le téléphone est connecté à internet, la première fois seulement.'}
             </span>
           </div>
         </div>
-        <button className="btn block" onClick={() => scanToJoin(() => navigate('/', { replace: true }))}>
-          <Icon name="qr" /> Scanner le QR code
-        </button>
-        {canPasteLink() && (
-          <button
-            className="btn ghost block"
-            onClick={async () => {
-              if (await joinFromClipboard()) openFollowPicker(() => navigate('/', { replace: true }));
-            }}
-          >
-            <Icon name="link" /> J’ai copié le lien d’invitation
+        {!loading && (
+          <button className="btn block" onClick={retry}>
+            <Icon name="download" /> Réessayer
           </button>
         )}
       </div>

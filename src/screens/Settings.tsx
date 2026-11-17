@@ -3,13 +3,13 @@ import { fullName, isActiveMember, mySwimmers } from '../store/hooks';
 import { Avatar, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
-import { groupName, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
+import { ensureClub, groupName, openFollow, useRosterAvailable } from './Club';
 import { downloadFile } from '../lib/ics';
 import { formatDate, relativeDay, toISO, todayISO } from '../lib/dates';
 import { COURSES, eventLabel, ROUND_LABEL, STATUS_LABEL } from '../lib/events';
 import { formatTime } from '../lib/time';
 import { isStandalone, promptInstall } from './Install';
-import { openInvite } from '../components/Invite';
+import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useState } from 'react';
@@ -118,13 +118,10 @@ export function Settings() {
                   />
                   <Row icon="trophy" iconBg="#f5a400" title="Records du club" chevron onClick={() => navigate('/club-records')} />
                   <Row icon="ranking" iconBg="var(--brand-blue)" title="Classements du club" chevron onClick={() => navigate('/rankings')} />
-                  {!club.expired && (
-                    <Row icon="share" iconBg="#34c759" title="Inviter une famille" sub="Lien ou QR code, sans code à taper" chevron onClick={openInvite} />
-                  )}
-                  {club.expired && <Row icon="qr" iconBg="#ff9f0a" title="Scanner le nouveau QR code du club" chevron onClick={() => openClubCode(undefined, 'expired')} />}
+                  <Row icon="share" iconBg="#34c759" title="Partager l’application" sub="QR code, lien ou affiche" chevron onClick={openShareApp} />
                 </>
               ) : (
-                <Row icon="qr" iconBg="var(--brand-green)" title="Ouvrir avec le QR code du club" chevron onClick={() => openClubCode(() => openFollowPicker())} />
+                <Row icon="download" iconBg="var(--brand-green)" title="Charger la liste du club" chevron onClick={() => void ensureClub()} />
               )}
               <Row icon="info" iconBg="#8e8e93" title="Infos du club" chevron onClick={() => navigate('/about')} />
             </div>
@@ -148,7 +145,7 @@ export function Settings() {
             <Row icon="list" iconBg="#8e8e93" title="Exporter les résultats (Excel / CSV)" chevron onClick={exportCsv} />
           </div>
           <div className="section-foot">
-            Les données sont gardées sur cet appareil. Sur un autre téléphone, il suffit de scanner le QR code du club : tout revient
+            Les données sont gardées sur cet appareil. Sur un autre téléphone, il suffit d’ouvrir l’application : tout revient
             automatiquement.
           </div>
         </Section>
@@ -182,7 +179,7 @@ export function Settings() {
               onClick={async () => {
                 const ok = await overlay.confirm({
                   title: 'Effacer toutes les données ?',
-                  message: 'Nageurs, courses et compétitions seront supprimés de cet appareil. Avec le QR code du club, la liste et les résultats reviendront automatiquement.',
+                  message: 'Nageurs, courses et compétitions seront supprimés de cet appareil. La liste du club et les résultats reviendront automatiquement.',
                   confirmLabel: 'Tout effacer',
                   destructive: true,
                 });
@@ -232,7 +229,7 @@ export function About() {
         <Section title="Vos données">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
             Tout est enregistré <b>uniquement sur votre appareil</b>&nbsp;: pas de compte, pas de serveur, pas de publicité. Sur un autre
-            téléphone, il suffit de scanner le QR code du club&nbsp;: tout revient automatiquement.
+            téléphone, il suffit d’ouvrir l’application&nbsp;: tout revient automatiquement.
           </div>
         </Section>
         <Section title="Points World Aquatics">

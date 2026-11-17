@@ -10,7 +10,7 @@ import { formatDate } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { pointsFor } from '../lib/stats';
 import type { Course, Gender } from '../store/types';
-import { isFollowed, openClubCode } from './Club';
+import { ensureClub, isFollowed } from './Club';
 
 /**
  * Records du club : meilleur temps de tous les nageurs de l'ESN (actuels et anciens)
@@ -37,10 +37,10 @@ export function ClubRecords() {
             <Empty
               icon="trophy"
               title="Records du club"
-              text="Les meilleurs temps de tous les nageurs de l’ESN, par épreuve et par âge. Ils s’affichent dès que l’application est ouverte avec le QR code du club."
+              text="Les meilleurs temps de tous les nageurs de l’ESN, par épreuve et par âge. Ils s’affichent dès que la liste du club est chargée."
               action={
-                <button className="btn small" onClick={() => openClubCode()}>
-                  <Icon name="qr" /> Ouvrir avec le QR code
+                <button className="btn small" onClick={() => void ensureClub()}>
+                  <Icon name="download" /> Charger la liste du club
                 </button>
               }
             />

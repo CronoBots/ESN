@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { getState, useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { UiHost, overlay } from './components/ui';
@@ -15,9 +15,7 @@ import { SwimDetail } from './screens/SwimDetail';
 import { SwimmerHistory, SwimmerProfile } from './screens/Swimmer';
 import { About, Settings, APP_VERSION } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
-import { ClubScreen, refreshClubRoster, unlockFromLink } from './screens/Club';
-import { isIOS, isStandalone } from './screens/Install';
-import { memberKey } from './lib/roster';
+import { ClubScreen, ensureClub, refreshClubRoster } from './screens/Club';
 import { resultsMessage } from './screens/autoResults';
 import type { Course, Stroke } from './store/types';
 
@@ -84,14 +82,7 @@ export function App() {
   const route = useRoute();
   const data = useData();
 
-  // Connexion au club par un lien d'invitation en cours : pas d'écran de bienvenue entre-temps
-  const [linkUnlocking, setLinkUnlocking] = useState(() => new URLSearchParams(location.search).has('code'));
-  const showOnboarding =
-    data.swimmers.length === 0 &&
-    !data.settings.onboarded &&
-    route.path[0] !== 'about' &&
-    !route.query.has('code') &&
-    !linkUnlocking;
+  const showOnboarding = data.swimmers.length === 0 && !data.settings.onboarded && route.path[0] !== 'about';
 
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
@@ -133,56 +124,29 @@ export function App() {
     return () => clearTimeout(t);
   }, []);
 
-  // Lien d'invitation (…#/club?code=…, sur n'importe quelle page) : connexion directe au club,
-  // puis le code quitte l'adresse (accueil à la place de la page du club)
-  const linkCode = route.query.get('code');
+  // Application ouverte à tous : la liste du club se charge toute seule (au lancement, et dès que
+  // le téléphone retrouve internet si le premier lancement s'est fait hors connexion)
   useEffect(() => {
-    if (!linkCode) return;
-    setLinkUnlocking(true);
-    navigate(route.path[0] === 'club' || !route.path.length ? '/' : `/${route.path.join('/')}`, { replace: true });
-    const follow = (route.query.get('suivre') ?? '').split('~').filter(Boolean);
-    unlockFromLink(linkCode, follow).finally(() => setLinkUnlocking(false));
-  }, [linkCode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Application installée sur iPhone : son adresse de démarrage porte le lien d'accès (?code=…&suivre=…)
-  useEffect(() => {
-    const q = new URLSearchParams(location.search);
-    const code = q.get('code');
-    if (!code) return;
-    const follow = (q.get('suivre') ?? '').split('~').filter(Boolean);
-    // Ailleurs que dans Safari sur iPhone, le lien n'a plus à rester dans l'adresse
-    if (isStandalone() || !isIOS()) {
-      try {
-        history.replaceState(history.state, '', `${location.pathname}${location.hash}`);
-      } catch {
-        /* ignore */
-      }
-    }
-    setLinkUnlocking(true);
-    unlockFromLink(code, follow).finally(() => setLinkUnlocking(false));
+    void ensureClub();
+    const retry = () => void ensureClub();
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
   }, []);
 
-  // iPhone : l'application installée sur l'écran d'accueil ne partage pas les données de Safari, et
-  // l'appareil photo ouvre Safari, pas l'application. L'iPhone installe l'adresse de la page affichée
-  // quand la page n'a pas de manifeste : une fois le club ouvert dans Safari, l'adresse garde le lien
-  // d'accès (?code=…, conservé d'une page à l'autre) et le manifeste est retiré. L'application installée
-  // démarre ainsi déjà reliée au club, avec les nageurs suivis. Repli : « Scanner le QR code » dans l'app.
-  const clubCode = data.settings.club && !data.settings.club.expired ? data.settings.club.code : undefined;
-  const followKeys = data.swimmers
-    .filter((s) => s.favorite || s.relation === 'child')
-    .map(memberKey)
-    .join('~');
+  // Anciens liens et anciennes installations (…?code=… ou #/…?code=…) : l'accès n'a plus à figurer
+  // dans l'adresse, on le retire sans rien demander
+  const legacyCode = route.query.get('code');
   useEffect(() => {
-    if (!clubCode || isStandalone() || !isIOS()) return;
-    document.querySelectorAll('link[rel="manifest"]').forEach((l) => l.remove());
-    const q = new URLSearchParams({ code: clubCode });
-    if (followKeys) q.set('suivre', followKeys);
+    if (legacyCode) navigate(route.path[0] === 'club' || !route.path.length ? '/' : `/${route.path.join('/')}`, { replace: true });
+  }, [legacyCode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!location.search) return;
     try {
-      history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
+      history.replaceState(history.state, '', `${location.pathname}${location.hash}`);
     } catch {
-      /* adresse non modifiable : le scanner reste disponible dans l'application */
+      /* ignore */
     }
-  }, [clubCode, followKeys]);
+  }, []);
 
   // Fin de l'écran de bienvenue : on repart du haut de la page
   useEffect(() => {

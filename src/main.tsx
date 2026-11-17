@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { initStore } from './store/store';
+import { ensureClub } from './screens/Club';
 // Polices embarquées (fonctionnent hors-ligne) : Barlow pour le texte, Barlow Condensed pour les titres et les temps
 import '@fontsource/barlow/latin-400.css';
 import '@fontsource/barlow/latin-500.css';
@@ -21,8 +22,11 @@ function hideSplash() {
   }, Math.max(0, 900 - performance.now()));
 }
 
-// Données lues dans IndexedDB avant le premier affichage (sous l'écran d'ouverture)
-initStore().finally(() => {
+// Données lues dans IndexedDB, puis liste du club chargée au premier lancement, avant le premier
+// affichage (sous l'écran d'ouverture) : l'application arrive directement sur les nageurs de l'ESN
+initStore()
+  .then(() => Promise.race([ensureClub(), new Promise((r) => setTimeout(r, 6000))]))
+  .finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

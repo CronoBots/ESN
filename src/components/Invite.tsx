@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { encode } from 'uqr';
-import { getState } from '../store/store';
-import { inviteLink } from '../lib/invite';
+
+/** Adresse de l'application (sans page ni paramètre) : ouverte à tous, sans connexion. */
+export function appUrl(): string {
+  return `${location.origin}${location.pathname}`;
+}
 import { SheetLayout, overlay } from './ui';
 import { Icon } from './Icon';
 
@@ -70,8 +73,8 @@ async function qrPoster(link: string): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('image'))), 'image/png'));
 }
 
-function InviteSheet({ close, code }: { close: () => void; code: string }) {
-  const link = inviteLink(code);
+function ShareSheet({ close }: { close: () => void }) {
+  const link = appUrl();
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -88,7 +91,7 @@ function InviteSheet({ close, code }: { close: () => void; code: string }) {
       try {
         await navigator.share({
           title: 'ESN Compétition',
-          text: 'Les résultats, records et la progression des nageurs de l’ESN : ouvre ce lien, l’application est déjà connectée au club.',
+          text: 'Les résultats, records et la progression des nageurs de l’ESN, dans l’application ESN Compétition :',
           url: link,
         });
         return;
@@ -123,10 +126,10 @@ function InviteSheet({ close, code }: { close: () => void; code: string }) {
   };
 
   return (
-    <SheetLayout title="Inviter une famille" onCancel={close} cancelLabel="Fermer">
+    <SheetLayout title="Partager l’application" onCancel={close} cancelLabel="Fermer">
       <div className="invite">
-        <QrCode text={link} label="QR code d’invitation à ESN Compétition" />
-        <p className="invite-lead">À scanner avec l’appareil photo du téléphone : l’application s’ouvre aussitôt, prête à être installée.</p>
+        <QrCode text={link} label="QR code d’ESN Compétition" />
+        <p className="invite-lead">À scanner avec l’appareil photo du téléphone : l’application s’ouvre aussitôt sur les nageurs de l’ESN.</p>
         <button className="btn block" onClick={share}>
           <Icon name="share" /> Partager le lien
         </button>
@@ -136,21 +139,18 @@ function InviteSheet({ close, code }: { close: () => void; code: string }) {
         <button className="btn ghost block" onClick={saveImage}>
           <Icon name="download" /> Image à imprimer ou afficher
         </button>
-        <p className="invite-link" aria-label="Lien d’invitation">
+        <p className="invite-link" aria-label="Adresse de l’application">
           {link}
         </p>
         <div className="section-foot">
-          Le QR code et le lien ouvrent l’application avec tous les nageurs de l’ESN, sans compte ni mot de passe. Partagez-les avec les
-          familles du club : groupe WhatsApp, e-mail aux parents, affiche à la piscine…
+          Aucun compte ni mot de passe : il suffit d’ouvrir l’adresse. Groupe WhatsApp du club, e-mail aux parents, affiche à la piscine…
         </div>
       </div>
     </SheetLayout>
   );
 }
 
-/** Ouvre la fenêtre d'invitation (club déverrouillé sur cet appareil). */
-export function openInvite() {
-  const code = getState().settings.club?.code;
-  if (!code) return;
-  overlay.sheet((close) => <InviteSheet close={close} code={code} />);
+/** Partager l'application : QR code, lien et affiche de l'adresse du site. */
+export function openShareApp() {
+  overlay.sheet((close) => <ShareSheet close={close} />);
 }

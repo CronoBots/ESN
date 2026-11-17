@@ -4,16 +4,15 @@ import { actions, batch, getState, ROSTER_PARSER, useData } from '../store/store
 import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { openInvite } from '../components/Invite';
-import { openQrScanner } from '../components/QrScanner';
+import { openShareApp } from '../components/Invite';
 import { offerInstall } from './Install';
-import { codeFromText } from '../lib/invite';
 import { navigate } from '../router';
-import { decryptHistory, decryptRoster, isEncryptedRoster, memberKey, normalizeCode, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptHistory, decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
 import { parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
 import { formatDate, formatDayMonth } from '../lib/dates';
+import { CLUB } from '../club';
 import type { Swimmer } from '../store/types';
 
 /** Liste chiffrée des membres, publiée avec l'application (voir scripts/roster.mjs). */
@@ -159,30 +158,23 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
   return r;
 }
 
+let opening: Promise<boolean> | null = null;
+
 /**
- * Lien d'invitation (…#/club?code=…) : connexion directe au club, sans code à
- * taper ; puis choix des nageurs suivis s'il n'y en a pas encore. Lien refusé
- * (le club a renouvelé son QR code) : explication pour scanner le nouveau.
+ * Application ouverte à tous : la liste du club s'ouvre toute seule avec la
+ * clé intégrée (CLUB.accessKey), sans lien, code ni connexion. Vrai si la
+ * liste est disponible sur l'appareil. Un seul chargement à la fois.
  */
-export async function unlockFromLink(code: string, follow: string[] = []): Promise<void> {
+export function ensureClub(): Promise<boolean> {
   const club = getState().settings.club;
-  const already = !!club && !club.expired && normalizeCode(club.code) === normalizeCode(code);
-  if (!already) {
-    try {
-      const r = await unlockClub(code);
-      if (!follow.length) overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
-    } catch {
-      openClubCode(() => openFollowPicker(), 'expired');
-      return;
-    }
-  }
-  // Application installée sur iPhone : les nageurs suivis dans Safari arrivent avec l'adresse de démarrage
-  const hasFollowed = () => getState().swimmers.some(isFollowed);
-  if (follow.length && !hasFollowed()) {
-    const ids = getState().swimmers.filter((s) => follow.includes(memberKey(s))).map((s) => s.id);
-    if (ids.length) actions.setFollowed(ids);
-  }
-  if (!already && !hasFollowed()) openFollowPicker();
+  if (club && !club.expired) return Promise.resolve(true);
+  opening ??= unlockClub(CLUB.accessKey)
+    .then(() => true)
+    .catch(() => false)
+    .finally(() => {
+      opening = null;
+    });
+  return opening;
 }
 
 /**
@@ -210,107 +202,6 @@ export async function refreshClubRoster(): Promise<number> {
 }
 
 /* ------------------------------------------------------------------------ */
-/* Accès au club par QR code (aucune connexion)                             */
-/* ------------------------------------------------------------------------ */
-
-/**
- * Aucune connexion : on ouvre l'application avec le QR code de l'ESN (ou le
- * lien reçu), qui contient la clé de la liste du club. Cette fenêtre explique
- * comment faire ; secours : le lien copié, lu dans le presse-papiers.
- * `reason` : le club a renouvelé son QR code (ancien lien plus valable).
- */
-export function openClubCode(onUnlocked?: () => void, reason?: 'expired') {
-  overlay.sheet((close) => <JoinSheet close={close} onUnlocked={onUnlocked} reason={reason} />);
-}
-
-/** Ouvre le club avec le lien d'invitation copié (WhatsApp, e-mail…). Vrai si c'est fait. */
-export async function joinFromClipboard(): Promise<boolean> {
-  let text = '';
-  try {
-    text = await navigator.clipboard.readText();
-  } catch {
-    overlay.toast('Collage refusé par le téléphone', '⚠️');
-    return false;
-  }
-  const code = codeFromText(text);
-  if (!code) {
-    overlay.toast('Aucun lien d’invitation copié', '⚠️');
-    return false;
-  }
-  try {
-    const r = await unlockClub(code);
-    overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
-    return true;
-  } catch (e) {
-    overlay.toast(
-      e instanceof WrongCodeError
-        ? 'Ce lien n’est plus valable : demandez le nouveau QR code au club'
-        : navigator.onLine
-          ? 'Liste du club indisponible pour le moment'
-          : 'Pas de connexion internet',
-      '⚠️',
-    );
-    return false;
-  }
-}
-
-export const canPasteLink = () => typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
-
-/** Scanner le QR code de l'ESN avec l'appareil photo, dans l'application (indispensable une fois installée sur iPhone). */
-export function scanToJoin(onJoined?: () => void) {
-  openQrScanner(async (text) => {
-    const code = codeFromText(text);
-    if (!code) return false;
-    const follow = (/[?&]suivre=([^&#\s]+)/.exec(text)?.[1] ?? '').split('~').filter(Boolean);
-    await unlockFromLink(decodeURIComponent(code), follow.map(decodeURIComponent));
-    onJoined?.();
-    return true;
-  });
-}
-
-function JoinSheet({ close, onUnlocked, reason }: { close: () => void; onUnlocked?: () => void; reason?: 'expired' }) {
-  const [busy, setBusy] = useState(false);
-  const paste = async () => {
-    setBusy(true);
-    const ok = await joinFromClipboard();
-    setBusy(false);
-    if (ok) {
-      close();
-      onUnlocked?.();
-    }
-  };
-  return (
-    <SheetLayout title="Ouvrir l’application" onCancel={close} cancelLabel="Fermer">
-      <div className="join">
-        <span className="join-icon" aria-hidden="true">
-          <Icon name="qr" />
-        </span>
-        <h2>{reason === 'expired' ? 'Le club a un nouveau QR code' : 'Scannez le QR code de l’ESN'}</h2>
-        <p>
-          Ouvrez l’appareil photo du téléphone et visez le QR code du club : l’application s’ouvre aussitôt avec tous les nageurs de
-          l’ESN. Reçu en lien (WhatsApp, e-mail) ? Touchez simplement le lien.
-        </p>
-        <button
-          className="btn block"
-          onClick={() => {
-            close();
-            scanToJoin(onUnlocked);
-          }}
-        >
-          <Icon name="qr" /> Scanner le QR code
-        </button>
-        {canPasteLink() && (
-          <button className="btn ghost block" onClick={paste} disabled={busy}>
-            <Icon name="link" /> {busy ? 'Ouverture…' : 'J’ai copié le lien d’invitation'}
-          </button>
-        )}
-        <p className="small">Aucun compte, aucun mot de passe. Tout parent du club peut montrer le QR code depuis l’application (Réglages).</p>
-      </div>
-    </SheetLayout>
-  );
-}
-
-/* ------------------------------------------------------------------------ */
 /* Nageurs suivis (favoris), choisis dans la liste du club                   */
 /* ------------------------------------------------------------------------ */
 
@@ -320,8 +211,9 @@ export function openFollowPicker(onDone?: () => void) {
 
 /** Choisir des nageurs à suivre : dans la liste du club (ouverte avec le QR code la première fois). */
 export function openFollow(onDone?: () => void) {
-  if (getState().settings.club && !getState().settings.club?.expired) openFollowPicker(onDone);
-  else openClubCode(() => openFollowPicker(onDone));
+  void ensureClub().then((ok) =>
+    ok ? openFollowPicker(onDone) : overlay.toast(navigator.onLine ? 'Liste du club indisponible pour le moment' : 'Pas de connexion internet', '⚠️'),
+  );
 }
 
 export const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child';
@@ -563,19 +455,14 @@ export function ClubScreen() {
         <main className="page">
           <div className="card pad center club-lock">
             <span className="lock-icon" aria-hidden="true">
-              <Icon name="qr" />
+              <Icon name="users" />
             </span>
             <h2>Les nageurs de l’ESN</h2>
-            <p className="muted">
-              Retrouvez tous les nageurs du club et leurs résultats de compétition : scannez le QR code de l’ESN avec l’appareil photo,
-              ou touchez le lien reçu du club.
-            </p>
-            {available ? (
-              <button className="btn" onClick={() => openClubCode(() => openFollowPicker())}>
-                <Icon name="qr" /> Comment ouvrir la liste
+            <p className="muted">La liste du club se charge dès que le téléphone est connecté à internet.</p>
+            {available && (
+              <button className="btn" onClick={() => void ensureClub()}>
+                <Icon name="download" /> Charger la liste du club
               </button>
-            ) : (
-              <p className="small muted">La liste des membres n’est pas encore disponible.</p>
             )}
           </div>
         </main>
@@ -591,25 +478,12 @@ export function ClubScreen() {
         subtitle={`${activeMembers.length} membres actifs${formerCount ? ` · ${formerCount} anciens membres` : ''} · par année de naissance`}
         back="/"
         right={
-          !club.expired && (
-            <button className="icon-btn" onClick={openInvite} aria-label="Inviter une famille">
-              <Icon name="share" />
-            </button>
-          )
+          <button className="icon-btn" onClick={openShareApp} aria-label="Partager l’application">
+            <Icon name="share" />
+          </button>
         }
       />
       <main className="page">
-        {club.expired && (
-          <div className="callout" style={{ marginTop: 8 }}>
-            <Icon name="info" />
-            <div>
-              Le club a renouvelé son QR code : scannez le nouveau pour mettre la liste à jour.{' '}
-              <button className="link-btn" onClick={() => openClubCode(undefined, 'expired')}>
-                Comment faire
-              </button>
-            </div>
-          </div>
-        )}
         <div className="chips" style={{ marginTop: 8 }} role="group" aria-label="Nageurs affichés">
           {['all', ...choices].map(
             (v) => (

@@ -18,9 +18,9 @@ Gratuit, sans publicité, sans compte : les données restent sur l'appareil du p
 | 🎖️ **Trophées** | 19 badges à débloquer (premier record, coup du chapeau, polyvalence, 300 points…). |
 | ⏲️ **Temps de passage** | Tronçons, allure aux 50 m, détection du « split négatif ». |
 | ❤️ **Nageurs suivis** | Pas de saisie : on choisit dans la liste du club les nageurs à suivre (cœur) — ses enfants, leurs coéquipiers. Ils s'affichent sur l'accueil et dans les sélecteurs. |
-| 👥 **Nageurs du club** | Liste des membres par année de naissance (ou par groupe A, B, C), réservée aux membres (code du club) : chaque parent y choisit les nageurs qu'il suit, résultats de tout le club, classements du club. |
+| 👥 **Nageurs du club** | Liste des membres par année de naissance (ou par groupe A, B, C), ouverte à tous sans connexion : chaque parent y choisit les nageurs qu'il suit, résultats de tout le club, classements du club. |
 | ⚡ **Tout automatique** | Aucune saisie ni import : résultats officiels (LENEX et feuilles PDF de live.swimrankings.net), programme des compétitions, historique des saisons passées relevé par le club, nouveaux nageurs de l'ESN ajoutés à la liste. |
-| 💾 **Export** | Export CSV des résultats pour Excel. Sur un autre téléphone, le code du club suffit : tout revient automatiquement. |
+| 💾 **Export** | Export CSV des résultats pour Excel. Sur un autre téléphone, il suffit d'ouvrir l'application : tout revient automatiquement. |
 | 🌗 **Design** | Logo officiel du club décliné en « ESN Compétition », couleurs du club (vert ESN et bleu du « S »), style iOS natif, mode sombre et clair, onglets sur mobile et barre latérale sur ordinateur. |
 
 ## Résultats en direct des compétitions (LENEX)
@@ -31,20 +31,20 @@ L'application lit la liste des compétitions belges (`?nation=BEL`), télécharg
 
 ## Liste des membres du club (groupes A, B, C)
 
-Le site et le dépôt sont **publics** : la liste des nageurs n'y est jamais en clair. Elle est publiée **chiffrée** (`public/data/club-roster.json`, AES-GCM 256 bits, clé dérivée du code du club par PBKDF2-SHA-256, 310 000 itérations) et ne s'ouvre qu'avec le **code du club**, donné aux membres. Le code n'est jamais versionné.
+L'application est **ouverte à tous**, sans lien, code ni connexion (décision du club) : elle s'ouvre directement sur les nageurs de l'ESN. La liste reste publiée **chiffrée** (`public/data/club-roster.json`, AES-GCM 256 bits, clé dérivée par PBKDF2-SHA-256, 310 000 itérations), avec une clé **publique** intégrée à l'application (`src/club.ts`, `CLUB.accessKey`) : le chiffrement sert seulement à ce que les noms ne soient pas lisibles en clair dans le dépôt ni indexés par les moteurs de recherche.
 
 Préparer ou mettre à jour la liste :
 
 1. Un fichier `membres.csv` **hors du dépôt** (ou à la racine : il est ignoré par git), une ligne par nageur : `groupe;nom;prénom;année de naissance;sexe` (F ou M), par exemple `A;DUPONT;Emma;2012;F`. Le groupe est facultatif : sans groupe, les nageurs sont classés par année de naissance.
-2. `npm run roster -- code` propose un code (ex. `ESN-7KQ4-M2XP`), à garder et à transmettre aux membres.
+2. La clé est celle de `src/club.ts` (`CLUB.accessKey`) ; pour en changer, `npm run roster -- code` en propose une nouvelle, à reporter dans `src/club.ts`.
 3. `npm run roster -- chiffrer membres.csv ESN-7KQ4-M2XP` écrit le fichier chiffré ; `npm run roster -- verifier ESN-7KQ4-M2XP` le relit.
 4. Seul `public/data/club-roster.json` est ajouté au dépôt.
 
-Les nageurs ne sont jamais ajoutés à la main. Les parents entrent le code une fois (écran de bienvenue, Réglages › Le club) ou ouvrent le lien `https://cronobots.github.io/ESN/#/club?code=ESN-7KQ4-M2XP` partagé par le club, puis touchent le cœur des nageurs à suivre. Une nouvelle liste publiée avec le même code est appliquée automatiquement (nouveaux nageurs, changements de groupe) ; avec un nouveau code, l'application le redemande. Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.
+Les nageurs ne sont jamais ajoutés à la main. La liste du club se charge toute seule au premier lancement ; les parents touchent le cœur des nageurs à suivre. Une nouvelle liste publiée est appliquée automatiquement (nouveaux nageurs, changements de groupe). Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.
 
 ### Historique des nageurs (swimrankings.net)
 
-Le site des résultats en direct ne garde que les dernières semaines. L'historique complet est sur swimrankings.net, qui refuse les lectures automatiques : il se relève **dans le navigateur de l'utilisateur**, avec Claude sur son ordinateur (skill du projet `.claude/skills/historique-club`, app Claude avec navigateur intégré ou Claude in Chrome). Un fichier texte par nageur dans `historique/` (ignoré par git), puis `npm run roster -- historique historique CODE` écrit `public/data/club-history.json`, **chiffré** avec le code du club. Chaque membre le reçoit automatiquement à l'ouverture suivante (une fois par version, sans doublon).
+Le site des résultats en direct ne garde que les dernières semaines. L'historique complet est sur swimrankings.net, qui refuse les lectures automatiques : il se relève **dans le navigateur de l'utilisateur**, avec Claude sur son ordinateur (skill du projet `.claude/skills/historique-club`, app Claude avec navigateur intégré ou Claude in Chrome). Un fichier texte par nageur dans `historique/` (ignoré par git), puis `npm run roster -- historique historique` écrit `public/data/club-history.json`, **chiffré** avec la clé du club. Chaque membre le reçoit automatiquement à l'ouverture suivante (une fois par version, sans doublon).
 
 ## Points World Aquatics
 
