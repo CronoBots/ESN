@@ -36,29 +36,48 @@ export async function applyClubHistory(): Promise<number> {
   if (enc.iv === club.historyVersion && (club.historyParser ?? 1) >= HISTORY_PARSER) return 0;
   const history = await decryptHistory(enc, club.code).catch(() => null);
   if (!history) return 0;
+  // Membres du club par nom normalisé (dans les deux ordres, comme sameSwimmer) : une recherche par nageur
+  const byName = new Map<string, Swimmer[]>();
+  for (const s of getState().swimmers) {
+    if (!s.member) continue;
+    for (const k of [`${normName(s.lastName)}|${normName(s.firstName)}`, `${normName(s.firstName)}|${normName(s.lastName)}`]) {
+      const list = byName.get(k);
+      if (!list) byName.set(k, [s]);
+      else if (!list.includes(s)) list.push(s);
+    }
+  }
+  // Lecture des temps par petits paquets : l'écran reste fluide pendant l'import, même sur un téléphone
+  const todo: { a: (typeof history.athletes)[number]; swimmerId: string; parsed: ReturnType<typeof parseSwimrankings> }[] = [];
+  let slice = performance.now();
+  for (const a of history.athletes) {
+    const sw = byName.get(`${normName(a.lastName)}|${normName(a.firstName)}`)?.find((s) => sameSwimmer(a, s));
+    if (!sw) continue;
+    todo.push({ a, swimmerId: sw.id, parsed: parseSwimrankings(a.text) });
+    if (performance.now() - slice > 12) {
+      await new Promise((r) => setTimeout(r, 0));
+      slice = performance.now();
+    }
+  }
   let added = 0;
   batch(() => {
-    for (const a of history.athletes) {
-      const sw = getState().swimmers.find((s) => s.member && sameSwimmer(a, s));
+    for (const { a, swimmerId, parsed } of todo) {
+      const sw = getState().swimmers.find((s) => s.id === swimmerId);
       if (!sw) continue;
-      const parsed = parseSwimrankings(a.text);
-      if (parsed.swims.length) added += actions.importSwimrankings({ swimmerId: sw.id }, parsed.swims).added;
+      // Sans changer le nageur affiché sur l'accueil
+      if (parsed.swims.length) added += actions.importSwimrankings({ swimmerId }, parsed.swims, { select: false }).added;
       // Noms de compétitions tronqués par une version précédente (« e édition… ») : on les rétablit
       const state = getState();
+      // Courses du nageur et compétitions indexées une fois (et non une recherche dans toutes les courses par temps)
+      const key = (x: { distance: number; stroke: string; course: string; timeCs?: number | null; date: string }) =>
+        `${x.distance}|${x.stroke}|${x.course}|${x.timeCs}|${x.date}`;
+      const mine = new Map(state.swims.filter((x) => x.swimmerId === swimmerId).map((x) => [key(x), x]));
+      const meetsById = new Map(state.meets.map((m) => [m.id, m]));
       for (const ps of parsed.swims) {
-        if (!ps.meet) continue;
-        const swim = state.swims.find(
-          (x) =>
-            x.swimmerId === sw.id &&
-            x.distance === ps.distance &&
-            x.stroke === ps.stroke &&
-            x.course === ps.course &&
-            x.timeCs === ps.timeCs &&
-            x.date === ps.date,
-        );
+        const swim = mine.get(key(ps));
         // Temps masters déjà présents sans la marque (lus par une version précédente) : on la rajoute
         if (ps.masters && swim && !swim.masters) actions.updateSwim(swim.id, { masters: true });
-        const meet = swim?.meetId ? state.meets.find((m) => m.id === swim.meetId) : undefined;
+        if (!ps.meet) continue;
+        const meet = swim?.meetId ? meetsById.get(swim.meetId) : undefined;
         if (!meet || meet.name === ps.meet || !letters(ps.meet).includes(letters(meet.name))) continue;
         const onlyHistory = state.swims.every((x) => x.meetId !== meet.id || x.source === 'swimrankings');
         if (onlyHistory) actions.updateMeet(meet.id, { name: ps.meet });

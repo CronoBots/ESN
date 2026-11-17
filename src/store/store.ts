@@ -751,7 +751,10 @@ export const actions = {
   importSwimrankings(
     target: { swimmerId: string } | { create: ParsedAthlete & { gender: 'F' | 'M'; firstName: string; lastName: string } },
     swims: ParsedSwim[],
+    /** select : afficher ce nageur sur l'accueil (import d'un parent) ; pas pour l'historique du club. */
+    opts: { select?: boolean } = {},
   ): { swimmerId: string; added: number; skipped: number; meetsCreated: number } {
+    const select = opts.select ?? true;
     let swimmerId: string;
     if ('swimmerId' in target) {
       swimmerId = target.swimmerId;
@@ -774,9 +777,18 @@ export const actions = {
     setState((s) => {
       const meets = [...s.meets];
       const newSwims: Swim[] = [];
-      const mine = s.swims.filter((x) => x.swimmerId === swimmerId);
+      // Courses du nageur rangées par épreuve et temps : le contrôle des doublons ne parcourt que celles-là
+      const byTime = new Map<string, Swim[]>();
+      const timeKey = (x: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs'>) => `${x.course}|${x.distance}|${x.stroke}|${x.timeCs}`;
+      for (const x of s.swims) {
+        if (x.swimmerId !== swimmerId) continue;
+        const k = timeKey(x);
+        const list = byTime.get(k);
+        if (list) list.push(x);
+        else byTime.set(k, [x]);
+      }
       for (const p of swims) {
-        if (isDuplicate([...mine, ...newSwims], { ...p, timeCs: p.timeCs, status: 'OK', meetId: undefined })) {
+        if (isDuplicate(byTime.get(timeKey(p)) ?? [], { ...p, timeCs: p.timeCs, status: 'OK', meetId: undefined })) {
           skipped++;
           continue;
         }
@@ -826,13 +838,20 @@ export const actions = {
           createdAt: now,
           updatedAt: now,
         });
+        const added1 = newSwims[newSwims.length - 1];
+        const k = timeKey(added1);
+        const list = byTime.get(k);
+        if (list) list.push(added1);
+        else byTime.set(k, [added1]);
         added++;
       }
+      // Rien de nouveau (historique déjà lu) : aucune copie des données
+      if (!newSwims.length && !select) return s;
       return {
         ...s,
-        meets: meets.map((m) => ({ ...m })),
-        swims: [...s.swims, ...newSwims],
-        settings: { ...s.settings, onboarded: true, selectedSwimmerId: swimmerId },
+        meets: newSwims.length ? meets.map((m) => ({ ...m })) : s.meets,
+        swims: newSwims.length ? [...s.swims, ...newSwims] : s.swims,
+        settings: select ? { ...s.settings, onboarded: true, selectedSwimmerId: swimmerId } : { ...s.settings, onboarded: true },
       };
     });
     return { swimmerId, added, skipped, meetsCreated };
