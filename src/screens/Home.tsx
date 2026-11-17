@@ -441,7 +441,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
   );
 }
 
-/** Accès aux nageurs du club (ou au code du club s'il n'est pas encore saisi). */
+/** Accès aux nageurs du club (ou au QR code du club si l'application n'est pas encore ouverte avec). */
 function ClubCard() {
   const data = useData();
   const available = useRosterAvailable();
@@ -488,11 +488,11 @@ function ClubCard() {
       ) : (
         <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openClubCode(() => openFollowPicker())}>
           <span className="row-icon club-card-icon" aria-hidden="true">
-            <Icon name="shield" />
+            <Icon name="qr" />
           </span>
           <div className="grow">
-            <div style={{ fontWeight: 600 }}>Membre de l’ESN ?</div>
-            <div className="muted small">Entrez le code du club pour retrouver tous les nageurs du club et leurs résultats.</div>
+            <div style={{ fontWeight: 600 }}>Tous les nageurs de l’ESN</div>
+            <div className="muted small">Scannez le QR code du club pour retrouver tous les nageurs et leurs résultats.</div>
           </div>
           <Icon name="chevronRight" className="chev" />
         </button>

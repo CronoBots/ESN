@@ -1,7 +1,7 @@
 import { Icon, type IconName } from '../components/Icon';
 import { navigate } from '../router';
 import { BrandLogo } from '../components/ui';
-import { openClubCode, openFollowPicker } from './Club';
+import { canPasteLink, joinFromClipboard, openFollowPicker } from './Club';
 
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
   { icon: 'download', title: 'Résultats officiels automatiques', text: 'Suivez votre enfant : ses résultats de compétition arrivent tout seuls.' },
@@ -24,6 +24,30 @@ export function Onboarding() {
       <div style={{ marginTop: 14 }}>
         <span className="free-tag">✓ Gratuit · sans pub · sans compte</span>
       </div>
+      <div className="onboard-actions">
+        <div className="onboard-join">
+          <span className="join-icon" aria-hidden="true">
+            <Icon name="qr" />
+          </span>
+          <div>
+            <b>Scannez le QR code de l’ESN</b>
+            <span>
+              Avec l’appareil photo du téléphone, ou touchez le lien reçu du club : l’application s’ouvre aussitôt, sans compte ni mot de
+              passe.
+            </span>
+          </div>
+        </div>
+        {canPasteLink() && (
+          <button
+            className="btn ghost block"
+            onClick={async () => {
+              if (await joinFromClipboard()) openFollowPicker(() => navigate('/', { replace: true }));
+            }}
+          >
+            <Icon name="link" /> J’ai copié le lien d’invitation
+          </button>
+        )}
+      </div>
       <div className="features">
         {FEATURES.map((f) => (
           <div className="feature" key={f.title}>
@@ -36,11 +60,6 @@ export function Onboarding() {
             </div>
           </div>
         ))}
-      </div>
-      <div className="onboard-actions">
-        <button className="btn block" onClick={() => openClubCode(() => openFollowPicker(() => navigate('/', { replace: true })))}>
-          <Icon name="shield" /> Je suis membre de l’ESN
-        </button>
       </div>
     </main>
   );

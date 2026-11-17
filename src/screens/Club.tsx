@@ -5,9 +5,10 @@ import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { openInvite } from '../components/Invite';
+import { offerInstall } from './Install';
 import { codeFromText } from '../lib/invite';
 import { navigate } from '../router';
-import { decryptHistory, decryptRoster, isEncryptedRoster, normalizeCode, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptHistory, decryptRoster, isEncryptedRoster, memberKey, normalizeCode, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
 import { parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
@@ -159,19 +160,28 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
 
 /**
  * Lien d'invitation (…#/club?code=…) : connexion directe au club, sans code à
- * taper ; puis choix des nageurs suivis s'il n'y en a pas encore. Code refusé
- * (changé par le club) : la fenêtre du code s'ouvre, déjà remplie.
+ * taper ; puis choix des nageurs suivis s'il n'y en a pas encore. Lien refusé
+ * (le club a renouvelé son QR code) : explication pour scanner le nouveau.
  */
-export async function unlockFromLink(code: string): Promise<void> {
+export async function unlockFromLink(code: string, follow: string[] = []): Promise<void> {
   const club = getState().settings.club;
-  if (club && !club.expired && normalizeCode(club.code) === normalizeCode(code)) return;
-  try {
-    const r = await unlockClub(code);
-    overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
-    if (!getState().swimmers.some((s) => s.relation === 'child' || s.favorite)) openFollowPicker();
-  } catch {
-    openClubCode(() => openFollowPicker(), code);
+  const already = !!club && !club.expired && normalizeCode(club.code) === normalizeCode(code);
+  if (!already) {
+    try {
+      const r = await unlockClub(code);
+      if (!follow.length) overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
+    } catch {
+      openClubCode(() => openFollowPicker(), 'expired');
+      return;
+    }
   }
+  // Application installée sur iPhone : les nageurs suivis dans Safari arrivent avec l'adresse de démarrage
+  const hasFollowed = () => getState().swimmers.some(isFollowed);
+  if (follow.length && !hasFollowed()) {
+    const ids = getState().swimmers.filter((s) => follow.includes(memberKey(s))).map((s) => s.id);
+    if (ids.length) actions.setFollowed(ids);
+  }
+  if (!already && !hasFollowed()) openFollowPicker();
 }
 
 /**
@@ -199,101 +209,80 @@ export async function refreshClubRoster(): Promise<number> {
 }
 
 /* ------------------------------------------------------------------------ */
-/* Code du club                                                              */
+/* Accès au club par QR code (aucune connexion)                             */
 /* ------------------------------------------------------------------------ */
 
-export function openClubCode(onUnlocked?: () => void, initial = '') {
-  overlay.sheet((close) => <ClubCodeSheet close={close} onUnlocked={onUnlocked} initial={initial} />);
+/**
+ * Aucune connexion : on ouvre l'application avec le QR code de l'ESN (ou le
+ * lien reçu), qui contient la clé de la liste du club. Cette fenêtre explique
+ * comment faire ; secours : le lien copié, lu dans le presse-papiers.
+ * `reason` : le club a renouvelé son QR code (ancien lien plus valable).
+ */
+export function openClubCode(onUnlocked?: () => void, reason?: 'expired') {
+  overlay.sheet((close) => <JoinSheet close={close} onUnlocked={onUnlocked} reason={reason} />);
 }
 
-type CodeState = 'idle' | 'busy' | 'wrong' | 'unavailable';
+/** Ouvre le club avec le lien d'invitation copié (WhatsApp, e-mail…). Vrai si c'est fait. */
+export async function joinFromClipboard(): Promise<boolean> {
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    overlay.toast('Collage refusé par le téléphone', '⚠️');
+    return false;
+  }
+  const code = codeFromText(text);
+  if (!code) {
+    overlay.toast('Aucun lien d’invitation copié', '⚠️');
+    return false;
+  }
+  try {
+    const r = await unlockClub(code);
+    overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
+    return true;
+  } catch (e) {
+    overlay.toast(
+      e instanceof WrongCodeError
+        ? 'Ce lien n’est plus valable : demandez le nouveau QR code au club'
+        : navigator.onLine
+          ? 'Liste du club indisponible pour le moment'
+          : 'Pas de connexion internet',
+      '⚠️',
+    );
+    return false;
+  }
+}
 
-function ClubCodeSheet({ close, onUnlocked, initial }: { close: () => void; onUnlocked?: () => void; initial: string }) {
-  const [code, setCode] = useState(initial);
-  const [state, setState] = useState<CodeState>('idle');
+export const canPasteLink = () => typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
 
-  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
-  // Lien d'invitation reçu (WhatsApp, e-mail…) et copié : le code est lu dans le lien
+function JoinSheet({ close, onUnlocked, reason }: { close: () => void; onUnlocked?: () => void; reason?: 'expired' }) {
+  const [busy, setBusy] = useState(false);
   const paste = async () => {
-    try {
-      const found = codeFromText(await navigator.clipboard.readText());
-      if (!found) {
-        overlay.toast('Aucun lien d’invitation dans le presse-papiers', '⚠️');
-        return;
-      }
-      setCode(found);
-      void submit(found);
-    } catch {
-      overlay.toast('Collage refusé : touchez longuement la zone du code puis « Coller »', '⚠️');
-    }
-  };
-
-  const submit = async (value = code) => {
-    if (!value.trim() || state === 'busy') return;
-    setState('busy');
-    try {
-      const r = await unlockClub(value);
+    setBusy(true);
+    const ok = await joinFromClipboard();
+    setBusy(false);
+    if (ok) {
       close();
-      overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
       onUnlocked?.();
-    } catch (e) {
-      setState(e instanceof WrongCodeError ? 'wrong' : 'unavailable');
     }
   };
-
   return (
-    <SheetLayout title="Code du club" onCancel={close}>
-      <div className="center" style={{ padding: '4px 0 18px' }}>
-        <span className="lock-icon" aria-hidden="true">
-          <Icon name="shield" />
+    <SheetLayout title="Ouvrir l’application" onCancel={close} cancelLabel="Fermer">
+      <div className="join">
+        <span className="join-icon" aria-hidden="true">
+          <Icon name="qr" />
         </span>
-        <p className="muted" style={{ margin: '14px auto 0', maxWidth: 380 }}>
-          Entrez le code donné par le club : les nageurs du club apparaissent dans l’application, avec leurs résultats.
+        <h2>{reason === 'expired' ? 'Le club a un nouveau QR code' : 'Scannez le QR code de l’ESN'}</h2>
+        <p>
+          Ouvrez l’appareil photo du téléphone et visez le QR code du club : l’application s’ouvre aussitôt avec tous les nageurs de
+          l’ESN. Reçu en lien (WhatsApp, e-mail) ? Touchez simplement le lien.
         </p>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <input
-          className="textinput code-input"
-          value={code}
-          onChange={(e) => {
-            setCode(e.target.value.toUpperCase());
-            if (state !== 'busy') setState('idle');
-          }}
-          placeholder="ESN-XXXX-XXXX"
-          aria-label="Code du club"
-          aria-invalid={state === 'wrong'}
-          autoCapitalize="characters"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          autoFocus
-        />
-        {state === 'wrong' && (
-          <p className="form-msg bad" role="alert">
-            Code incorrect. Vérifiez-le auprès du club.
-          </p>
-        )}
-        {state === 'unavailable' && (
-          <p className="form-msg bad" role="alert">
-            {navigator.onLine ? 'La liste du club n’est pas disponible pour le moment.' : 'Pas de connexion internet.'}
-          </p>
-        )}
-        <button className="btn block" type="submit" style={{ marginTop: 14 }} disabled={!code.trim() || state === 'busy'}>
-          {state === 'busy' ? 'Vérification…' : 'Valider'}
-        </button>
-        {canPaste && (
-          <button className="btn ghost block" type="button" style={{ marginTop: 10 }} onClick={paste} disabled={state === 'busy'}>
-            <Icon name="link" /> Coller le lien d’invitation
+        {canPasteLink() && (
+          <button className="btn ghost block" onClick={paste} disabled={busy}>
+            <Icon name="link" /> {busy ? 'Ouverture…' : 'J’ai copié le lien d’invitation'}
           </button>
         )}
-      </form>
-      <div className="section-foot" style={{ marginTop: 14 }}>
-        La liste des nageurs est chiffrée : sans ce code, personne ne peut la lire, ni sur le site ni ailleurs.
+        <p className="small">Aucun compte, aucun mot de passe. Tout parent du club peut montrer le QR code depuis l’application (Réglages).</p>
       </div>
     </SheetLayout>
   );
@@ -307,7 +296,7 @@ export function openFollowPicker(onDone?: () => void) {
   overlay.sheet((close) => <FollowPicker close={close} onDone={onDone} />);
 }
 
-/** Choisir des nageurs à suivre : dans la liste du club (code du club demandé la première fois). */
+/** Choisir des nageurs à suivre : dans la liste du club (ouverte avec le QR code la première fois). */
 export function openFollow(onDone?: () => void) {
   if (getState().settings.club && !getState().settings.club?.expired) openFollowPicker(onDone);
   else openClubCode(() => openFollowPicker(onDone));
@@ -440,7 +429,8 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
   const done = () => {
     actions.setFollowed([...sel]);
     close();
-    if (sel.size) overlay.toast(`${sel.size}\u00a0nageur${sel.size > 1 ? 's' : ''} suivi${sel.size > 1 ? 's' : ''} sur l’accueil`, '❤️');
+    // Première visite par le QR code (version web) : on propose d'installer l'application (le guide remplace le message)
+    if (sel.size && !offerInstall()) overlay.toast(`${sel.size}\u00a0nageur${sel.size > 1 ? 's' : ''} suivi${sel.size > 1 ? 's' : ''} sur l’accueil`, '❤️');
     onDone?.();
   };
 
@@ -551,16 +541,16 @@ export function ClubScreen() {
         <main className="page">
           <div className="card pad center club-lock">
             <span className="lock-icon" aria-hidden="true">
-              <Icon name="shield" />
+              <Icon name="qr" />
             </span>
             <h2>Les nageurs de l’ESN</h2>
             <p className="muted">
-              Retrouvez tous les nageurs du club et leurs résultats de compétition. La liste est réservée aux membres :
-              elle s’ouvre avec le code donné par le club.
+              Retrouvez tous les nageurs du club et leurs résultats de compétition : scannez le QR code de l’ESN avec l’appareil photo,
+              ou touchez le lien reçu du club.
             </p>
             {available ? (
               <button className="btn" onClick={() => openClubCode(() => openFollowPicker())}>
-                <Icon name="shield" /> Entrer le code du club
+                <Icon name="qr" /> Comment ouvrir la liste
               </button>
             ) : (
               <p className="small muted">La liste des membres n’est pas encore disponible.</p>
@@ -591,9 +581,9 @@ export function ClubScreen() {
           <div className="callout" style={{ marginTop: 8 }}>
             <Icon name="info" />
             <div>
-              Le club a publié une nouvelle liste avec un nouveau code.{' '}
-              <button className="link-btn" onClick={() => openClubCode()}>
-                Entrer le nouveau code
+              Le club a renouvelé son QR code : scannez le nouveau pour mettre la liste à jour.{' '}
+              <button className="link-btn" onClick={() => openClubCode(undefined, 'expired')}>
+                Comment faire
               </button>
             </div>
           </div>
@@ -676,7 +666,7 @@ export function ClubScreen() {
           </Section>
         ))}
         <div className="section-foot center" style={{ marginTop: 18 }}>
-          Liste du club du {formatDate(club.updated)} · réservée aux membres (code du club).
+          Liste du club du {formatDate(club.updated)} · ouverte avec le QR code de l’ESN.
           <br />
           Les résultats de compétition de chaque nageur sont ajoutés automatiquement.
         </div>

@@ -18,6 +18,7 @@ import { Onboarding } from './screens/Onboarding';
 import { ClubScreen, refreshClubRoster, unlockFromLink } from './screens/Club';
 import { isStandalone } from './screens/Install';
 import { inviteLink } from './lib/invite';
+import { memberKey } from './lib/roster';
 import { resultsMessage } from './screens/autoResults';
 import type { Course, Stroke } from './store/types';
 
@@ -140,28 +141,36 @@ export function App() {
     if (!linkCode) return;
     setLinkUnlocking(true);
     navigate(route.path[0] === 'club' || !route.path.length ? '/' : `/${route.path.join('/')}`, { replace: true });
-    unlockFromLink(linkCode).finally(() => setLinkUnlocking(false));
+    const follow = (route.query.get('suivre') ?? '').split('~').filter(Boolean);
+    unlockFromLink(linkCode, follow).finally(() => setLinkUnlocking(false));
   }, [linkCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // iPhone : l'application installée sur l'écran d'accueil ne partage pas les données de Safari.
   // Une fois le club ouvert dans Safari, l'adresse de démarrage de l'application à installer
   // contient le lien d'invitation : elle s'ouvrira déjà connectée, sans code à retaper.
   const clubCode = data.settings.club && !data.settings.club.expired ? data.settings.club.code : undefined;
+  // … et les nageurs suivis (clé nom|prénom|année), pour les retrouver dans l'application installée
+  const followKeys = data.swimmers
+    .filter((s) => s.favorite || s.relation === 'child')
+    .map(memberKey)
+    .join('~');
   useEffect(() => {
     if (!clubCode || isStandalone()) return;
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (!ios || !link) return;
     let blobUrl = '';
-    fetch(link.href)
+    // Toujours à partir du manifeste d'origine (la version précédente est effacée à chaque changement)
+    const source = (link.dataset.source ??= link.href);
+    fetch(source)
       .then((r) => r.json())
       .then((m: { icons?: { src: string }[]; shortcuts?: { url: string }[] }) => {
-        const abs = (u: string) => new URL(u, link.href).href;
+        const abs = (u: string) => new URL(u, source).href;
         const manifest = {
           ...m,
           id: abs('./'),
           scope: abs('./'),
-          start_url: inviteLink(clubCode),
+          start_url: inviteLink(clubCode) + (followKeys ? `&suivre=${encodeURIComponent(followKeys)}` : ''),
           icons: m.icons?.map((i) => ({ ...i, src: abs(i.src) })),
           shortcuts: m.shortcuts?.map((s) => ({ ...s, url: abs(s.url) })),
         };
@@ -172,7 +181,7 @@ export function App() {
     return () => {
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [clubCode]);
+  }, [clubCode, followKeys]);
 
   // Fin de l'écran de bienvenue : on repart du haut de la page
   useEffect(() => {

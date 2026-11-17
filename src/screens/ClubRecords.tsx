@@ -37,10 +37,10 @@ export function ClubRecords() {
             <Empty
               icon="trophy"
               title="Records du club"
-              text="Les meilleurs temps de tous les nageurs de l’ESN, par épreuve et par âge. Ils s’affichent avec le code du club."
+              text="Les meilleurs temps de tous les nageurs de l’ESN, par épreuve et par âge. Ils s’affichent dès que l’application est ouverte avec le QR code du club."
               action={
                 <button className="btn small" onClick={() => openClubCode()}>
-                  <Icon name="shield" /> Entrer le code du club
+                  <Icon name="qr" /> Ouvrir avec le QR code
                 </button>
               }
             />
