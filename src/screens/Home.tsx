@@ -3,19 +3,16 @@ import { useData, actions } from '../store/store';
 import { fullName, hasClubMembers, isActiveMember, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
-import { StrokeBars } from '../components/Chart';
+import { TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { navigate } from '../router';
 import { chronoCompare, swimmerSummary } from '../lib/stats';
-import { formatDate, formatMonthYear, formatRange, formatShortWeekday, relativeDay, sportAge, todayISO, seasonLabel, seasonOf } from '../lib/dates';
+import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, todayISO } from '../lib/dates';
 import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { InstallBanner } from './Install';
 import { LevelGoals } from '../components/Levels';
 import { openShareApp } from '../components/Invite';
 import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
-import { MedalTally } from '../components/Medals';
-import { SHOW_MEDAL_COUNTS } from '../lib/medals';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, useSyncStatus } from './autoResults';
 import { clubSummary, ensureClub, openFollow, openFollowPicker, useRosterAvailable } from './Club';
@@ -138,7 +135,6 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
   const timeline = useTimeline(swimmer);
   const lastMeet = [...timeline].reverse().find((e) => e.startDate <= today);
   const syncing = useSyncStatus() != null;
-  const maxPts = Math.max(400, ...summary.strokePoints.map((s) => s.points ?? 0));
 
   return (
     <>
@@ -231,6 +227,8 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
         </Section>
       )}
 
+      {/* Accueil : le nageur en bref. Colonne 1 : ce qui arrive et ce qui vient de se passer ;
+          colonne 2 : ses prochains objectifs, puis le club. Les analyses détaillées sont dans Progression. */}
       <div className="home-cols">
         <div className="col">
           {upcoming && (
@@ -306,22 +304,6 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
             </Section>
           )}
 
-          <ClubWeekendCard />
-
-          <LevelGoals swimmer={swimmer} swims={data.swims} includeTraining={include} />
-
-          <QualifyingGoals swimmer={swimmer} swims={data.swims} />
-
-          <AllroundCard swimmer={swimmer} swims={data.swims} />
-
-          {timeline.length >= 2 && (
-            <Section title="Évolution">
-              <EvolutionCard timeline={timeline} swimmer={swimmer} limit={12} />
-            </Section>
-          )}
-        </div>
-
-        <div className="col">
           {recentPBs.length > 0 && (
             <Section
               title="Derniers records"
@@ -362,78 +344,16 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               </div>
             </Section>
           )}
+        </div>
 
-          {summary.races > 0 && (
-            <Section title="Profil de nageur" footer="Meilleur score World Aquatics obtenu dans chaque nage (indicatif).">
-              <div className="card pad">
-                <StrokeBars
-                  max={maxPts}
-                  rows={summary.strokePoints.map((sp) => ({
-                    key: sp.stroke,
-                    label: STROKE_BY_ID[sp.stroke].label,
-                    color: `var(${STROKE_BY_ID[sp.stroke].colorVar})`,
-                    value: sp.points,
-                  }))}
-                />
-                {(() => {
-                  const top = [...summary.strokePoints].filter((s) => s.points).sort((a, b) => b.points! - a.points!)[0];
-                  return top ? (
-                    <div className="muted small" style={{ marginTop: 8 }}>
-                      Nage de prédilection : <b style={{ color: 'var(--text)' }}>{STROKE_BY_ID[top.stroke].label}</b>
-                      {top.best && ` (${eventLabel(top.best.distance, top.best.stroke)} en ${formatTime(top.best.timeCs)})`}
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            </Section>
-          )}
+        <div className="col">
+          <LevelGoals swimmer={swimmer} swims={data.swims} includeTraining={include} />
 
-          {summary.races > 0 && (
-            <Section>
-              <div className="tiles three">
-                <div className="tile">
-                  <div className="tile-label">{seasonLabel(seasonOf(today))}</div>
-                  <div className="tile-value">{summary.pbsThisSeason}</div>
-                  <div className="tile-sub">records battus</div>
-                </div>
-                <div className="tile">
-                  <div className="tile-label">Distance nagée</div>
-                  <div className="tile-value">
-                    {(summary.distanceRaced / 1000).toLocaleString('fr-BE', {
-                      maximumFractionDigits: 1,
-                    })}{' '}
-                    <small>km</small>
-                  </div>
-                  <div className="tile-sub">en compétition</div>
-                </div>
-                {SHOW_MEDAL_COUNTS ? (
-                  <button className="tile tile-button" onClick={() => navigate(`/swimmer/${swimmer.id}`)}>
-                    <div className="tile-label">Médailles</div>
-                    <div className="tile-value">{summary.medals.total}</div>
-                    <div className="tile-sub">{summary.medals.total === 0 ? 'en compétition' : <MedalTally count={summary.medals} />}</div>
-                  </button>
-                ) : (
-                  <div className="tile">
-                    <div className="tile-label">Compétitions</div>
-                    <div className="tile-value">{summary.meets}</div>
-                    <div className="tile-sub">depuis le début</div>
-                  </div>
-                )}
-              </div>
-              {summary.lastRace && (
-                <div className="section-foot">
-                  Dernière course : {formatMonthYear(summary.lastRace.date)}.{' '}
-                  <button
-                    className="section-link"
-                    style={{ fontSize: 13 }}
-                    onClick={() => navigate(`/swimmer/${swimmer.id}/history`)}
-                  >
-                    Voir tout l’historique
-                  </button>
-                </div>
-              )}
-            </Section>
-          )}
+          <QualifyingGoals swimmer={swimmer} swims={data.swims} />
+
+          <AllroundCard swimmer={swimmer} swims={data.swims} />
+
+          <ClubWeekendCard />
 
           <ClubCard />
         </div>

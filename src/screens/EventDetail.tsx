@@ -232,10 +232,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
               </div>
             </div>
 
-            {levels && <LevelLadder status={levels} course={course} />}
-
-            <QualifyingSection swimmer={swimmer} swims={data.swims} course={course} distance={distance} stroke={stroke} />
-
             <Section title="Statistiques">
               <div className="tiles">
                 <div className="tile">
@@ -290,6 +286,11 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                 </div>
               </div>
             </Section>
+
+            {/* Objectifs : niveaux FFBN, puis temps limites des championnats */}
+            {levels && <LevelLadder status={levels} course={course} />}
+
+            <QualifyingSection swimmer={swimmer} swims={data.swims} course={course} distance={distance} stroke={stroke} />
           </>
         )}
 

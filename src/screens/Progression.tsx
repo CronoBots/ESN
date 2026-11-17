@@ -5,13 +5,16 @@ import { Empty, NavBar, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { COURSES, STROKES, distancesFor, eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
-import { achievements, chronoCompare, countsForRecords, eventStats, type Achievement } from '../lib/stats';
-import { formatDate, seasonLabel, seasonOf, todayISO, fromISO } from '../lib/dates';
+import { achievements, chronoCompare, countsForRecords, eventStats, swimmerSummary, type Achievement } from '../lib/stats';
+import { formatDate, formatMonthYear, seasonLabel, seasonOf, todayISO, fromISO } from '../lib/dates';
 import { formatDelta, formatTime } from '../lib/time';
 import type { Course, Swim } from '../store/types';
 import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
 import { EvolutionCard, useTimeline } from '../components/MeetTimeline';
+import { StrokeBars } from '../components/Chart';
+import { MedalTally } from '../components/Medals';
+import { SHOW_MEDAL_COUNTS } from '../lib/medals';
 import { deName } from '../lib/text';
 
 function Sparkline({ swims, color }: { swims: Swim[]; color: string }) {
@@ -51,6 +54,12 @@ export function Progression() {
   const [course, setCourse] = useState<Course>(data.settings.defaultCourse);
   const include = data.settings.includeTraining;
   const timeline = useTimeline(swimmer);
+  const today = todayISO();
+  const summary = useMemo(
+    () => (swimmer ? swimmerSummary(data.swims, swimmer, include, pbFlags) : null),
+    [data.swims, swimmer, include, pbFlags],
+  );
+  const maxPts = Math.max(400, ...(summary?.strokePoints ?? []).map((s) => s.points ?? 0));
 
   const events = useMemo(() => {
     if (!swimmer) return [];
@@ -104,6 +113,53 @@ export function Progression() {
       <NavBar title="Progression" subtitle={`L’évolution ${deName(swimmer.firstName)}, compétition après compétition et nage par nage`} />
       <main className="page">
         <SwimmerChips swimmer={swimmer} />
+        {summary && summary.races > 0 && (
+          <Section title="En chiffres">
+            <div className="tiles three">
+              <div className="tile">
+                <div className="tile-label">{seasonLabel(seasonOf(today))}</div>
+                <div className="tile-value">{summary.pbsThisSeason}</div>
+                <div className="tile-sub">records battus</div>
+              </div>
+              <div className="tile">
+                <div className="tile-label">Distance nagée</div>
+                <div className="tile-value">
+                  {(summary.distanceRaced / 1000).toLocaleString('fr-BE', {
+                    maximumFractionDigits: 1,
+                  })}{' '}
+                  <small>km</small>
+                </div>
+                <div className="tile-sub">en compétition</div>
+              </div>
+              {SHOW_MEDAL_COUNTS ? (
+                <button className="tile tile-button" onClick={() => navigate(`/swimmer/${swimmer.id}`)}>
+                  <div className="tile-label">Médailles</div>
+                  <div className="tile-value">{summary.medals.total}</div>
+                  <div className="tile-sub">{summary.medals.total === 0 ? 'en compétition' : <MedalTally count={summary.medals} />}</div>
+                </button>
+              ) : (
+                <div className="tile">
+                  <div className="tile-label">Compétitions</div>
+                  <div className="tile-value">{summary.meets}</div>
+                  <div className="tile-sub">depuis le début</div>
+                </div>
+              )}
+            </div>
+            {summary.lastRace && (
+              <div className="section-foot">
+                Dernière course : {formatMonthYear(summary.lastRace.date)}.{' '}
+                <button
+                  className="section-link"
+                  style={{ fontSize: 13 }}
+                  onClick={() => navigate(`/swimmer/${swimmer.id}/history`)}
+                >
+                  Voir tout l’historique
+                </button>
+              </div>
+            )}
+          </Section>
+        )}
+
         {timeline.length >= 2 && (
           <Section
             title="Par compétition"
@@ -116,6 +172,31 @@ export function Progression() {
             <EvolutionCard timeline={timeline} swimmer={swimmer} />
           </Section>
         )}
+        {summary && summary.races > 0 && (
+          <Section title="Points par nage" footer="Meilleur score World Aquatics obtenu dans chaque nage (indicatif).">
+            <div className="card pad">
+              <StrokeBars
+                max={maxPts}
+                rows={summary.strokePoints.map((sp) => ({
+                  key: sp.stroke,
+                  label: STROKE_BY_ID[sp.stroke].label,
+                  color: `var(${STROKE_BY_ID[sp.stroke].colorVar})`,
+                  value: sp.points,
+                }))}
+              />
+              {(() => {
+                const top = [...summary.strokePoints].filter((s) => s.points).sort((a, b) => b.points! - a.points!)[0];
+                return top ? (
+                  <div className="muted small" style={{ marginTop: 8 }}>
+                    Nage de prédilection : <b style={{ color: 'var(--text)' }}>{STROKE_BY_ID[top.stroke].label}</b>
+                    {top.best && ` (${eventLabel(top.best.distance, top.best.stroke)} en ${formatTime(top.best.timeCs)})`}
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          </Section>
+        )}
+
         <Section title="Nage par nage">
           <Segmented value={course} onChange={setCourse} options={COURSES.map((c) => ({ id: c.id, label: `Bassin ${c.label}` }))} />
         </Section>

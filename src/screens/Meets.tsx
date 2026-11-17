@@ -9,9 +9,9 @@ import { eventLabel, courseLabel, ROUND_LABEL } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { chronoCompare, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
-import type { Swim } from '../store/types';
+import type { Swim, Swimmer } from '../store/types';
 import { overlay } from '../components/ui';
-import { DateBlock, EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
+import { DateBlock, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
 import { capitalize, deName, placeLabel } from '../lib/text';
@@ -125,11 +125,6 @@ export function Meets() {
           </Section>
         )}
 
-        {swimmer && timeline.length >= 2 && (
-          <Section title="Évolution" footer={undefined}>
-            <EvolutionCard timeline={timeline} swimmer={swimmer} />
-          </Section>
-        )}
 
         {seasons.length === 0 ? (
           <Section title={upcoming.length ? 'Résultats' : undefined}>
@@ -253,10 +248,117 @@ export function MeetDetail({ id }: { id: string }) {
       swimmer: sw,
       swims: swims.filter((s) => s.swimmerId === sw.id),
     }))
-    .filter((g) => g.swims.length);
+    .filter((g) => g.swims.length)
+    // Le nageur choisi en premier, puis les nageurs suivis, puis les autres (ordre de sortSwimmers)
+    .sort((a, b) => Number(b.swimmer.id === focus?.id) - Number(a.swimmer.id === focus?.id));
+  const followedIds = new Set(swimmers.filter((w) => w.favorite || w.relation === 'child').map((w) => w.id));
+  const mineGroups = bySwimmer.filter((g) => g.swimmer.id === focus?.id || followedIds.has(g.swimmer.id));
+  const otherGroups = bySwimmer.filter((g) => !mineGroups.includes(g));
   const pbs = swims.filter((s) => pbFlags.get(s.id)?.isPB);
   const totalGain = pbs.reduce((a, s) => a + -(pbFlags.get(s.id)?.deltaCs ?? 0), 0);
   const swum = swims.filter(isValidResult);
+
+  const renderGroup = ({ swimmer, swims: list }: { swimmer: Swimmer; swims: Swim[] }) => {
+      const days = new Map<string, Swim[]>();
+      for (const s of list) days.set(s.date, [...(days.get(s.date) ?? []), s]);
+      return (
+        <Section
+          key={swimmer.id}
+          title={
+            <span className="hstack" style={{ gap: 10 }}>
+              <Avatar swimmer={swimmer} size={30} />
+              {bySwimmer.length > 1
+                ? fullName(swimmer)
+                : isPast || list.some((x) => x.timeCs != null)
+                  ? 'Résultats'
+                  : 'Programme'}
+            </span>
+          }
+        >
+          <div className="list">
+            {[...days.entries()].map(([day, ds]) => (
+              <div key={day}>
+                <div className="group-head">{capitalize(formatLongDay(day))}</div>
+                {ds.map((s) => {
+                  const pb = pbFlags.get(s.id);
+                  const prev = bestOf(swimmer.id, s);
+                  // Ligne 1 : quand et où nager ; ligne 2 : le classement
+                  const sub = [
+                    s.startTime,
+                    s.heat ? `Série\u00a0${s.heat}` : null,
+                    s.lane != null ? `Ligne\u00a0${s.lane}` : null,
+                    s.round !== 'TIM' ? ROUND_LABEL[s.round] : null,
+                  ].filter(Boolean);
+                  const rank = s.place ? placeLabel(s.place) : null;
+                  return (
+                    <button
+                      key={s.id}
+                      className="row"
+                      onClick={() => navigate(`/swim/${s.id}`)}
+                    >
+                      <StrokeTag stroke={s.stroke} distance={s.distance} size={36} />
+                      <div className="row-body">
+                        <div className="row-title">
+                          {s.eventNo ? `${s.eventNo}. ` : ''}
+                          {eventLabel(s.distance, s.stroke)}
+                        </div>
+                        <div className="row-sub">{sub.join(' · ') || (rank ? null : formatDate(s.date))}</div>
+                        {rank && <div className="row-sub">{rank}</div>}
+                      </div>
+                      <div className="row-end">
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-end',
+                            gap: 3,
+                          }}
+                        >
+                          {s.timeCs != null || s.status !== 'OK' ? (
+                            <>
+                              <span className="time-big">
+                                {s.status === 'OK' || s.status === 'DSQ' ? formatTime(s.timeCs) : ''}
+                              </span>
+                              <span className="hstack" style={{ gap: 4 }}>
+                                {s.status !== 'OK' ? (
+                                  <span className="badge bad">{s.status}</span>
+                                ) : pb?.isPB ? (
+                                  <>
+                                    <span className="badge pb">PB</span>
+                                    <span className="small good tnum" style={{ fontWeight: 600 }}>
+                                      {formatDelta(pb.deltaCs!)}
+                                    </span>
+                                  </>
+                                ) : pb?.isFirst ? (
+                                  <span className="badge first">1er temps</span>
+                                ) : pb?.deltaCs != null ? (
+                                  <span className="small muted tnum">{formatDelta(pb.deltaCs)}</span>
+                                ) : null}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="time-big muted">{s.entryCs ? formatTime(s.entryCs) : 'NT'}</span>
+                              {prev != null ? (
+                                <span className="hstack small muted tnum" style={{ gap: 4 }}>
+                                  <span className="badge">PB</span>
+                                  {formatTime(prev)}
+                                </span>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                        <Icon name="chevronRight" className="chev" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </Section>
+      );
+  };
 
   const bestOf = (swimmerId: string, s: Swim) => {
     const list = data.swims.filter(
@@ -342,107 +444,7 @@ export function MeetDetail({ id }: { id: string }) {
           </div>
         )}
 
-        {bySwimmer.map(({ swimmer, swims: list }) => {
-          const days = new Map<string, Swim[]>();
-          for (const s of list) days.set(s.date, [...(days.get(s.date) ?? []), s]);
-          return (
-            <Section
-              key={swimmer.id}
-              title={
-                <span className="hstack" style={{ gap: 10 }}>
-                  <Avatar swimmer={swimmer} size={30} />
-                  {bySwimmer.length > 1
-                    ? fullName(swimmer)
-                    : isPast || list.some((x) => x.timeCs != null)
-                      ? 'Résultats'
-                      : 'Programme'}
-                </span>
-              }
-            >
-              <div className="list">
-                {[...days.entries()].map(([day, ds]) => (
-                  <div key={day}>
-                    <div className="group-head">{capitalize(formatLongDay(day))}</div>
-                    {ds.map((s) => {
-                      const pb = pbFlags.get(s.id);
-                      const prev = bestOf(swimmer.id, s);
-                      // Ligne 1 : quand et où nager ; ligne 2 : le classement
-                      const sub = [
-                        s.startTime,
-                        s.heat ? `Série\u00a0${s.heat}` : null,
-                        s.lane != null ? `Ligne\u00a0${s.lane}` : null,
-                        s.round !== 'TIM' ? ROUND_LABEL[s.round] : null,
-                      ].filter(Boolean);
-                      const rank = s.place ? placeLabel(s.place) : null;
-                      return (
-                        <button
-                          key={s.id}
-                          className="row"
-                          onClick={() => navigate(`/swim/${s.id}`)}
-                        >
-                          <StrokeTag stroke={s.stroke} distance={s.distance} size={36} />
-                          <div className="row-body">
-                            <div className="row-title">
-                              {s.eventNo ? `${s.eventNo}. ` : ''}
-                              {eventLabel(s.distance, s.stroke)}
-                            </div>
-                            <div className="row-sub">{sub.join(' · ') || (rank ? null : formatDate(s.date))}</div>
-                            {rank && <div className="row-sub">{rank}</div>}
-                          </div>
-                          <div className="row-end">
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-end',
-                                gap: 3,
-                              }}
-                            >
-                              {s.timeCs != null || s.status !== 'OK' ? (
-                                <>
-                                  <span className="time-big">
-                                    {s.status === 'OK' || s.status === 'DSQ' ? formatTime(s.timeCs) : ''}
-                                  </span>
-                                  <span className="hstack" style={{ gap: 4 }}>
-                                    {s.status !== 'OK' ? (
-                                      <span className="badge bad">{s.status}</span>
-                                    ) : pb?.isPB ? (
-                                      <>
-                                        <span className="badge pb">PB</span>
-                                        <span className="small good tnum" style={{ fontWeight: 600 }}>
-                                          {formatDelta(pb.deltaCs!)}
-                                        </span>
-                                      </>
-                                    ) : pb?.isFirst ? (
-                                      <span className="badge first">1er temps</span>
-                                    ) : pb?.deltaCs != null ? (
-                                      <span className="small muted tnum">{formatDelta(pb.deltaCs)}</span>
-                                    ) : null}
-                                  </span>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="time-big muted">{s.entryCs ? formatTime(s.entryCs) : 'NT'}</span>
-                                  {prev != null ? (
-                                    <span className="hstack small muted tnum" style={{ gap: 4 }}>
-                                      <span className="badge">PB</span>
-                                      {formatTime(prev)}
-                                    </span>
-                                  ) : null}
-                                </>
-                              )}
-                            </div>
-                            <Icon name="chevronRight" className="chev" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </Section>
-          );
-        })}
+        {mineGroups.map(renderGroup)}
 
         {(() => {
           const i = timeline.findIndex((e) => e.key === meet.id);
@@ -488,6 +490,14 @@ export function MeetDetail({ id }: { id: string }) {
             </Section>
           );
         })()}
+
+        {otherGroups.length > 0 && (
+          <>
+            {mineGroups.length > 0 && <div className="group-title">Les autres nageurs de l’ESN · {otherGroups.length}</div>}
+            {otherGroups.map(renderGroup)}
+          </>
+        )}
+
 
         <Section title="Infos">
           <div className="list">

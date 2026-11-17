@@ -83,35 +83,39 @@ export function Records() {
         ) : (
           <>
             <SwimmerChips swimmer={swimmer} />
-            <div className="stack" style={{ gap: 8 }}>
-              <Segmented
-                value={course}
-                onChange={setCourse}
-                options={COURSES.map((c) => ({
-                  id: c.id,
-                  label: `${c.long.split(' (')[0]} · ${courseCounts[c.id].size}`,
-                }))}
-              />
-              <Segmented
-                value={scope}
-                onChange={setScope}
-                options={[
-                  { id: 'all', label: 'Meilleurs à vie' },
-                  { id: 'season', label: seasonLabel(season) },
-                ]}
-              />
-            </div>
-
-            <button className="card lv-link" onClick={() => navigate('/levels')}>
-              <span className="row-icon" style={{ background: 'var(--lvl-trident)' }} aria-hidden="true">
-                <Icon name="target" />
-              </span>
-              <span className="grow">
-                <span className="lv-link-title">Niveaux FFBN</span>
-                <span className="lv-link-sub">Mistral, Trident et Requin sur chaque épreuve</span>
-              </span>
-              <Icon name="chevronRight" className="chev" />
-            </button>
+            <Section title="Objectifs">
+              <div className="list">
+                <Row
+                  icon="target"
+                  iconBg="var(--lvl-trident)"
+                  title="Niveaux FFBN"
+                  sub="Mistral, Trident et Requin sur chaque épreuve"
+                  chevron
+                  onClick={() => navigate('/levels')}
+                />
+                <Row icon="medal" iconBg="#f5a400" title="Championnats" sub="Temps limites atteints et à portée" chevron onClick={() => navigate('/championships')} />
+              </div>
+            </Section>
+            <Section title="Meilleurs temps">
+              <div className="stack" style={{ gap: 8 }}>
+                <Segmented
+                  value={course}
+                  onChange={setCourse}
+                  options={COURSES.map((c) => ({
+                    id: c.id,
+                    label: `${c.long.split(' (')[0]} · ${courseCounts[c.id].size}`,
+                  }))}
+                />
+                <Segmented
+                  value={scope}
+                  onChange={setScope}
+                  options={[
+                    { id: 'all', label: 'Meilleurs à vie' },
+                    { id: 'season', label: seasonLabel(season) },
+                  ]}
+                />
+              </div>
+            </Section>
 
             {bests.size === 0 ? (
               <div className="card" style={{ marginTop: 16 }}>

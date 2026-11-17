@@ -11,7 +11,6 @@ import { swimrankingsUrl } from '../lib/swimrankings';
 import { achievements, chronoCompare } from '../lib/stats';
 import { STROKES, courseLabel } from '../lib/events';
 import type { Course, Stroke, Swim } from '../store/types';
-import { TrophyGrid } from './Progression';
 import { findResultsNow } from './autoResults';
 import { SwimmerMedals } from '../components/Medals';
 
@@ -103,6 +102,15 @@ export function SwimmerProfile({ id }: { id: string }) {
             <Row icon="list" title="Toutes les courses" value={count} chevron onClick={() => navigate(`/swimmer/${id}/history`)} />
             <Row icon="trophy" iconBg="#ff9f0a" title="Records" chevron onClick={() => { actions.selectSwimmer(id); navigate('/records'); }} />
             <Row icon="chart" iconBg="#30d158" title="Progression" chevron onClick={() => { actions.selectSwimmer(id); navigate('/progress'); }} />
+            <Row icon="target" iconBg="var(--lvl-trident)" title="Niveaux FFBN" chevron onClick={() => { actions.selectSwimmer(id); navigate('/levels'); }} />
+            <Row
+              icon="medal"
+              iconBg="#f5a400"
+              title="Trophées"
+              value={`${unlocked}/${trophies.length}`}
+              chevron
+              onClick={() => { actions.selectSwimmer(id); navigate('/progress'); }}
+            />
             <Row
               icon="sparkles"
               iconBg="#bf5af2"
@@ -116,9 +124,6 @@ export function SwimmerProfile({ id }: { id: string }) {
 
         <SwimmerMedals swimmer={swimmer} swims={data.swims} meetsById={meetsById} pbFlags={pbFlags} />
 
-        <Section title="Trophées" action={<span className="muted small">{unlocked}/{trophies.length}</span>}>
-          <TrophyGrid trophies={trophies} />
-        </Section>
       </main>
     </>
   );

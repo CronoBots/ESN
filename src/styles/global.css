@@ -770,6 +770,16 @@ a.row:active {
   color: var(--accent);
 }
 
+/* Fiche d'une compétition : séparation avant les nageurs du club que l'on ne suit pas */
+.group-title {
+  margin: 30px 4px -6px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .group-head {
   padding: 8px 16px;
   background: var(--card-2);
@@ -1454,33 +1464,6 @@ a.row:active {
   color: var(--text-2);
   font-size: 13.5px;
   line-height: 1.45;
-}
-
-/* Lien vers les niveaux (écran Records) */
-.lv-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 0;
-  color: var(--text);
-  text-align: left;
-}
-
-.lv-link .grow {
-  display: flex;
-  flex-direction: column;
-}
-
-.lv-link-title {
-  font-weight: 600;
-}
-
-.lv-link-sub {
-  color: var(--text-2);
-  font-size: 13px;
 }
 
 /* Invitation : QR code, partage du lien */

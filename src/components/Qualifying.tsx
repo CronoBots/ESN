@@ -221,7 +221,7 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
 }
 
 /** Accueil : épreuves qualifiées et limites les plus proches, sur les championnats à venir. */
-export function QualifyingGoals({ swimmer, swims }: { swimmer: Swimmer; swims: Swim[] }) {
+export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swims: Swim[]; /** Page Championnats : toutes les épreuves */ all?: boolean }) {
   const data = useQualifying();
   const summary = useMemo(() => {
     if (!data) return null;
@@ -230,10 +230,22 @@ export function QualifyingGoals({ swimmer, swims }: { swimmer: Swimmer; swims: S
     return { ...s, close: s.close.filter((x) => relativeLimitGap(x) <= CLOSE_GAP) };
   }, [data, swimmer, swims]);
   if (!summary || (!summary.qualified.length && !summary.close.length)) return null;
-  const rows = [...summary.qualified.slice(0, 4), ...summary.close.slice(0, Math.max(2, 5 - Math.min(summary.qualified.length, 4)))];
+  const rows = all
+    ? [...summary.qualified, ...summary.close]
+    : [...summary.qualified.slice(0, 4), ...summary.close.slice(0, Math.max(2, 5 - Math.min(summary.qualified.length, 4)))];
+  const more = summary.qualified.length + summary.close.length - rows.length;
   const shown = [...new Map(rows.map((s) => [s.championship.id, s.championship])).values()];
   return (
-    <Section title="Championnats">
+    <Section
+      title={all ? 'Qualifications' : 'Championnats'}
+      action={
+        !all && more > 0 ? (
+          <button className="section-link" onClick={() => navigate('/championships')}>
+            Tout voir
+          </button>
+        ) : undefined
+      }
+    >
       <div className="list">
         {rows.map((s) => {
           const c = s.championship;
