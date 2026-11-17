@@ -7,6 +7,7 @@ import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
 import { Records, Rankings } from './screens/Records';
+import { ClubRecords } from './screens/ClubRecords';
 import { EventDetail } from './screens/EventDetail';
 import { Progression } from './screens/Progression';
 import { SwimDetail } from './screens/SwimDetail';
@@ -33,7 +34,7 @@ function activeTab(path: string[]): string {
   const p = path[0] ?? '';
   if (p === 'swim' || p === 'swimmer' || p === 'club' || p === 'event') return lastTab;
   if (p === 'meets' || p === 'meet') lastTab = 'meets';
-  else if (p === 'records' || p === 'rankings') lastTab = 'records';
+  else if (p === 'records' || p === 'rankings' || p === 'club-records') lastTab = 'records';
   else if (p === 'progress') lastTab = 'progress';
   else if (p === 'settings' || p === 'about') lastTab = 'settings';
   else lastTab = 'home';
@@ -53,6 +54,8 @@ function Screen({ path }: { path: string[] }) {
       return <Records />;
     case 'rankings':
       return <Rankings />;
+    case 'club-records':
+      return <ClubRecords />;
     case 'progress':
       return <Progression />;
     case 'event':

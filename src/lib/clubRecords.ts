@@ -1,0 +1,71 @@
+import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
+import { chronoCompare, countsForRecords } from './stats';
+
+/**
+ * Records du club : meilleur temps de tous les nageurs de l'ESN (membres actuels et
+ * anciens) sur chaque épreuve, par bassin, filles ou garçons, et par âge.
+ */
+
+/** Âge dans l'année de la course (comme les catégories d'âge de la fédération). */
+export function ageAt(swim: Pick<Swim, 'date'>, swimmer: Pick<Swimmer, 'birthYear'>): number | undefined {
+  return swimmer.birthYear ? Number(swim.date.slice(0, 4)) - swimmer.birthYear : undefined;
+}
+
+export interface AgeBand {
+  id: string;
+  label: string;
+  /** Libellé court pour les puces. */
+  short: string;
+  test: (age: number | undefined) => boolean;
+}
+
+export const AGE_BANDS: AgeBand[] = [
+  { id: 'all', label: 'Tous âges', short: 'Tous âges', test: () => true },
+  { id: '10', label: '10 ans et moins', short: '10 ans et –', test: (a) => a != null && a <= 10 },
+  ...[11, 12, 13, 14, 15, 16, 17].map((n) => ({ id: String(n), label: `${n} ans`, short: `${n} ans`, test: (a: number | undefined) => a === n })),
+  { id: '18', label: '18 ans et plus', short: '18 ans et +', test: (a) => a != null && a >= 18 },
+  { id: 'masters', label: 'Masters (25 ans et plus)', short: 'Masters', test: (a) => a != null && a >= 25 },
+];
+
+/** Tranche d'âge d'un nageur cette année (la plus précise : « 12 ans », « 18 ans et plus »). */
+export function bandForAge(age: number | undefined): AgeBand | undefined {
+  if (age == null) return undefined;
+  return AGE_BANDS.find((b) => b.id !== 'all' && b.id !== 'masters' && b.test(age));
+}
+
+export interface ClubRecord {
+  swim: Swim & { timeCs: number };
+  swimmer: Swimmer;
+  /** Âge dans l'année du record. */
+  age?: number;
+}
+
+/** Clé d'épreuve : « 100-FREE ». */
+export const recordKey = (distance: number, stroke: Stroke) => `${distance}-${stroke}`;
+
+/**
+ * Record de chaque épreuve pour un bassin, un sexe et une tranche d'âge : temps le plus
+ * rapide en compétition d'un membre du club (à temps égal, le premier réalisé).
+ */
+export function clubRecords(
+  swims: Swim[],
+  swimmers: Swimmer[],
+  opts: { course: Course; gender: Gender; band?: AgeBand },
+): Map<string, ClubRecord> {
+  const members = new Map(swimmers.filter((s) => s.member && s.gender === opts.gender).map((s) => [s.id, s]));
+  const band = opts.band ?? AGE_BANDS[0];
+  const out = new Map<string, ClubRecord>();
+  for (const s of swims) {
+    if (s.course !== opts.course || !countsForRecords(s, false)) continue;
+    const swimmer = members.get(s.swimmerId);
+    if (!swimmer) continue;
+    const age = ageAt(s, swimmer);
+    if (!band.test(age)) continue;
+    const k = recordKey(s.distance, s.stroke);
+    const cur = out.get(k);
+    if (!cur || s.timeCs < cur.swim.timeCs || (s.timeCs === cur.swim.timeCs && chronoCompare(s, cur.swim) < 0)) {
+      out.set(k, { swim: s, swimmer, age });
+    }
+  }
+  return out;
+}

@@ -3256,6 +3256,51 @@ button.meet-nav-btn:active {
 
 
 /* Ligne de la liste du club : fiche du nageur + cœur pour le suivre */
+/* Records du club */
+.record-holder b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.record-holder b.followed {
+  color: var(--accent);
+}
+
+.record-row .badge.masters {
+  margin-top: 3px;
+}
+
+/* Page d'une épreuve : rappel des records du club */
+.club-record-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--fill);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.club-record-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.club-record-line svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: #c98a00;
+}
+
 .club-row,
 .follow-list .row,
 .swim-list .row {

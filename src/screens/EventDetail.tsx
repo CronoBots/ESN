@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../store/store';
-import { fullName, sortSwimmers, usePbFlags } from '../store/hooks';
+import { fullName, hasClubMembers, sortSwimmers, usePbFlags } from '../store/hooks';
+import { ageAt, bandForAge, clubRecords, recordKey, type ClubRecord } from '../lib/clubRecords';
 import { Avatar, Empty, NavBar, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ProgressChart, type ChartSeries } from '../components/Chart';
@@ -74,6 +75,18 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
       .filter((s): s is ChartSeries => !!s),
   ];
   const best = stats.best;
+  // Records du club sur cette épreuve : tous âges et à l'âge du nageur cette année
+  const clubRecs = useMemo(() => {
+    if (!swimmer?.member || !hasClubMembers(data.swimmers)) return [];
+    const band = bandForAge(ageAt({ date: `${new Date().getFullYear()}-01-01` }, swimmer));
+    const k = recordKey(distance, stroke);
+    const out: { label: string; rec: ClubRecord }[] = [];
+    const atAge = band ? clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender, band }).get(k) : undefined;
+    if (band && atAge) out.push({ label: `à ${band.label}`, rec: atAge });
+    const all = clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender }).get(k);
+    if (all && all.swim.id !== atAge?.swim.id) out.push({ label: 'tous âges', rec: all });
+    return out;
+  }, [data.swims, data.swimmers, swimmer, course, distance, stroke]);
   // Niveaux FFBN de l'âge atteint cette année, comparés au record
   const levels = levelStatus(swimmer, course, distance, stroke, levelYear(), best?.timeCs);
   const bestPts = best ? pointsFor(best, swimmer) : null;
@@ -134,6 +147,31 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                   </div>
                 </div>
               </div>
+
+              {clubRecs.length > 0 && (
+                <button className="club-record-lines" onClick={() => navigate('/club-records')}>
+                  {clubRecs.map(({ label, rec }) => {
+                    const own = rec.swimmer.id === swimmer.id;
+                    const gap = best?.timeCs != null ? best.timeCs - rec.swim.timeCs : 0;
+                    return (
+                      <span key={label} className="club-record-line">
+                        <Icon name="trophy" aria-hidden="true" />
+                        <span>
+                          Record du club {label} :{' '}
+                          {own ? (
+                            <b>{swimmer.firstName} le détient ({formatTime(rec.swim.timeCs)})</b>
+                          ) : (
+                            <>
+                              <b className="tnum">{formatTime(rec.swim.timeCs)}</b> · {fullName(rec.swimmer)}, {rec.swim.date.slice(0, 4)}
+                              {gap > 0 ? <span className="muted tnum"> · encore {formatTime(gap)}</span> : null}
+                            </>
+                          )}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </button>
+              )}
 
               {candidates.length > 0 && (
                 <div className="compare-bar">

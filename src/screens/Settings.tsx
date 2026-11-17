@@ -115,6 +115,7 @@ export function Settings() {
                     chevron
                     onClick={() => navigate('/club')}
                   />
+                  <Row icon="trophy" iconBg="#f5a400" title="Records du club" chevron onClick={() => navigate('/club-records')} />
                   <Row icon="ranking" iconBg="var(--brand-blue)" title="Classements du club" chevron onClick={() => navigate('/rankings')} />
                   {club.expired && <Row icon="shield" iconBg="#ff9f0a" title="Entrer le nouveau code du club" chevron onClick={() => openClubCode()} />}
                 </>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { actions, useData } from '../store/store';
 import { fullName, hasClubMembers, isFormerMember, mySwimmers, useSelectedSwimmer } from '../store/hooks';
-import { Avatar, Empty, NavBar, Section, Segmented, StrokeDot, StrokeTag } from '../components/ui';
+import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeDot, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { COURSES, STROKES, STROKE_BY_ID, distancesFor, eventLabel, courseLabel } from '../lib/events';
@@ -170,6 +170,14 @@ export function Records() {
               Points World Aquatics : officiels quand ils sont publiés, sinon calculés (indicatifs).
             </div>
           </>
+        )}
+        {hasClubMembers(data.swimmers) && (
+          <Section title="Le club">
+            <div className="list">
+              <Row icon="trophy" iconBg="#f5a400" title="Records du club" sub="Meilleurs temps de l’ESN, par épreuve et par âge" chevron onClick={() => navigate('/club-records')} />
+              <Row icon="ranking" iconBg="var(--brand-blue)" title="Classements du club" chevron onClick={() => navigate('/rankings')} />
+            </div>
+          </Section>
         )}
       </main>
     </>
