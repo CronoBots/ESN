@@ -50,7 +50,7 @@ describe('résumé du dernier week-end du club', () => {
 
   it('pas de « record du club » sur une épreuve où les anciens membres ne sont pas relevés', () => {
     const swimmers = [swimmer('ana', 2014)];
-    const swims = [swim('ana', '2026-11-14', 18000, { distance: 200 })];
+    const swims = [swim('ana', '2026-11-14', 1800, { distance: 25 })];
     const w = lastClubWeekend(swims, swimmers, meets, computePbFlags(swims, false), '2026-11-17')!;
     expect(w.records).toEqual([]);
   });

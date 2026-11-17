@@ -44,14 +44,12 @@ export interface ClubRecord {
 export const recordKey = (distance: number, stroke: Stroke) => `${distance}-${stroke}`;
 
 /**
- * Épreuves où les meilleurs temps ESN des anciens membres ont été relevés (classements
- * « Meilleurs à vie » du club sur swimrankings). Ailleurs, seuls les nageurs dont l'historique
- * complet est connu comptent : le meilleur temps n'est qu'un « meilleur temps connu ».
+ * Épreuves dont les 10 meilleurs temps ESN de tous les temps sont relevés (classements
+ * « Meilleurs à vie » du club sur swimrankings, filles et garçons, 25 et 50 m) : toutes à partir
+ * du 50 m. Les épreuves de 25 m (jeunes) n'y figurent pas : seulement un « meilleur temps connu ».
  */
-const FORMER_COVERED = new Set(['SCM|50|FREE', 'LCM|50|FREE', 'SCM|50|BREAST', 'SCM|50|BACK', 'SCM|50|FLY', 'SCM|100|IM', 'SCM|100|FREE', 'SCM|100|BREAST', 'SCM|100|BACK']);
-
-export function recordComplete(course: Course, distance: number, stroke: Stroke): boolean {
-  return FORMER_COVERED.has(`${course}|${distance}|${stroke}`);
+export function recordComplete(_course: Course, distance: number, _stroke: Stroke): boolean {
+  return distance >= 50;
 }
 
 /**
