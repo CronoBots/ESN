@@ -118,7 +118,7 @@ export function Settings() {
                   />
                   <Row icon="trophy" iconBg="#f5a400" title="Records du club" chevron onClick={() => navigate('/club-records')} />
                   <Row icon="ranking" iconBg="var(--brand-blue)" title="Classements du club" chevron onClick={() => navigate('/rankings')} />
-                  <Row icon="share" iconBg="#34c759" title="Partager l’application" sub="QR code, lien ou affiche" chevron onClick={openShareApp} />
+                  <Row icon="qr" iconBg="#34c759" title="Partager l’application aux parents" sub="QR code à scanner, lien ou affiche" chevron onClick={openShareApp} />
                 </>
               ) : (
                 <Row icon="download" iconBg="var(--brand-green)" title="Charger la liste du club" chevron onClick={() => void ensureClub()} />

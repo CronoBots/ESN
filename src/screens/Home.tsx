@@ -12,6 +12,7 @@ import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { InstallBanner } from './Install';
 import { LevelGoals } from '../components/Levels';
+import { openShareApp } from '../components/Invite';
 import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
 import { MedalTally } from '../components/Medals';
 import { SHOW_MEDAL_COUNTS } from '../lib/medals';
@@ -481,6 +482,16 @@ function ClubCard() {
             <div className="row-body">
               <div className="row-title">Classements du club</div>
               <div className="row-sub">Meilleurs temps par épreuve{club.groups.length ? ' et par groupe' : ', par âge'}</div>
+            </div>
+            <Icon name="chevronRight" className="chev" />
+          </button>
+          <button className="row" onClick={openShareApp}>
+            <span className="row-icon" style={{ background: '#34c759' }}>
+              <Icon name="qr" />
+            </span>
+            <div className="row-body">
+              <div className="row-title">Partager l’application aux parents</div>
+              <div className="row-sub">QR code à scanner, lien ou affiche à imprimer</div>
             </div>
             <Icon name="chevronRight" className="chev" />
           </button>

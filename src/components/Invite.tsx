@@ -126,10 +126,10 @@ function ShareSheet({ close }: { close: () => void }) {
   };
 
   return (
-    <SheetLayout title="Partager l’application" onCancel={close} cancelLabel="Fermer">
+    <SheetLayout title="Partager aux parents" onCancel={close} cancelLabel="Fermer">
       <div className="invite">
         <QrCode text={link} label="QR code d’ESN Compétition" />
-        <p className="invite-lead">À scanner avec l’appareil photo du téléphone : l’application s’ouvre aussitôt sur les nageurs de l’ESN.</p>
+        <p className="invite-lead">Montrez ce QR code à un autre parent : il le scanne avec l’appareil photo de son téléphone et arrive aussitôt sur les nageurs de l’ESN.</p>
         <button className="btn block" onClick={share}>
           <Icon name="share" /> Partager le lien
         </button>
