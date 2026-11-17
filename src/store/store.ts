@@ -32,19 +32,40 @@ function emptyData(): AppData {
   return { version: 1, swimmers: [], meets: [], swims: [], goals: [], settings: { ...DEFAULT_SETTINGS } };
 }
 
+/** Nageur de l'ancien exemple de démonstration (anciennes versions de l'application). */
+const DEMO_CLUB = 'Club de démonstration';
+
 /** Valide et complète des données (sauvegarde ou stockage local). */
 export function normalizeData(raw: unknown): AppData {
   const d = (raw && typeof raw === 'object' ? raw : {}) as Partial<AppData>;
   const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  let swimmers = arr<Swimmer>(d.swimmers).filter((s) => s && s.id);
+  let meets = arr<Meet>(d.meets).filter((m) => m && m.id);
+  let swims = arr<Swim>(d.swims).filter((s) => s && s.id && s.swimmerId);
+  let goals = arr<Goal>(d.goals).filter((g) => g && g.id);
+  let selectedSwimmerId = d.settings?.selectedSwimmerId;
+  // Exemple de démonstration gardé par un navigateur depuis une ancienne version : retiré
+  // (nageurs, leurs courses et objectifs, et les compétitions qui n'appartenaient qu'à l'exemple)
+  const demo = new Set(swimmers.filter((s) => s.club === DEMO_CLUB).map((s) => s.id));
+  if (demo.size) {
+    const demoMeets = new Set(swims.filter((x) => demo.has(x.swimmerId) && x.meetId).map((x) => x.meetId!));
+    swims = swims.filter((x) => !demo.has(x.swimmerId));
+    const used = new Set(swims.map((x) => x.meetId));
+    meets = meets.filter((m) => !demoMeets.has(m.id) || used.has(m.id));
+    goals = goals.filter((g) => !demo.has(g.swimmerId));
+    swimmers = swimmers.filter((s) => !demo.has(s.id));
+    if (selectedSwimmerId && demo.has(selectedSwimmerId)) selectedSwimmerId = undefined;
+  }
   return {
     version: 1,
-    swimmers: arr<Swimmer>(d.swimmers).filter((s) => s && s.id),
-    meets: arr<Meet>(d.meets).filter((m) => m && m.id),
-    swims: arr<Swim>(d.swims).filter((s) => s && s.id && s.swimmerId),
-    goals: arr<Goal>(d.goals).filter((g) => g && g.id),
+    swimmers,
+    meets,
+    swims,
+    goals,
     settings: {
       ...DEFAULT_SETTINGS,
       ...(d.settings ?? {}),
+      selectedSwimmerId,
       // Tout est automatique : la recherche des résultats ne peut plus être coupée, plus de temps d'entraînement saisis
       includeTraining: false,
       liveSync: { ...DEFAULT_SETTINGS.liveSync, ...(d.settings?.liveSync ?? {}), enabled: true },
@@ -938,7 +959,3 @@ export const actions = {
   },
 };
 
-/** Données de démonstration pour découvrir l'application. */
-export function loadDemo() {
-  import('./demo').then((m) => actions.mergeAll(m.buildDemo()));
-}
