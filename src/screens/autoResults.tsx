@@ -78,24 +78,3 @@ export async function findResultsNow(firstName?: string, swimmerId?: string) {
     overlay.toast(navigator.onLine ? 'Résultats indisponibles pour le moment, nouvel essai plus tard' : 'Pas de connexion internet', '⚠️');
   }
 }
-
-/** Bandeau affiché pendant la recherche des résultats. */
-export function SyncBanner() {
-  const st = useSyncStatus();
-  if (!st) return null;
-  const pct = st.total ? Math.round((st.done / st.total) * 100) : 5;
-  return (
-    <div className="card pad" style={{ marginTop: 14 }} role="status" aria-live="polite">
-      <div className="hstack" style={{ gap: 8, fontWeight: 600, fontSize: 15 }}>
-        <span aria-hidden="true">🔎</span>
-        Recherche des résultats…
-        <span className="muted small" style={{ marginLeft: 'auto', fontWeight: 500 }}>
-          {st.total ? `${st.done}/${st.total} compétitions` : ''}
-        </span>
-      </div>
-      <div className="meter" style={{ marginTop: 10, height: 6 }}>
-        <div style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}

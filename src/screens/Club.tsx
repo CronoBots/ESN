@@ -11,7 +11,6 @@ import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
 import { formatDate, formatDayMonth } from '../lib/dates';
 import type { Swimmer } from '../store/types';
-import { SyncBanner } from './autoResults';
 
 /** Liste chiffrée des membres, publiée avec l'application (voir scripts/roster.mjs). */
 const ROSTER_URL = './data/club-roster.json';
@@ -564,7 +563,6 @@ export function ClubScreen() {
         <div style={{ marginTop: 10 }}>
           <SearchField value={q} onChange={setQ} label="Rechercher un nageur" />
         </div>
-        <SyncBanner />
         {shown === 0 && (
           <div className="card" style={{ marginTop: 16 }}>
             <Empty icon="person" title="Aucun nageur trouvé" text={q ? 'Vérifiez l’orthographe du nom ou du prénom.' : undefined} />

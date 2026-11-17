@@ -13,7 +13,7 @@ import type { Swim } from '../store/types';
 import { overlay } from '../components/ui';
 import { DateBlock, EvolutionCard, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { SwimmerChips } from './Records';
-import { findResultsNow, SyncBanner } from './autoResults';
+import { findResultsNow } from './autoResults';
 import { capitalize, deName, placeLabel } from '../lib/text';
 
 
@@ -93,7 +93,6 @@ export function Meets() {
       />
       <main className="page">
         {swimmer && <SwimmerChips swimmer={swimmer} />}
-        <SyncBanner />
 
         {upcoming.length > 0 && (
           <Section title="À venir">

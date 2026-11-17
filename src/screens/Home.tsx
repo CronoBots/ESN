@@ -16,7 +16,7 @@ import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
 import { MedalTally } from '../components/Medals';
 import { SHOW_MEDAL_COUNTS } from '../lib/medals';
 import { ClubWeekendCard } from './ClubWeekend';
-import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
+import { awaitingMeets, findResultsNow, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Swimmer } from '../store/types';
 
@@ -182,7 +182,6 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
       </button>
 
       <InstallBanner />
-      <SyncBanner />
 
       {awaiting.length > 0 && (
         <Section title="Résultats en attente">

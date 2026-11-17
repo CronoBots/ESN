@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useData } from './store/store';
+import { getState, useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { UiHost, overlay } from './components/ui';
 import { isSyncing, shouldAutoSyncLive, syncLive, type LiveSyncResult } from './lib/liveResults';
@@ -90,18 +90,17 @@ export function App() {
 
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
+    // Mise à jour silencieuse : un message seulement quand un nageur suivi a de nouveaux résultats
+    // (ou un programme de compétition) ; la liste du club et les autres nageurs se mettent à jour sans rien dire
     const notify = (r: LiveSyncResult) => {
-      if (r.newMembers.length) {
-        const n = r.newMembers.length;
-        // Après le message des résultats, pour qu'on ait le temps de lire les deux
-        setTimeout(() => overlay.toast(`${n} nouveau${n > 1 ? 'x' : ''} nageur${n > 1 ? 's' : ''} de l’ESN dans la liste du club`, '🏊'), r.added || r.entries ? 3500 : 0);
+      const followed = new Set(getState().swimmers.filter((s) => s.relation === 'child' || s.favorite).map((s) => s.id));
+      const mine = (list: LiveSyncResult['swimmers']) => list.some((x) => followed.has(x.swimmer.id));
+      if (r.added && mine(r.swimmers)) {
+        overlay.toast(resultsMessage(r, 'nouveau'), '🏊');
+        if (r.pbs) overlay.celebrate();
+      } else if (r.entries && mine(r.entrySwimmers)) {
+        overlay.toast(resultsMessage({ added: r.entries, swimmers: r.entrySwimmers }, 'programme'), '📋');
       }
-      if (!r.added) {
-        if (r.entries) overlay.toast(resultsMessage({ added: r.entries, swimmers: r.entrySwimmers }, 'programme'), '📋');
-        return;
-      }
-      overlay.toast(resultsMessage(r, 'nouveau'), '🏊');
-      if (r.pbs) overlay.celebrate();
     };
     const run = () => {
       // hors-ligne ou site indisponible : nouvel essai à la prochaine ouverture
@@ -124,9 +123,7 @@ export function App() {
   // Liste des membres du club : nouvelle version publiée par le club → mise à jour
   useEffect(() => {
     const t = setTimeout(() => {
-      refreshClubRoster()
-        .then((n) => n && overlay.toast(`${n} nouveau${n > 1 ? 'x' : ''} nageur${n > 1 ? 's' : ''} dans la liste du club`, '🏊'))
-        .catch(() => {});
+      refreshClubRoster().catch(() => {});
     }, 800);
     return () => clearTimeout(t);
   }, []);
