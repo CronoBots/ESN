@@ -78,6 +78,8 @@ export interface Swim {
   splitEvery?: 25 | 50;
   /** Points officiels (import). */
   points?: number;
+  /** Temps réalisé en compétition masters (25 ans et plus), marqué « M » sur swimrankings. */
+  masters?: boolean;
   timing?: 'electronic' | 'manual';
   notes?: string;
   source: 'manual' | 'swimrankings' | 'club' | 'live';

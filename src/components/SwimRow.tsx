@@ -13,6 +13,11 @@ export function SwimBadges({ swim, pb }: { swim: Swim; pb?: PbInfo }) {
   return (
     <>
       {swim.context === 'training' && <span className="badge training">ENTR.</span>}
+      {swim.masters && (
+        <span className="badge masters" title="Temps réalisé en compétition masters">
+          Masters
+        </span>
+      )}
       {pb?.isPB && <span className="badge pb">PB</span>}
       {pb?.isFirst && <span className="badge first">1er temps</span>}
     </>

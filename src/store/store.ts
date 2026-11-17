@@ -801,6 +801,7 @@ export const actions = {
           status: 'OK',
           round: 'TIM',
           points: p.points,
+          ...(p.masters ? { masters: true } : {}),
           timing: 'electronic',
           source: 'swimrankings',
           createdAt: now,

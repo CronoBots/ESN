@@ -79,11 +79,10 @@
   --radius-sm: 12px;
   --radius-lg: 22px;
   --tabbar-h: 62px;
-  /* Espace sous la barre d'onglets flottante : bas de l'écran, juste au-dessus de la barre d'accueil de l'iPhone */
-  --tabbar-gap: max(6px, calc(var(--safe-bottom) - 26px));
-  /* iPhone à barre d'accueil : la barre descend jusqu'aux coins de l'écran, son contenu reste au-dessus de l'indicateur */
-  --tabbar-pad: max(0px, calc(var(--safe-bottom) - 22px));
-  --tabbar-corner: max(26px, calc(var(--safe-bottom) * 1.3));
+  /* Barre d'onglets flottante : capsule à 14 px des bords ; en bas, 14 px sur iPhone (juste au-dessus du trait
+     de la barre d'accueil), 10 px ailleurs. Même marge sur les côtés et en bas : ses arrondis suivent ceux de l'écran. */
+  --tabbar-inset: 14px;
+  --tabbar-gap: max(10px, calc(var(--safe-bottom) - 20px));
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -191,7 +190,7 @@ p,
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 8px calc(16px + var(--safe-right)) calc(var(--tabbar-h) + var(--tabbar-pad) + var(--tabbar-gap) + 28px)
+  padding: 8px calc(16px + var(--safe-right)) calc(var(--tabbar-h) + var(--tabbar-gap) + 28px)
     calc(16px + var(--safe-left));
 }
 
@@ -401,19 +400,18 @@ p,
 
 .tabbar {
   position: fixed;
-  left: calc(8px + var(--safe-left));
-  right: calc(8px + var(--safe-right));
+  left: calc(var(--tabbar-inset) + var(--safe-left));
+  right: calc(var(--tabbar-inset) + var(--safe-right));
   bottom: var(--tabbar-gap);
   z-index: 40;
   display: flex;
   gap: 2px;
   max-width: 520px;
-  height: calc(var(--tabbar-h) + var(--tabbar-pad));
+  height: var(--tabbar-h);
   margin: 0 auto;
-  padding: 4px 4px calc(4px + var(--tabbar-pad));
+  padding: 5px;
   border: 0.5px solid var(--glass-border);
-  /* Coins du bas concentriques à ceux de l'écran (iPhone à barre d'accueil) ; capsule ailleurs */
-  border-radius: 26px 26px var(--tabbar-corner) var(--tabbar-corner);
+  border-radius: 999px;
   background: var(--glass);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
@@ -427,7 +425,7 @@ p,
   right: 0;
   bottom: 0;
   z-index: 39;
-  height: calc(var(--tabbar-h) + var(--tabbar-pad) + var(--tabbar-gap) + 12px);
+  height: calc(var(--tabbar-h) + var(--tabbar-gap) + 12px);
   background: linear-gradient(to top, var(--bg-solid) 25%, transparent);
   pointer-events: none;
 }
@@ -442,7 +440,7 @@ p,
   min-width: 0;
   padding: 0 1px;
   border: 0;
-  border-radius: 22px;
+  border-radius: 999px;
   background: transparent;
   color: var(--text-2);
   font-size: 10px;
@@ -805,6 +803,11 @@ a.row:active {
   color: var(--text-2);
 }
 
+.badge.masters {
+  background: var(--fill);
+  color: var(--text);
+}
+
 .stroke-dot {
   display: inline-block;
   width: 10px;
@@ -901,7 +904,7 @@ a.row:active {
 .fab {
   position: fixed;
   right: calc(18px + var(--safe-right));
-  bottom: calc(var(--tabbar-h) + var(--tabbar-pad) + var(--tabbar-gap) + 16px);
+  bottom: calc(var(--tabbar-h) + var(--tabbar-gap) + 16px);
   z-index: 35;
   display: inline-flex;
   align-items: center;

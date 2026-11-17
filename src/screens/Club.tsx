@@ -17,7 +17,7 @@ const ROSTER_URL = './data/club-roster.json';
 /** Historique swimrankings des membres, chiffré avec le même code. */
 const HISTORY_URL = './data/club-history.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ». */
-const HISTORY_PARSER = 3;
+const HISTORY_PARSER = 4;
 
 const letters = (s: string) => normName(s);
 
@@ -56,6 +56,8 @@ export async function applyClubHistory(): Promise<number> {
             x.timeCs === ps.timeCs &&
             x.date === ps.date,
         );
+        // Temps masters déjà présents sans la marque (lus par une version précédente) : on la rajoute
+        if (ps.masters && swim && !swim.masters) actions.updateSwim(swim.id, { masters: true });
         const meet = swim?.meetId ? state.meets.find((m) => m.id === swim.meetId) : undefined;
         if (!meet || meet.name === ps.meet || !letters(ps.meet).includes(letters(meet.name))) continue;
         const onlyHistory = state.swims.every((x) => x.meetId !== meet.id || x.source === 'swimrankings');

@@ -23,6 +23,8 @@ export interface ParsedSwim {
   meet?: string;
   /** Vrai si le bassin n'a pas été trouvé (25 m supposé). */
   courseGuessed?: boolean;
+  /** Temps réalisé en compétition masters (marqué « M » après le temps sur swimrankings). */
+  masters?: boolean;
 }
 
 export interface ParsedAthlete {
@@ -87,7 +89,7 @@ function strokeFromWord(w: string): Stroke | null {
 type Token =
   | { t: 'EVENT'; distance: number; stroke: Stroke }
   | { t: 'COURSE'; course: Course }
-  | { t: 'TIME'; cs: number }
+  | { t: 'TIME'; cs: number; masters?: boolean }
   | { t: 'DATE'; iso: string }
   | { t: 'INT'; n: number }
   | { t: 'TEXT'; s: string }
@@ -149,7 +151,13 @@ function tokenizeCell(cell: string, out: Token[]): void {
       if (iso) out.push({ t: 'DATE', iso });
     } else if (g.time) {
       const cs = parseTime(g.time.replace(',', '.'));
-      if (cs != null && cs > 0) out.push({ t: 'TIME', cs });
+      // « 2:21.62M » : temps masters (M majuscule collé au temps, pas le début d'un mot)
+      const masters = cell[last] === 'M' && !/[a-zà-ÿ]/i.test(cell[last + 1] ?? '');
+      if (masters) {
+        last++;
+        TOKEN_RE.lastIndex = last;
+      }
+      if (cs != null && cs > 0) out.push({ t: 'TIME', cs, ...(masters ? { masters: true } : {}) });
     } else if (g.course) {
       const c = g.course.toUpperCase();
       out.push({ t: 'COURSE', course: c.startsWith('25') || c === 'SCM' ? 'SCM' : 'LCM' });
@@ -183,6 +191,7 @@ interface Draft {
   stroke?: Stroke;
   course?: Course;
   timeCs?: number;
+  masters?: boolean;
   points?: number;
   date?: string;
   texts: string[];
@@ -234,6 +243,7 @@ export function parseSwimrankings(text: string): ParseResult {
           city: city ? cleanText(city) : undefined,
           meet: meet ? cleanText(meet) : undefined,
           courseGuessed: !cur.course && !ctxCourse ? true : undefined,
+          ...(cur.masters ? { masters: true } : {}),
         });
       }
     }
@@ -264,6 +274,7 @@ export function parseSwimrankings(text: string): ParseResult {
       case 'TIME':
         if (cur.timeCs) finalize();
         cur.timeCs = tok.cs;
+        cur.masters = tok.masters;
         cur.expectPoints = true;
         break;
       case 'INT':
@@ -321,6 +332,7 @@ function dedupe(list: ParsedSwim[]): ParsedSwim[] {
       if ((s.meet?.length ?? 0) > (prev.meet?.length ?? 0)) prev.meet = s.meet;
       if (!prev.city && s.city) prev.city = s.city;
       if (prev.points == null && s.points != null) prev.points = s.points;
+      if (s.masters) prev.masters = true;
     }
   }
   return [...map.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));

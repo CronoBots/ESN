@@ -151,6 +151,15 @@ describe('format d’import en colonnes', () => {
     expect(r.swims.map((s) => s.city)).toEqual(['Namur', 'Waremme']);
   });
 
+  it('lit les temps masters « 2:21.62M » et les marque comme tels', () => {
+    const r = parseSwimrankings(
+      'DUPONT, Emma (2002)\n200m Libre\t25m\t2:21.62M\t460\t23 nov 2025\tKortrijk\tBC Masters 25m\n50m Dos\t50m\t34.30\t480\t25 jan 2026\tSeraing\tMeeting de Janus',
+    );
+    expect(r.swims).toHaveLength(2);
+    expect(r.swims.find((s) => s.stroke === 'FREE')).toMatchObject({ timeCs: 14162, points: 460, masters: true, meet: 'BC Masters 25m' });
+    expect(r.swims.find((s) => s.stroke === 'BACK')?.masters).toBeUndefined();
+  });
+
   it('lit les dates d’août abrégées « aoû » (swimrankings en français)', () => {
     const r = parseSwimrankings('DUPONT, Emma (1995)\n100m Brasse\t25m\t1:16.47\t542\t4 aoû 2009\tLiège\tMeeting d’été');
     expect(r.swims).toHaveLength(1);
