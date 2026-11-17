@@ -5,6 +5,7 @@ import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { openInvite } from '../components/Invite';
+import { openQrScanner } from '../components/QrScanner';
 import { offerInstall } from './Install';
 import { codeFromText } from '../lib/invite';
 import { navigate } from '../router';
@@ -255,6 +256,18 @@ export async function joinFromClipboard(): Promise<boolean> {
 
 export const canPasteLink = () => typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
 
+/** Scanner le QR code de l'ESN avec l'appareil photo, dans l'application (indispensable une fois installée sur iPhone). */
+export function scanToJoin(onJoined?: () => void) {
+  openQrScanner(async (text) => {
+    const code = codeFromText(text);
+    if (!code) return false;
+    const follow = (/[?&]suivre=([^&#\s]+)/.exec(text)?.[1] ?? '').split('~').filter(Boolean);
+    await unlockFromLink(decodeURIComponent(code), follow.map(decodeURIComponent));
+    onJoined?.();
+    return true;
+  });
+}
+
 function JoinSheet({ close, onUnlocked, reason }: { close: () => void; onUnlocked?: () => void; reason?: 'expired' }) {
   const [busy, setBusy] = useState(false);
   const paste = async () => {
@@ -277,6 +290,15 @@ function JoinSheet({ close, onUnlocked, reason }: { close: () => void; onUnlocke
           Ouvrez l’appareil photo du téléphone et visez le QR code du club : l’application s’ouvre aussitôt avec tous les nageurs de
           l’ESN. Reçu en lien (WhatsApp, e-mail) ? Touchez simplement le lien.
         </p>
+        <button
+          className="btn block"
+          onClick={() => {
+            close();
+            scanToJoin(onUnlocked);
+          }}
+        >
+          <Icon name="qr" /> Scanner le QR code
+        </button>
         {canPasteLink() && (
           <button className="btn ghost block" onClick={paste} disabled={busy}>
             <Icon name="link" /> {busy ? 'Ouverture…' : 'J’ai copié le lien d’invitation'}

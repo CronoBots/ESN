@@ -16,8 +16,7 @@ import { SwimmerHistory, SwimmerProfile } from './screens/Swimmer';
 import { About, Settings, APP_VERSION } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
 import { ClubScreen, refreshClubRoster, unlockFromLink } from './screens/Club';
-import { isStandalone } from './screens/Install';
-import { inviteLink } from './lib/invite';
+import { isIOS, isStandalone } from './screens/Install';
 import { memberKey } from './lib/roster';
 import { resultsMessage } from './screens/autoResults';
 import type { Course, Stroke } from './store/types';
@@ -86,7 +85,7 @@ export function App() {
   const data = useData();
 
   // Connexion au club par un lien d'invitation en cours : pas d'écran de bienvenue entre-temps
-  const [linkUnlocking, setLinkUnlocking] = useState(false);
+  const [linkUnlocking, setLinkUnlocking] = useState(() => new URLSearchParams(location.search).has('code'));
   const showOnboarding =
     data.swimmers.length === 0 &&
     !data.settings.onboarded &&
@@ -145,42 +144,44 @@ export function App() {
     unlockFromLink(linkCode, follow).finally(() => setLinkUnlocking(false));
   }, [linkCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // iPhone : l'application installée sur l'écran d'accueil ne partage pas les données de Safari.
-  // Une fois le club ouvert dans Safari, l'adresse de démarrage de l'application à installer
-  // contient le lien d'invitation : elle s'ouvrira déjà connectée, sans code à retaper.
+  // Application installée sur iPhone : son adresse de démarrage porte le lien d'accès (?code=…&suivre=…)
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    const code = q.get('code');
+    if (!code) return;
+    const follow = (q.get('suivre') ?? '').split('~').filter(Boolean);
+    // Ailleurs que dans Safari sur iPhone, le lien n'a plus à rester dans l'adresse
+    if (isStandalone() || !isIOS()) {
+      try {
+        history.replaceState(history.state, '', `${location.pathname}${location.hash}`);
+      } catch {
+        /* ignore */
+      }
+    }
+    setLinkUnlocking(true);
+    unlockFromLink(code, follow).finally(() => setLinkUnlocking(false));
+  }, []);
+
+  // iPhone : l'application installée sur l'écran d'accueil ne partage pas les données de Safari, et
+  // l'appareil photo ouvre Safari, pas l'application. L'iPhone installe l'adresse de la page affichée
+  // quand la page n'a pas de manifeste : une fois le club ouvert dans Safari, l'adresse garde le lien
+  // d'accès (?code=…, conservé d'une page à l'autre) et le manifeste est retiré. L'application installée
+  // démarre ainsi déjà reliée au club, avec les nageurs suivis. Repli : « Scanner le QR code » dans l'app.
   const clubCode = data.settings.club && !data.settings.club.expired ? data.settings.club.code : undefined;
-  // … et les nageurs suivis (clé nom|prénom|année), pour les retrouver dans l'application installée
   const followKeys = data.swimmers
     .filter((s) => s.favorite || s.relation === 'child')
     .map(memberKey)
     .join('~');
   useEffect(() => {
-    if (!clubCode || isStandalone()) return;
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    if (!ios || !link) return;
-    let blobUrl = '';
-    // Toujours à partir du manifeste d'origine (la version précédente est effacée à chaque changement)
-    const source = (link.dataset.source ??= link.href);
-    fetch(source)
-      .then((r) => r.json())
-      .then((m: { icons?: { src: string }[]; shortcuts?: { url: string }[] }) => {
-        const abs = (u: string) => new URL(u, source).href;
-        const manifest = {
-          ...m,
-          id: abs('./'),
-          scope: abs('./'),
-          start_url: inviteLink(clubCode) + (followKeys ? `&suivre=${encodeURIComponent(followKeys)}` : ''),
-          icons: m.icons?.map((i) => ({ ...i, src: abs(i.src) })),
-          shortcuts: m.shortcuts?.map((s) => ({ ...s, url: abs(s.url) })),
-        };
-        blobUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
-        link.href = blobUrl;
-      })
-      .catch(() => {});
-    return () => {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    };
+    if (!clubCode || isStandalone() || !isIOS()) return;
+    document.querySelectorAll('link[rel="manifest"]').forEach((l) => l.remove());
+    const q = new URLSearchParams({ code: clubCode });
+    if (followKeys) q.set('suivre', followKeys);
+    try {
+      history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`);
+    } catch {
+      /* adresse non modifiable : le scanner reste disponible dans l'application */
+    }
   }, [clubCode, followKeys]);
 
   // Fin de l'écran de bienvenue : on repart du haut de la page

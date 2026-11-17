@@ -32,8 +32,10 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation : réseau d'abord (pour recevoir les mises à jour), cache en secours.
   if (req.mode === 'navigate') {
+    // Lien d'accès éventuel dans l'adresse (?code=…) : jamais envoyé au serveur, la page est la même
+    const target = url.search ? `${url.origin}${url.pathname}` : req;
     event.respondWith(
-      fetch(req)
+      fetch(target)
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put('./', copy));
