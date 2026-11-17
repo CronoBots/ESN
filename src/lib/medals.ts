@@ -9,6 +9,13 @@ const isValidResult = (s: Swim): s is Swim & { timeCs: number } => s.status === 
  * l'application (résultats en direct) : l'historique swimrankings ne donne pas les classements.
  */
 
+/**
+ * Nombre de médailles affiché seulement quand les places de toutes les compétitions sont relevées
+ * (demande du club) : l'historique swimrankings n'en a pas encore, un total partiel serait faux.
+ * Passer à true une fois les places de l'historique ajoutées.
+ */
+export const SHOW_MEDAL_COUNTS = false;
+
 export interface MedalCount {
   gold: number;
   silver: number;

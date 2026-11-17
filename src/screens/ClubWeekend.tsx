@@ -47,11 +47,20 @@ function WeekendTiles({ w }: { w: ClubWeekend }) {
         <div className="tile-value">{w.pbs}</div>
         <div className="tile-sub">{w.firsts ? `+ ${w.firsts} premier${w.firsts > 1 ? 's' : ''} temps` : 'battus'}</div>
       </div>
-      <div className="tile">
-        <div className="tile-label">Podiums</div>
-        <div className="tile-value">{w.podiums}</div>
-        <div className="tile-sub">places 1 à 3</div>
-      </div>
+      {/* Podiums seulement quand toutes les places du week-end sont connues : sinon le total serait faux */}
+      {w.swims.every((s) => s.place != null) ? (
+        <div className="tile">
+          <div className="tile-label">Podiums</div>
+          <div className="tile-value">{w.podiums}</div>
+          <div className="tile-sub">places 1 à 3</div>
+        </div>
+      ) : (
+        <div className="tile">
+          <div className="tile-label">Compétitions</div>
+          <div className="tile-value">{w.meets.length}</div>
+          <div className="tile-sub">{formatRange(w.start, w.end)}</div>
+        </div>
+      )}
     </div>
   );
 }

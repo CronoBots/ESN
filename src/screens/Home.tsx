@@ -14,6 +14,7 @@ import { InstallBanner } from './Install';
 import { LevelGoals } from '../components/Levels';
 import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
 import { MedalTally } from '../components/Medals';
+import { SHOW_MEDAL_COUNTS } from '../lib/medals';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
@@ -405,11 +406,19 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                   </div>
                   <div className="tile-sub">en compétition</div>
                 </div>
-                <button className="tile tile-button" onClick={() => navigate(`/swimmer/${swimmer.id}`)}>
-                  <div className="tile-label">Médailles</div>
-                  <div className="tile-value">{summary.medals.total}</div>
-                  <div className="tile-sub">{summary.medals.total === 0 ? 'en compétition' : <MedalTally count={summary.medals} />}</div>
-                </button>
+                {SHOW_MEDAL_COUNTS ? (
+                  <button className="tile tile-button" onClick={() => navigate(`/swimmer/${swimmer.id}`)}>
+                    <div className="tile-label">Médailles</div>
+                    <div className="tile-value">{summary.medals.total}</div>
+                    <div className="tile-sub">{summary.medals.total === 0 ? 'en compétition' : <MedalTally count={summary.medals} />}</div>
+                  </button>
+                ) : (
+                  <div className="tile">
+                    <div className="tile-label">Compétitions</div>
+                    <div className="tile-value">{summary.meets}</div>
+                    <div className="tile-sub">depuis le début</div>
+                  </div>
+                )}
               </div>
               {summary.lastRace && (
                 <div className="section-foot">

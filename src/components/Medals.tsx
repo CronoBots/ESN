@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Meet, Swim, Swimmer } from '../store/types';
 import type { PbInfo } from '../lib/stats';
 import { chronoCompare } from '../lib/stats';
-import { medalCount, medalSwims, placesKnownSince, type MedalCount } from '../lib/medals';
+import { medalCount, medalSwims, placesKnownSince, SHOW_MEDAL_COUNTS, type MedalCount } from '../lib/medals';
 import { formatDate } from '../lib/dates';
 import { Section } from './ui';
 import { SwimRow } from './SwimRow';
@@ -43,7 +43,7 @@ export function SwimmerMedals({
     const list = medalSwims(swims, swimmer.id).sort(chronoCompare).reverse();
     return { list, count: medalCount(list), since: placesKnownSince(swims, swimmer.id) };
   }, [swims, swimmer.id]);
-  if (!since) return null;
+  if (!SHOW_MEDAL_COUNTS || !since) return null;
   return (
     <Section title="Médailles" action={count.total ? <span className="muted small">{count.total}</span> : undefined}>
       <div className="tiles three">
