@@ -84,6 +84,15 @@ export function LevelsScreen() {
   const rows = rowsBy[course];
   const columns = LEVELS.filter((l) => rows.some((r) => r.status.levels.some((x) => x.level === l)));
   const age = rows[0]?.status.age ?? rowsBy.SCM[0]?.status.age ?? rowsBy.LCM[0]?.status.age;
+  // Pourquoi la colonne Requin manque : bassin de 25 m, ou moins de 13 ans
+  const requinNote =
+    rows.length && !columns.includes('Requin')
+      ? course === 'SCM'
+        ? 'Le niveau Requin se nage seulement en bassin de 50 m.'
+        : age != null && age < 13 && swimmer?.birthYear
+          ? `Le niveau Requin commence à 13 ans : ${swimmer.firstName} pourra le viser en ${swimmer.birthYear + 13}.`
+          : null
+      : null;
 
   return (
     <>
@@ -113,6 +122,12 @@ export function LevelsScreen() {
             options={COURSES.map((c) => ({ id: c.id, label: `Bassin ${c.label} · ${rowsBy[c.id].length}` }))}
           />
         </div>
+
+        {requinNote && (
+          <p className="lv-note">
+            <LevelChip level="Requin" /> {requinNote}
+          </p>
+        )}
 
         {rows.length === 0 ? (
           <div className="card" style={{ marginTop: 14 }}>

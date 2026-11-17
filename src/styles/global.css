@@ -1449,6 +1449,13 @@ a.row:active {
   color: var(--lvl-trident);
 }
 
+.lv-note {
+  margin: 12px 4px 0;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
 /* Lien vers les niveaux (écran Records) */
 .lv-link {
   display: flex;
