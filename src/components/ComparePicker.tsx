@@ -80,11 +80,13 @@ function ComparePicker({
         close();
       }}
     >
-      <p className="muted" style={{ margin: '0 4px 12px' }}>
-        Choisissez jusqu’à {MAX_COMPARE} nageurs à comparer avec {main.firstName} sur le {eventName}. À côté de chaque nom : son meilleur
-        temps.
-      </p>
-      <SearchField value={q} onChange={setQ} label="Rechercher un nageur" />
+      <SearchField value={q} onChange={setQ} label="Nom ou prénom du nageur" sticky />
+      {!q && (
+        <p className="sheet-hint">
+          Choisissez jusqu’à {MAX_COMPARE} nageurs à comparer avec {main.firstName} sur le {eventName}. À côté de chaque nom : son meilleur
+          temps.
+        </p>
+      )}
       {sections.length === 0 && <Empty icon="person" title="Aucun nageur trouvé" />}
       {sections.map((sec) => (
         <Section key={sec.id} title={`${sec.title} · ${sec.items.length}`}>

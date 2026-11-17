@@ -335,13 +335,48 @@ function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: ClubFi
   return sections.filter((s) => s.items.length);
 }
 
-export function SearchField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-  return (
+export function SearchField({
+  value,
+  onChange,
+  label,
+  sticky,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  /** Dans une feuille : reste visible en haut pendant qu'on fait défiler la liste. */
+  sticky?: boolean;
+}) {
+  const field = (
     <div className="search-field">
       <Icon name="search" aria-hidden="true" />
-      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} aria-label={label} enterKeyHint="search" />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          // Nouvelle recherche : les résultats repartent du haut de la liste
+          if (sticky) e.currentTarget.closest('.sheet-body')?.scrollTo({ top: 0 });
+        }}
+        onKeyDown={(e) => {
+          // Touche « Rechercher » du clavier : on ferme le clavier pour voir les résultats
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        placeholder={label}
+        aria-label={label}
+        enterKeyHint="search"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+      />
+      {value && (
+        <button type="button" className="search-clear" onClick={() => onChange('')} aria-label="Effacer la recherche">
+          <Icon name="close" />
+        </button>
+      )}
     </div>
   );
+  return sticky ? <div className="sheet-search">{field}</div> : field;
 }
 
 function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => void }) {
@@ -371,11 +406,12 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
 
   return (
     <SheetLayout title="Nageurs suivis" onCancel={close} onDone={done} doneLabel={sel.size ? 'OK' : 'Plus tard'}>
-      <p className="muted" style={{ margin: '0 4px 12px' }}>
-        Touchez les nageurs à suivre (vos enfants, leurs coéquipiers…) : leurs résultats, records et progression s’affichent sur
-        l’accueil.
-      </p>
-      <SearchField value={q} onChange={setQ} label="Rechercher un nageur" />
+      <SearchField value={q} onChange={setQ} label="Nom ou prénom du nageur" sticky />
+      {!q && (
+        <p className="sheet-hint">
+          Touchez le cœur des nageurs à suivre (vos enfants, leurs coéquipiers…) : leurs résultats s’affichent sur l’accueil.
+        </p>
+      )}
       {sections.length === 0 && <Empty icon="person" title="Aucun nageur trouvé" />}
       {sections.map((sec) => (
         <Section key={sec.id} title={`${sec.title} · ${sec.items.length}`}>

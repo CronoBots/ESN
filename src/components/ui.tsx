@@ -106,6 +106,25 @@ export function UiHost() {
     document.body.style.overflow = anyOpen ? 'hidden' : '';
   }, [anyOpen]);
 
+  // Clavier ouvert (iPhone) : la page garde sa hauteur, seule la zone visible rétrécit. Les feuilles
+  // se placent au-dessus du clavier grâce à --kb (hauteur du clavier) et --vvh (hauteur visible).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement.style;
+    const update = () => {
+      root.setProperty('--vvh', `${Math.round(vv.height)}px`);
+      root.setProperty('--kb', `${Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))}px`);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
