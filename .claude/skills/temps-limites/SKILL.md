@@ -21,6 +21,7 @@ Ce sont des données publiques des fédérations (pas de nom de nageur) : le fic
   - Open petit bassin (décembre) : limites A et B, publiées vers octobre.
   - Open grand bassin (mai) : limites A et B, vers février-mars.
   - 11-14 ans et 15 ans et plus en grand bassin (été) : une limite par âge, au printemps.
+  - **Pas de temps limite** pour les championnats de Belgique petit bassin 11-16 ans (novembre) : sélection par classement. On additionne les points World Aquatics d'épreuves imposées : 100 papillon (50 ou 100 m à 11-12 ans), dos, brasse et libre, 200 4 nages, et 400 libre à partir de 13 ans. Les 80 (11-12 ans) ou 96 (13-14 et 15-16 ans) premiers de l'outil « CB-BK 11-16 25m » sont sélectionnés. Ne les ajoute pas à `qualifying.json`. Règlement 2026 : belswim, fichier 2464.
 - **Championnats francophones (FFBN)** : ffbn.be → Disciplines → Natation → « Compétitions et résultats » (invitations).
   - Le site refuse la lecture automatique : ouvre-le dans le navigateur intégré de l'application.
   - Les PDF sont hébergés sur `clubee-websites-prod.s3…` : leur adresse est dans le code de la page.
