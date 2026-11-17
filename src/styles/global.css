@@ -1112,6 +1112,33 @@ a.row:active {
   font-weight: 600;
 }
 
+/* Championnats : limite atteinte en vert, limites à droite (A · B) */
+.lvl-mark.q-mark.on {
+  background: var(--success);
+  box-shadow: none;
+}
+
+.q-row.next .lvl-mark.q-mark {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.q-row.on .row-sub:not(.muted) {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.q-row .row-title .badge {
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+
+.q-limits {
+  max-width: 42%;
+  text-align: right;
+  white-space: normal;
+  font-size: 13.5px;
+}
+
 /* Comparaison (fiche d'une épreuve) : nageurs comparés, raccourcis, recherche */
 .compare-bar {
   margin-top: 16px;

@@ -12,6 +12,7 @@ import { eventLabel, STROKE_BY_ID, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { InstallBanner } from './Install';
 import { LevelGoals } from '../components/Levels';
+import { QualifyingGoals } from '../components/Qualifying';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, SyncBanner, useSyncStatus } from './autoResults';
 import { clubSummary, openClubCode, openFollow, openFollowPicker, useRosterAvailable } from './Club';
@@ -306,6 +307,8 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
           <ClubWeekendCard />
 
           <LevelGoals swimmer={swimmer} swims={data.swims} includeTraining={include} />
+
+          <QualifyingGoals swimmer={swimmer} swims={data.swims} />
 
           {timeline.length >= 2 && (
             <Section title="Évolution">
