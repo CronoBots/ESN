@@ -1164,6 +1164,38 @@ a.row:active {
   gap: 6px;
 }
 
+/* Classement aux points (Belgique 11-16 ans) : total en tête, épreuves imposées en liste */
+.allround-card {
+  padding: 14px 0 4px;
+}
+
+.allround-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 10px;
+}
+
+.allround-total {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.allround-cat {
+  text-align: right;
+}
+
+/* La liste fait partie de la carte : pas de seconde carte dedans */
+.allround-card .list {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
+}
+
 /* Championnats : limite atteinte en vert, limites à droite (A · B) */
 .lvl-mark.q-mark.on {
   background: var(--success);

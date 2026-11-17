@@ -32,6 +32,19 @@ export interface ChampionshipJson {
   source: string;
   /** Sexe → « distance-nage » → « A », « B », âge (« 13 ») ou « 18+ » → temps. */
   limits: Record<Gender, Record<string, Record<string, string>>>;
+  /** Sélection par classement aux points (pas de temps limite) : épreuves imposées par catégorie d'âge. */
+  allround?: { categories: AllroundCategory[] };
+}
+
+export interface AllroundCategory {
+  /** « Jeugd 1 (11-12 ans) » */
+  label: string;
+  minAge: number;
+  maxAge: number;
+  /** Nombre de nageurs sélectionnés (les premiers du classement). */
+  selected: number;
+  /** Épreuves imposées ; un tableau = au choix (le meilleur nombre de points), ex. 50 ou 100 m papillon. */
+  events: (string | string[])[];
 }
 
 export interface QualifyingJson {
@@ -78,6 +91,11 @@ export function parseQualifying(raw: unknown): QualifyingData {
           limits[g][event][k] = cs;
         }
       }
+    }
+    for (const cat of c.allround?.categories ?? []) {
+      if (!cat.label || !(cat.minAge <= cat.maxAge) || !(cat.selected > 0) || !Array.isArray(cat.events) || !cat.events.length)
+        throw new Error(`${where} : catégorie du classement invalide`);
+      for (const e of cat.events.flat()) if (!EVENT.test(e)) throw new Error(`${where} : épreuve inconnue « ${e} »`);
     }
     return { ...c, limits, provisional: c.limitsEdition < c.edition };
   });
@@ -166,6 +184,61 @@ export function limitStatus(
   const reached = lines.find((l) => l.reached);
   const open = lines.filter((l) => !l.reached);
   return { championship: c, distance, stroke, age, lines, best, reached, next: open[open.length - 1] };
+}
+
+export interface AllroundEvent {
+  /** Épreuves possibles (« 50-FLY », « 100-FLY ») ; la première sert de libellé. */
+  events: string[];
+  best?: Swim & { timeCs: number };
+  points?: number;
+}
+
+export interface AllroundStatus {
+  championship: Championship;
+  category: AllroundCategory;
+  age: number;
+  events: AllroundEvent[];
+  /** Somme des points des épreuves nagées. */
+  total: number;
+  /** Un temps sur toutes les épreuves imposées : condition pour être classé. */
+  complete: boolean;
+}
+
+/**
+ * Classement aux points d'un championnat (ex. Belgique 11-16 ans) : pour chaque épreuve imposée,
+ * le meilleur nombre de points World Aquatics de la période (25 ou 50 m), puis la somme.
+ */
+export function allroundStatus(
+  c: Championship,
+  swimmer: { id: string; gender: Gender; birthYear?: number },
+  swims: Swim[],
+  today: string,
+  points: (s: Swim & { timeCs: number }) => number | null,
+): AllroundStatus | null {
+  if (!c.allround || !swimmer.birthYear) return null;
+  const age = c.edition - swimmer.birthYear;
+  const category = c.allround.categories.find((cat) => age >= cat.minAge && age <= cat.maxAge);
+  if (!category) return null;
+  const to = c.window.to < today ? c.window.to : today;
+  const events = category.events.map((e): AllroundEvent => {
+    const keys = Array.isArray(e) ? e : [e];
+    let best: AllroundEvent = { events: keys };
+    for (const s of swims) {
+      if (s.swimmerId !== swimmer.id || !keys.includes(`${s.distance}-${s.stroke}`) || !c.accepts.includes(s.course)) continue;
+      if (s.date < c.window.from || s.date > to || !countsForRecords(s, false)) continue;
+      const p = points(s);
+      if (p != null && (best.points == null || p > best.points)) best = { events: keys, best: s, points: p };
+    }
+    return best;
+  });
+  return {
+    championship: c,
+    category,
+    age,
+    events,
+    total: events.reduce((n, e) => n + (e.points ?? 0), 0),
+    complete: events.every((e) => e.points != null),
+  };
 }
 
 /** Écart relatif à la prochaine limite (0,02 = 2 % plus lent) ; pour trier les plus proches. */

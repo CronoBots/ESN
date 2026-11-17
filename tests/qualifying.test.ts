@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { activeChampionships, limitStatus, parseQualifying, qualifyingSummary } from '../src/lib/qualifying';
+import { activeChampionships, allroundStatus, limitStatus, parseQualifying, qualifyingSummary } from '../src/lib/qualifying';
 import type { Swim } from '../src/store/types';
 
 // Copie figée des limites 2026 : les tests ne dépendent pas des mises à jour du fichier publié
@@ -30,7 +30,8 @@ describe('temps limites publiés', () => {
   it('le fichier publié est lisible et à jour', () => {
     const published = parseQualifying(JSON.parse(readFileSync(new URL('../public/data/qualifying.json', import.meta.url), 'utf8')));
     expect(published.championships.length).toBeGreaterThan(0);
-    for (const c of published.championships) expect(Object.keys(c.limits.F).length + Object.keys(c.limits.M).length).toBeGreaterThan(0);
+    // Chaque championnat a des temps limites ou un classement aux points
+    for (const c of published.championships) expect(Object.keys(c.limits.F).length + Object.keys(c.limits.M).length + (c.allround?.categories.length ?? 0)).toBeGreaterThan(0);
   });
 
   it('lit le fichier : temps recopiés des règlements', () => {
@@ -83,6 +84,51 @@ describe('situation d’un nageur', () => {
     const c = { id: 'c', gender: 'M' as const, birthYear: 2009 };
     expect(limitStatus(champ('bk-15-2027'), c, swims, 50, 'FREE', TODAY)?.best).toBeUndefined();
     expect(limitStatus(champ('bk-15-2027'), { ...c, birthYear: 1990 }, swims, 50, 'FREE', TODAY)).toBeNull();
+  });
+
+  it('classement aux points (11-16 ans) : meilleurs points par épreuve imposée, 50 ou 100 m papillon', () => {
+    const c = parseQualifying({
+      championships: [
+        {
+          id: 'bk-11-16',
+          name: 'Championnats de Belgique 11-16 ans',
+          course: 'SCM',
+          until: '2027-11-30',
+          edition: 2027,
+          limitsEdition: 2026,
+          window: { from: '2026-01-01', to: '2027-11-01' },
+          accepts: ['SCM', 'LCM'],
+          source: 'https://example.org',
+          limits: { F: {}, M: {} },
+          allround: {
+            categories: [
+              { label: 'Jeugd 1 (11-12 ans)', minAge: 11, maxAge: 12, selected: 80, events: [['50-FLY', '100-FLY'], '100-BACK', '200-IM'] },
+              { label: 'Jeugd 2 (13-14 ans)', minAge: 13, maxAge: 14, selected: 96, events: ['100-FLY', '100-BACK', '200-IM', '400-FREE'] },
+            ],
+          },
+        },
+      ],
+    }).championships[0];
+    const zoe = { id: 'zoe', gender: 'F' as const, birthYear: 2015 }; // 12 ans en 2027 : Jeugd 1
+    const pts = new Map<string, number>();
+    const add = (d: number, st: Swim['stroke'], course: Swim['course'], date: string, p: number) => {
+      const s = swim('zoe', d, st, course, 1000 + n, date);
+      pts.set(s.id, p);
+      return s;
+    };
+    const swims = [
+      add(50, 'FLY', 'SCM', '2026-03-01', 310),
+      add(100, 'FLY', 'LCM', '2026-05-01', 330), // le 100 m vaut plus : il compte
+      add(100, 'BACK', 'SCM', '2025-12-01', 400), // hors période
+      add(100, 'BACK', 'SCM', '2026-06-01', 350),
+    ];
+    const s = allroundStatus(c, zoe, swims, TODAY, (x) => pts.get(x.id) ?? null)!;
+    expect(s.category.label).toBe('Jeugd 1 (11-12 ans)');
+    expect(s.events.map((e) => e.points ?? null)).toEqual([330, 350, null]);
+    expect(s.total).toBe(680);
+    expect(s.complete).toBe(false);
+    // 17 ans : pas concerné
+    expect(allroundStatus(c, { ...zoe, birthYear: 2010 }, swims, TODAY, () => 1)).toBeNull();
   });
 
   it('résumé : qualifications et limites les plus proches', () => {

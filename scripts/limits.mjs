@@ -74,9 +74,12 @@ async function verify() {
         }
       }
     }
-    const state = c.until < today ? '⚠ passé (à retirer ou à remplacer)' : c.provisional ? `limites ${c.limitsEdition} provisoires` : `limites ${c.limitsEdition} officielles`;
+    const kind = c.provisional ? `règlement ${c.limitsEdition} provisoire` : `règlement ${c.limitsEdition} officiel`;
+    const state = c.until < today ? '⚠ passé (à retirer ou à remplacer)' : kind;
+    const what = c.allround ? `classement aux points (${c.allround.categories.length} catégories)` : `${count} limites`;
+    if (!c.allround && !count) problems.push(`${c.id} : ni limite ni classement aux points`);
     console.log(
-      `${c.id} · ${c.name} (${c.course === 'SCM' ? '25 m' : '50 m'}) · ${c.start ? `${c.start} → ${c.end ?? c.start}` : `affiché jusqu'au ${c.until}`} · temps du ${c.window.from} au ${c.window.to} · ${count} limites · ${state}`,
+      `${c.id} · ${c.name} (${c.course === 'SCM' ? '25 m' : '50 m'}) · ${c.start ? `${c.start} → ${c.end ?? c.start}` : `affiché jusqu'au ${c.until}`} · temps du ${c.window.from} au ${c.window.to} · ${what} · ${state}`,
     );
   }
   if (problems.length) {

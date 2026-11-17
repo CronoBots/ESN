@@ -689,6 +689,76 @@
      }
     }
    }
+  },
+  {
+   "id": "bk-11-16-25-2027",
+   "name": "Championnats de Belgique 11-16 ans",
+   "course": "SCM",
+   "until": "2027-11-30",
+   "edition": 2027,
+   "limitsEdition": 2026,
+   "window": {
+    "from": "2026-01-01",
+    "to": "2027-11-01"
+   },
+   "accepts": [
+    "SCM",
+    "LCM"
+   ],
+   "note": "Pas de temps limite : classement aux points World Aquatics (somme des épreuves imposées, meilleur temps en 25 ou 50 m). Sélection des 80 (11-12 ans) ou 96 (13-14 et 15-16 ans) premiers, classement arrêté début novembre.",
+   "source": "https://www.belswim.be/storage/files/file/2464/reglement-bk-zwemmen-korte-baan-jeugd-2026.pdf",
+   "limits": {
+    "F": {},
+    "M": {}
+   },
+   "allround": {
+    "categories": [
+     {
+      "label": "Jeugd 1 (11-12 ans)",
+      "minAge": 11,
+      "maxAge": 12,
+      "selected": 80,
+      "events": [
+       [
+        "50-FLY",
+        "100-FLY"
+       ],
+       "100-BACK",
+       "100-BREAST",
+       "100-FREE",
+       "200-IM"
+      ]
+     },
+     {
+      "label": "Jeugd 2 (13-14 ans)",
+      "minAge": 13,
+      "maxAge": 14,
+      "selected": 96,
+      "events": [
+       "100-FLY",
+       "100-BACK",
+       "100-BREAST",
+       "100-FREE",
+       "200-IM",
+       "400-FREE"
+      ]
+     },
+     {
+      "label": "Jeugd 3 (15-16 ans)",
+      "minAge": 15,
+      "maxAge": 16,
+      "selected": 96,
+      "events": [
+       "100-FLY",
+       "100-BACK",
+       "100-BREAST",
+       "100-FREE",
+       "200-IM",
+       "400-FREE"
+      ]
+     }
+    ]
+   }
   }
  ]
 }
