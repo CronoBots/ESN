@@ -315,7 +315,7 @@ p,
 }
 
 /* Grand titre sans bouton au-dessus (accueil, onglets) : la ligne vide des boutons disparaît */
-.navbar.empty .navbar-row {
+.navbar.bare .navbar-row {
   display: none;
 }
 
@@ -324,6 +324,31 @@ p,
   display: flex;
   justify-content: center;
   padding: 26px 0 10px;
+}
+
+/* Version web : la barre du navigateur occupe déjà le haut de l'écran. Certains navigateurs sur
+   iPhone annoncent pourtant la zone de l'heure : elle n'est réservée que dans l'application installée. */
+html.web {
+  --safe-top: 0px;
+}
+
+html.web .large-brand {
+  padding-top: 8px;
+}
+
+@media (min-width: 900px) {
+  html.web .navbar {
+    padding-top: 22px;
+  }
+}
+
+/* Application installée : un peu d'air sous l'heure et la batterie (zone floue d'iOS) */
+html.pwa .navbar {
+  padding-top: calc(var(--safe-top) + 14px);
+}
+
+html.pwa .large-brand {
+  padding-top: 18px;
 }
 
 .large-title-row {

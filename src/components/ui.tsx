@@ -296,7 +296,7 @@ export function NavBar({
   const bigTitle = large;
   return (
     <>
-      <header className={`navbar${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}${bigTitle && !back && !left && !right ? ' empty' : ''}`}>
+      <header className={`navbar${bigTitle ? '' : ' no-large'}${wide ? ' wide' : ''}${bigTitle && !back && !left && !right ? ' bare' : ''}`}>
         <div className="navbar-row">
           <div className="navbar-left">
             {back ? (

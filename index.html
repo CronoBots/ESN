@@ -16,6 +16,12 @@
     <link rel="icon" type="image/png" sizes="64x64" href="./icons/favicon-64.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <script>
+      // Application installée (plein écran) ou version web (dans un navigateur) : marge du haut adaptée
+      document.documentElement.classList.add(
+        matchMedia('(display-mode: standalone)').matches || navigator.standalone === true ? 'pwa' : 'web',
+      );
+    </script>
     <style>
       html { background: #f4f4f5; }
       /* Écran d'ouverture : le logo du club en couleurs sur fond blanc, le temps que l'application démarre */
