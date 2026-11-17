@@ -199,7 +199,9 @@ p,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .page > * {
+  /* Seulement les premiers blocs : ceux ajoutés ensuite (longues listes affichées en deux temps)
+     apparaissent tout de suite, sans rester transparents pendant l'animation */
+  .page > :nth-child(-n + 6) {
     animation: page-in 0.42s var(--ease) both;
   }
   .page > :nth-child(2) {
@@ -214,7 +216,7 @@ p,
   .page > :nth-child(5) {
     animation-delay: 0.16s;
   }
-  .page > :nth-child(n + 6) {
+  .page > :nth-child(6) {
     animation-delay: 0.2s;
   }
 }
@@ -3255,7 +3257,8 @@ button.meet-nav-btn:active {
 
 /* Ligne de la liste du club : fiche du nageur + cœur pour le suivre */
 .club-row,
-.follow-list .row {
+.follow-list .row,
+.swim-list .row {
   content-visibility: auto;
   contain-intrinsic-size: auto 60px;
 }

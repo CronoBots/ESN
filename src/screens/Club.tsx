@@ -1,4 +1,5 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { firstGroups, useProgressive } from '../components/progressive';
 import { actions, batch, getState, ROSTER_PARSER, useData } from '../store/store';
 import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
@@ -316,31 +317,6 @@ function byBirthYear(list: Swimmer[]) {
 /** L'année de naissance est-elle déjà le titre de la section ? */
 const yearInTitle = (sectionId: string) => /^y\d{4}$/.test(sectionId);
 
-/** Longue liste (378 nageurs) : les premières sections tout de suite, le reste juste après le premier affichage. */
-const FIRST_ROWS = 40;
-
-function useProgressive(): boolean {
-  const [full, setFull] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => startTransition(() => setFull(true)), 0);
-    return () => clearTimeout(t);
-  }, []);
-  return full;
-}
-
-/** Sections entières jusqu'à environ FIRST_ROWS lignes (les titres « 2012 · 5 nageurs » restent justes). */
-function firstSections<T extends { items: unknown[] }>(sections: T[], full: boolean): T[] {
-  if (full) return sections;
-  const out: T[] = [];
-  let rows = 0;
-  for (const s of sections) {
-    if (rows >= FIRST_ROWS) break;
-    out.push(s);
-    rows += s.items.length;
-  }
-  return out;
-}
-
 /** Filtres de la liste du club (en plus des groupes, s'il y en a). */
 type ClubFilter = 'all' | 'active' | 'former' | 'followed' | string;
 
@@ -378,7 +354,7 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
   const dq = useDeferredValue(q);
   const full = useProgressive();
   const all = useMemo(() => clubSections(data.swimmers, groups, 'all', dq), [data.swimmers, groups, dq]);
-  const sections = firstSections(all, full);
+  const sections = firstGroups(all, (s) => s.items.length, full);
 
   const toggle = (id: string) =>
     setSel((s) => {
@@ -484,7 +460,7 @@ export function ClubScreen() {
   const choices = ['active', ...(formerCount ? ['former'] : []), ...(followedCount ? ['followed'] : []), ...groups.map((g) => g.id)];
   const active = filter === 'all' || choices.includes(filter) ? filter : 'all';
   const dq = useDeferredValue(q);
-  const full = useProgressive();
+  const full = useProgressive(active);
   const allSections = useMemo(() => {
     if (active === 'followed') {
       const items = members.filter((s) => isFollowed(s) && matches(s, dq)).sort(byYearName);
@@ -492,7 +468,7 @@ export function ClubScreen() {
     }
     return clubSections(members, groups, active, dq);
   }, [data.swimmers, groups, active, dq]);
-  const sections = firstSections(allSections, full);
+  const sections = firstGroups(allSections, (s) => s.items.length, full);
   const choose = (v: string) => {
     setFilter(v);
     try {

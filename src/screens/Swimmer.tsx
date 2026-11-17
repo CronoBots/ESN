@@ -3,6 +3,7 @@ import { actions, useData } from '../store/store';
 import { fullName, usePbFlags } from '../store/hooks';
 import { Avatar, Empty, NavBar, Row, Section, Toggle } from '../components/ui';
 import { SwimRow } from '../components/SwimRow';
+import { firstGroups, useProgressive } from '../components/progressive';
 import { navigate } from '../router';
 import { FollowButton, groupName } from './Club';
 import { sportAge, seasonLabel, seasonOf } from '../lib/dates';
@@ -152,10 +153,15 @@ export function SwimmerHistory({ id }: { id: string }) {
     const m = new Map<string, Swim[]>();
     for (const s of list) {
       const k = seasonOf(s.date);
-      m.set(k, [...(m.get(k) ?? []), s]);
+      const season = m.get(k);
+      if (season) season.push(s);
+      else m.set(k, [s]);
     }
     return [...m.entries()];
   }, [list]);
+  // Longue carrière (plusieurs centaines de courses) : les premières saisons tout de suite, le reste juste après
+  const full = useProgressive(`${stroke}|${course}|${onlyPB}`);
+  const shown = firstGroups(bySeason, ([, swims]) => swims.length, full);
 
   if (!swimmer) return <Empty icon="person" title="Nageur introuvable" />;
 
@@ -189,9 +195,9 @@ export function SwimmerHistory({ id }: { id: string }) {
             <Empty icon="list" title="Aucune course" text="Modifiez les filtres ou ajoutez un temps." />
           </div>
         ) : (
-          bySeason.map(([season, swims]) => (
+          shown.map(([season, swims]) => (
             <Section key={season} title={seasonLabel(season)} action={<span className="muted small">{swims.length} courses</span>}>
-              <div className="list">
+              <div className="list swim-list">
                 {swims.map((s) => (
                   <SwimRow key={s.id} swim={s} pb={pbFlags.get(s.id)} meet={s.meetId ? meetsById.get(s.meetId) : undefined} />
                 ))}

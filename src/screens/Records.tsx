@@ -219,18 +219,21 @@ export function Rankings() {
   const dist = distances.includes(distance) ? distance : distances[0];
 
   const ranking = useMemo(() => {
+    // Meilleur temps de chaque nageur sur l'épreuve : un seul passage sur toutes les courses
+    const bestOf = new Map<string, Swim>();
+    for (const s of data.swims) {
+      if (s.course !== course || s.distance !== dist || s.stroke !== stroke) continue;
+      if (!countsForRecords(s, include)) continue;
+      const best = bestOf.get(s.swimmerId);
+      if (!best || s.timeCs! < best.timeCs!) bestOf.set(s.swimmerId, s);
+    }
     const rows: { swimmer: Swimmer; best: Swim }[] = [];
     for (const sw of data.swimmers) {
       if (sw.former && !withFormer) continue;
       if (gender !== 'all' && sw.gender !== gender) continue;
       if (sameYear && selected?.birthYear && sw.birthYear !== selected.birthYear) continue;
       if (club && group !== 'all' && sw.group !== group) continue;
-      let best: Swim | undefined;
-      for (const s of data.swims) {
-        if (s.swimmerId !== sw.id || s.course !== course || s.distance !== dist || s.stroke !== stroke) continue;
-        if (!countsForRecords(s, include)) continue;
-        if (!best || s.timeCs! < best.timeCs!) best = s;
-      }
+      const best = bestOf.get(sw.id);
       if (best) rows.push({ swimmer: sw, best });
     }
     return rows.sort((a, b) => a.best.timeCs! - b.best.timeCs!);
