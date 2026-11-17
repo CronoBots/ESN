@@ -44,6 +44,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Données du club (liste, historique) : réseau d'abord (requête conditionnelle, 304 si inchangées),
+  // dernière copie en secours hors connexion.
+  if (url.pathname.includes('/data/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req, { ignoreSearch: true })),
+    );
+    return;
+  }
+
   // Fichiers statiques : cache d'abord.
   event.respondWith(
     caches.match(req, { ignoreSearch: true }).then(

@@ -3121,9 +3121,6 @@ button.meet-nav-btn:active {
   max-width: 100%;
 }
 
-.brand-logo .on-dark {
-  display: none;
-}
 
 /* Logo du club dans la barre du haut de l'accueil (téléphone ; sur grand écran il est dans la barre latérale) */
 .nav-brand {
@@ -3257,6 +3254,12 @@ button.meet-nav-btn:active {
 
 
 /* Ligne de la liste du club : fiche du nageur + cœur pour le suivre */
+.club-row,
+.follow-list .row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px;
+}
+
 .club-row {
   padding: 0 4px 0 0;
 }

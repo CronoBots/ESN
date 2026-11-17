@@ -619,8 +619,7 @@ export function BrandLogo({
   const base = variant === 'full' ? 'esn-competition' : 'esn-mark';
   return (
     <span className={`brand-logo ${className}`} style={{ height }} role="img" aria-label={variant === 'full' ? 'ESN Compétition' : 'ESN Seraing'}>
-      <img className="on-light" src={`./brand/${base}.png`} alt="" height={height} />
-      <img className="on-dark" src={`./brand/${base}-dark.png`} alt="" height={height} />
+      <img src={`./brand/${base}.png`} alt="" height={height} />
     </span>
   );
 }

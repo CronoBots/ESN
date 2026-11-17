@@ -29,15 +29,18 @@ function serviceWorkerPlugin(): Plugin {
         /* pas de dossier public */
       }
       const files = ['./', ...Object.keys(bundle), ...publicFiles]
-        // pdf.js (≈ 1,9 Mo) : chargé seulement quand une compétition ne publie que des PDF, puis mis en cache
-        .filter((f) => !f.endsWith('.map') && f !== 'sw.js' && !/^assets\/pdf/.test(f))
+        // pdf.js (≈ 1,9 Mo) : chargé seulement quand une compétition ne publie que des PDF, puis mis en cache.
+        // Polices .woff : doublons des .woff2 (lus par tous les navigateurs actuels).
+        // Données du club (data/) : lues par l'application quand elles changent, pas à chaque mise à jour du code.
+        .filter((f) => !f.endsWith('.map') && f !== 'sw.js' && !/^assets\/pdf/.test(f) && !/\.woff$/.test(f) && !/^data\//.test(f))
         .map((f) => (f === './' ? f : `./${f}`));
       const hash = createHash('sha256');
       for (const [name, chunk] of Object.entries(bundle)) {
         hash.update(name);
         hash.update(chunk.type === 'chunk' ? chunk.code : String(chunk.source));
       }
-      for (const f of publicFiles) hash.update(readFileSync(join(publicDir, f)));
+      // Une nouvelle version des données (data/) ne force pas le retéléchargement de toute l'application
+      for (const f of publicFiles) if (!/^data\//.test(f)) hash.update(readFileSync(join(publicDir, f)));
       const version = hash.digest('hex').slice(0, 12);
       const template = readFileSync(join(process.cwd(), 'src', 'sw-template.js'), 'utf8');
       const source = template

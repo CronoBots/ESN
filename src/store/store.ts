@@ -107,9 +107,28 @@ function writeIdb() {
     });
 }
 
+/**
+ * IndexedDB : l'écriture copie toutes les données (plusieurs Mo avec le club) ; elle part juste après
+ * l'affichage de la modification, et plusieurs modifications rapprochées n'en font qu'une.
+ */
+let writeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushWrite() {
+  if (!writeTimer) return;
+  clearTimeout(writeTimer);
+  writeTimer = null;
+  writeIdb();
+}
+
+if (typeof window !== 'undefined') {
+  // Application fermée ou mise en arrière-plan : on n'attend pas
+  window.addEventListener('pagehide', flushWrite);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushWrite());
+}
+
 function persist() {
   if (backend === 'idb' && db) {
-    writeIdb();
+    if (!writeTimer) writeTimer = setTimeout(flushWrite, 0);
     return;
   }
   try {
