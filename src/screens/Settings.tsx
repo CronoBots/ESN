@@ -9,6 +9,7 @@ import { formatDate, relativeDay, toISO, todayISO } from '../lib/dates';
 import { COURSES, eventLabel, ROUND_LABEL, STATUS_LABEL } from '../lib/events';
 import { formatTime } from '../lib/time';
 import { isStandalone, promptInstall } from './Install';
+import { openInvite } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useState } from 'react';
@@ -117,6 +118,9 @@ export function Settings() {
                   />
                   <Row icon="trophy" iconBg="#f5a400" title="Records du club" chevron onClick={() => navigate('/club-records')} />
                   <Row icon="ranking" iconBg="var(--brand-blue)" title="Classements du club" chevron onClick={() => navigate('/rankings')} />
+                  {!club.expired && (
+                    <Row icon="share" iconBg="#34c759" title="Inviter une famille" sub="Lien ou QR code, sans code à taper" chevron onClick={openInvite} />
+                  )}
                   {club.expired && <Row icon="shield" iconBg="#ff9f0a" title="Entrer le nouveau code du club" chevron onClick={() => openClubCode()} />}
                 </>
               ) : (

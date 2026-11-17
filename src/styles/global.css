@@ -1023,6 +1023,52 @@ a.row:active {
   font-variant-numeric: tabular-nums;
 }
 
+/* Invitation : QR code, partage du lien */
+.invite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.invite .qr {
+  width: min(64vw, 240px);
+  height: auto;
+  padding: 10px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.invite-lead {
+  max-width: 340px;
+  margin: 6px 0 6px;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.invite .btn {
+  max-width: 360px;
+}
+
+.invite-link {
+  max-width: 100%;
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-align: center;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.invite .section-foot {
+  text-align: center;
+}
+
 /* Niveaux FFBN : Mistral (le plus accessible), Trident, Requin (le plus exigeant) */
 :root {
   --lvl-mistral: #0d8478;

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getState, useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { UiHost, overlay } from './components/ui';
@@ -15,7 +15,9 @@ import { SwimDetail } from './screens/SwimDetail';
 import { SwimmerHistory, SwimmerProfile } from './screens/Swimmer';
 import { About, Settings, APP_VERSION } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
-import { ClubScreen, refreshClubRoster } from './screens/Club';
+import { ClubScreen, refreshClubRoster, unlockFromLink } from './screens/Club';
+import { isStandalone } from './screens/Install';
+import { inviteLink } from './lib/invite';
 import { resultsMessage } from './screens/autoResults';
 import type { Course, Stroke } from './store/types';
 
@@ -82,11 +84,14 @@ export function App() {
   const route = useRoute();
   const data = useData();
 
+  // Connexion au club par un lien d'invitation en cours : pas d'écran de bienvenue entre-temps
+  const [linkUnlocking, setLinkUnlocking] = useState(false);
   const showOnboarding =
     data.swimmers.length === 0 &&
     !data.settings.onboarded &&
     route.path[0] !== 'about' &&
-    !(route.path[0] === 'club' && route.query.has('code'));
+    !route.query.has('code') &&
+    !linkUnlocking;
 
   // Résultats du club : vérification discrète à l'ouverture et au retour dans l'app
   useEffect(() => {
@@ -127,6 +132,47 @@ export function App() {
     }, 800);
     return () => clearTimeout(t);
   }, []);
+
+  // Lien d'invitation (…#/club?code=…, sur n'importe quelle page) : connexion directe au club,
+  // puis le code quitte l'adresse (accueil à la place de la page du club)
+  const linkCode = route.query.get('code');
+  useEffect(() => {
+    if (!linkCode) return;
+    setLinkUnlocking(true);
+    navigate(route.path[0] === 'club' || !route.path.length ? '/' : `/${route.path.join('/')}`, { replace: true });
+    unlockFromLink(linkCode).finally(() => setLinkUnlocking(false));
+  }, [linkCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // iPhone : l'application installée sur l'écran d'accueil ne partage pas les données de Safari.
+  // Une fois le club ouvert dans Safari, l'adresse de démarrage de l'application à installer
+  // contient le lien d'invitation : elle s'ouvrira déjà connectée, sans code à retaper.
+  const clubCode = data.settings.club && !data.settings.club.expired ? data.settings.club.code : undefined;
+  useEffect(() => {
+    if (!clubCode || isStandalone()) return;
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!ios || !link) return;
+    let blobUrl = '';
+    fetch(link.href)
+      .then((r) => r.json())
+      .then((m: { icons?: { src: string }[]; shortcuts?: { url: string }[] }) => {
+        const abs = (u: string) => new URL(u, link.href).href;
+        const manifest = {
+          ...m,
+          id: abs('./'),
+          scope: abs('./'),
+          start_url: inviteLink(clubCode),
+          icons: m.icons?.map((i) => ({ ...i, src: abs(i.src) })),
+          shortcuts: m.shortcuts?.map((s) => ({ ...s, url: abs(s.url) })),
+        };
+        blobUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+        link.href = blobUrl;
+      })
+      .catch(() => {});
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [clubCode]);
 
   // Fin de l'écran de bienvenue : on repart du haut de la page
   useEffect(() => {

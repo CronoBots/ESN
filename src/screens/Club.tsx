@@ -4,8 +4,10 @@ import { actions, batch, getState, ROSTER_PARSER, useData } from '../store/store
 import { fullName, isActiveMember, isFormerMember } from '../store/hooks';
 import { Avatar, Empty, NavBar, Section, SheetLayout, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { navigate, useRoute } from '../router';
-import { decryptHistory, decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { openInvite } from '../components/Invite';
+import { codeFromText } from '../lib/invite';
+import { navigate } from '../router';
+import { decryptHistory, decryptRoster, isEncryptedRoster, normalizeCode, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
 import { parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
@@ -156,6 +158,23 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
 }
 
 /**
+ * Lien d'invitation (…#/club?code=…) : connexion directe au club, sans code à
+ * taper ; puis choix des nageurs suivis s'il n'y en a pas encore. Code refusé
+ * (changé par le club) : la fenêtre du code s'ouvre, déjà remplie.
+ */
+export async function unlockFromLink(code: string): Promise<void> {
+  const club = getState().settings.club;
+  if (club && !club.expired && normalizeCode(club.code) === normalizeCode(code)) return;
+  try {
+    const r = await unlockClub(code);
+    overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
+    if (!getState().swimmers.some((s) => s.relation === 'child' || s.favorite)) openFollowPicker();
+  } catch {
+    openClubCode(() => openFollowPicker(), code);
+  }
+}
+
+/**
  * À l'ouverture : si le club a publié une nouvelle liste, elle est appliquée
  * (nouveaux nageurs, changements de groupe). Renvoie le nombre de nouveaux nageurs.
  */
@@ -193,11 +212,27 @@ function ClubCodeSheet({ close, onUnlocked, initial }: { close: () => void; onUn
   const [code, setCode] = useState(initial);
   const [state, setState] = useState<CodeState>('idle');
 
-  const submit = async () => {
-    if (!code.trim() || state === 'busy') return;
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
+  // Lien d'invitation reçu (WhatsApp, e-mail…) et copié : le code est lu dans le lien
+  const paste = async () => {
+    try {
+      const found = codeFromText(await navigator.clipboard.readText());
+      if (!found) {
+        overlay.toast('Aucun lien d’invitation dans le presse-papiers', '⚠️');
+        return;
+      }
+      setCode(found);
+      void submit(found);
+    } catch {
+      overlay.toast('Collage refusé : touchez longuement la zone du code puis « Coller »', '⚠️');
+    }
+  };
+
+  const submit = async (value = code) => {
+    if (!value.trim() || state === 'busy') return;
     setState('busy');
     try {
-      const r = await unlockClub(code);
+      const r = await unlockClub(value);
       close();
       overlay.toast(`${r.total} nageurs du club dans l’application`, '🏊');
       onUnlocked?.();
@@ -251,6 +286,11 @@ function ClubCodeSheet({ close, onUnlocked, initial }: { close: () => void; onUn
         <button className="btn block" type="submit" style={{ marginTop: 14 }} disabled={!code.trim() || state === 'busy'}>
           {state === 'busy' ? 'Vérification…' : 'Valider'}
         </button>
+        {canPaste && (
+          <button className="btn ghost block" type="button" style={{ marginTop: 10 }} onClick={paste} disabled={state === 'busy'}>
+            <Icon name="link" /> Coller le lien d’invitation
+          </button>
+        )}
       </form>
       <div className="section-foot" style={{ marginTop: 14 }}>
         La liste des nageurs est chiffrée : sans ce code, personne ne peut la lire, ni sur le site ni ailleurs.
@@ -458,20 +498,11 @@ function savedGroup(): string {
 
 export function ClubScreen() {
   const data = useData();
-  const route = useRoute();
   const available = useRosterAvailable();
   const club = data.settings.club;
   const groups = club?.groups ?? [];
   const [filter, setFilter] = useState(savedGroup);
   const [q, setQ] = useState('');
-  const linkCode = route.query.get('code');
-
-  // Lien partagé par le club (…#/club?code=…) : déverrouillage direct, puis le code quitte l'adresse
-  useEffect(() => {
-    if (!linkCode) return;
-    navigate('/club', { replace: true });
-    if (!getState().settings.club || getState().settings.club?.expired) openClubCode(() => openFollowPicker(), linkCode);
-  }, [linkCode]);
 
   const stats = useMemo(() => {
     const m = new Map<string, { count: number; last?: string; planned: number }>();
@@ -547,6 +578,13 @@ export function ClubScreen() {
         title="Le club"
         subtitle={`${activeMembers.length} membres actifs${formerCount ? ` · ${formerCount} anciens membres` : ''} · par année de naissance`}
         back="/"
+        right={
+          !club.expired && (
+            <button className="icon-btn" onClick={openInvite} aria-label="Inviter une famille">
+              <Icon name="share" />
+            </button>
+          )
+        }
       />
       <main className="page">
         {club.expired && (
