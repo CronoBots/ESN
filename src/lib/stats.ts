@@ -285,6 +285,8 @@ export interface Achievement {
   unlocked: boolean;
   date?: string;
   progress?: { value: number; target: number };
+  /** Trophée pas encore vérifiable (ex. : aucun classement connu) : affiché à la place de « À débloquer ». */
+  pending?: string;
 }
 
 export function achievements(
@@ -389,10 +391,14 @@ export function achievements(
     date: bigJump?.date,
   });
 
-  const podium = valid.find((s) => s.place != null && s.place <= 3);
-  out.push({ id: 'podium', icon: '🥉', title: 'Sur le podium', description: 'Terminer dans le top 3', unlocked: !!podium, date: podium?.date });
-  const win = valid.find((s) => s.place === 1);
-  out.push({ id: 'win', icon: '🥇', title: fem ? 'Championne' : 'Champion', description: 'Remporter une course', unlocked: !!win, date: win?.date });
+  // Podium et victoire : comme les médailles (une place de série ne compte pas quand la finale est nagée).
+  // Les places ne sont connues que pour les compétitions lues par l'application, pas pour l'historique.
+  const medals = medalSwims(valid);
+  const placesUnknown = !valid.some((s) => s.place != null) ? 'Classement pas encore connu' : undefined;
+  const podium = medals[0];
+  out.push({ id: 'podium', icon: '🥉', title: 'Sur le podium', description: 'Terminer dans le top 3', unlocked: !!podium, date: podium?.date, pending: placesUnknown });
+  const win = medals.find((s) => s.place === 1);
+  out.push({ id: 'win', icon: '🥇', title: fem ? 'Championne' : 'Champion', description: 'Remporter une course', unlocked: !!win, date: win?.date, pending: placesUnknown });
 
   for (const target of [200, 300, 400, 500]) {
     const hit = valid.find((s) => (pointsFor(s, swimmer) ?? 0) >= target);

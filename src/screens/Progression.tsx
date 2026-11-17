@@ -273,7 +273,13 @@ export function TrophyGrid({ trophies }: { trophies: Achievement[] }) {
             </div>
           )}
           <span className="tdate">
-            {t.unlocked ? (t.date ? formatDate(t.date) : 'Débloqué') : t.progress && t.progress.target > 1 ? `${t.progress.value}/${t.progress.target}` : 'À débloquer'}
+            {t.unlocked
+              ? t.date
+                ? formatDate(t.date)
+                : 'Débloqué'
+              : t.progress && t.progress.target > 1
+                ? `${t.progress.value}/${t.progress.target}`
+                : (t.pending ?? 'À débloquer')}
           </span>
         </div>
       ))}

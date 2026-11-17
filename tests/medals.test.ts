@@ -49,6 +49,17 @@ describe('médailles', () => {
     expect(medals.map((s) => `${s.meetId}-${s.stroke}-${s.round}-${s.place}`).sort()).toEqual(['m1-BACK-HEAT-2', 'm1-FREE-FINAL-3', 'm2-FREE-HEAT-1']);
   });
 
+  it('trophées podium et victoire : places de finale, « classement pas encore connu » sans aucune place', async () => {
+    const { achievements } = await import('../src/lib/stats');
+    const sw = { id: 'a', firstName: 'Emma', lastName: 'DUPONT', gender: 'F' as const, color: 0, relation: 'followed' as const, favorite: false, createdAt: 0 };
+    const pick = (swims: Swim[]) => achievements(swims, sw, [], new Map()).filter((t) => t.id === 'podium' || t.id === 'win');
+    // Historique sans place : pas vérifiable
+    expect(pick([swim({})]).map((t) => `${t.id}:${t.unlocked}:${t.pending}`)).toEqual(['podium:false:Classement pas encore connu', 'win:false:Classement pas encore connu']);
+    // 1re en série, 3e en finale : podium, pas de victoire
+    const t = pick([swim({ round: 'HEAT', place: 1 }), swim({ round: 'FINAL', place: 3 })]);
+    expect(t.map((x) => `${x.id}:${x.unlocked}:${x.pending ?? ''}`)).toEqual(['podium:true:', 'win:false:']);
+  });
+
   it('sait depuis quand les classements sont connus', () => {
     const swims = [swim({ date: '2026-11-15', place: 5 }), swim({ date: '2026-10-11', place: 2 }), swim({ date: '2020-01-01' })];
     expect(placesKnownSince(swims, 'a')).toBe('2026-10-11');
