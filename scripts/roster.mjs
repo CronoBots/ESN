@@ -9,13 +9,15 @@
 //                                                        dans public/data/club-history.json (fusionné avec
 //                                                        l'historique déjà publié : rien n'est perdu)
 //
-// membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut, une ligne par nageur.
+// membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut ; autres noms, une ligne par nageur.
 // Statut : « ancien » pour un ancien membre (liste à part, classements sur option), sinon vide.
+// Autres noms (facultatif) : le même nageur écrit autrement, « NOM, Prénom (AAAA) » séparés par « | » ;
+// dans l'application, une fiche à l'un de ces noms est réunie avec celle du membre.
 // Le code peut aussi être donné par la variable d'environnement ESN_CODE.
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { decryptHistory, decryptRoster, encryptHistory, encryptRoster, generateCode, historyHeader, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { aliasesText, decryptHistory, decryptRoster, encryptHistory, encryptRoster, generateCode, historyHeader, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
 import { existsSync } from 'node:fs';
 
 /** Historique déjà publié (vide s'il n'y en a pas). */
@@ -63,8 +65,9 @@ if (cmd === 'code') {
 } else if (cmd === 'lire') {
   const code = args[0] ?? process.env.ESN_CODE;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
-  console.log('groupe;nom;prénom;année;sexe;statut');
-  for (const m of roster.members) console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender, m.former ? 'ancien' : ''].join(';'));
+  console.log('groupe;nom;prénom;année;sexe;statut;autres noms');
+  for (const m of roster.members)
+    console.log([m.group ?? '', m.lastName, m.firstName, m.birthYear ?? '', m.gender, m.former ? 'ancien' : '', aliasesText(m.aliases)].join(';').replace(/;+$/, ''));
 } else if (cmd === 'manquants') {
   const code = args[0] ?? process.env.ESN_CODE;
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
@@ -95,13 +98,17 @@ if (cmd === 'code') {
     console.log(`${known ? '✓' : '⚠ pas dans la liste du club :'} ${f} : ${lines} temps`);
     athletes.push({ ...h, text });
   }
-  // Nageurs déjà publiés absents du dossier (autre ordinateur, dossier vidé…) : gardés tels quels
-  const kept = (await publishedHistory(code)).filter((a) => !athletes.some((b) => sameMember(a, b)));
+  // Nageurs déjà publiés absents du dossier (autre ordinateur, dossier vidé…) : gardés tels quels,
+  // sauf l'ancienne fiche d'un nageur réunie avec une autre (« autres noms » de la liste)
+  const aliases = roster.members.flatMap((m) => m.aliases ?? []);
+  const published = (await publishedHistory(code)).filter((a) => !athletes.some((b) => sameMember(a, b)));
+  const kept = published.filter((a) => !aliases.some((b) => sameMember(a, b)));
   if (kept.length) console.log(`${kept.length} nageurs de l'historique déjà publié gardés tels quels`);
+  if (published.length > kept.length) console.log(`${published.length - kept.length} anciennes fiches en double retirées (réunies avec une autre)`);
   athletes.push(...kept);
   mkdirSync(new URL('./', HISTORY), { recursive: true });
   writeFileSync(HISTORY, `${JSON.stringify(await encryptHistory({ updated: new Date().toISOString().slice(0, 10), athletes }, code))}\n`);
   console.log(`Historique de ${athletes.length} nageurs chiffré dans public/data/club-history.json`);
 } else {
-  console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(0, 13).join('\n'));
+  console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(0, 15).join('\n'));
 }

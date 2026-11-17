@@ -22,6 +22,17 @@ export interface RosterMember {
   group?: string;
   /** Ancien membre (a nagé pour le club, n'y est plus) : liste à part, classements sur option. */
   former?: boolean;
+  /**
+   * Autres noms du même nageur (orthographe ou année de naissance différente sur swimrankings) :
+   * une fiche à l'un de ces noms est réunie avec celle-ci (temps, objectifs, suivi).
+   */
+  aliases?: RosterAlias[];
+}
+
+export interface RosterAlias {
+  lastName: string;
+  firstName: string;
+  birthYear?: number;
 }
 
 export interface Roster {
@@ -178,7 +189,14 @@ export function validateRoster(raw: unknown): Roster {
     if (seen.has(key)) continue;
     seen.add(key);
     const former = m.former === true || /^anc/i.test(clean(m.former));
-    members.push({ lastName, firstName, birthYear, gender, group, ...(former ? { former: true } : {}) });
+    const aliases = readAliases(m.aliases).filter((a) => memberKey(a) !== key);
+    members.push({ lastName, firstName, birthYear, gender, group, ...(former ? { former: true } : {}), ...(aliases.length ? { aliases } : {}) });
+  }
+  // Un autre nom ne peut pas être celui d'un membre de la liste (sinon les deux fiches seraient réunies)
+  for (const m of members) {
+    if (!m.aliases) continue;
+    m.aliases = m.aliases.filter((a) => !seen.has(memberKey(a)));
+    if (!m.aliases.length) delete m.aliases;
   }
   const ids = [...new Set(members.map((m) => m.group).filter((g): g is string => !!g))].sort();
   const named = new Map((r.groups ?? []).map((g) => [clean(g.id).toUpperCase(), clean(g.name)]));
@@ -188,6 +206,30 @@ export function validateRoster(raw: unknown): Roster {
     groups: ids.map((id) => ({ id, name: named.get(id) || `Groupe ${id}` })),
     members,
   };
+}
+
+/** « DUPOND, Emma (2012) | DUPONT, Ema » (texte du tableur) ou liste déjà lue. */
+function readAliases(raw: unknown): RosterAlias[] {
+  const list = Array.isArray(raw) ? raw : clean(raw) ? clean(raw).split('|') : [];
+  const out: RosterAlias[] = [];
+  for (const item of list) {
+    if (typeof item === 'string') {
+      const m = /^([^,]+),\s*([^(]+?)\s*(?:\((\d{4})\))?$/.exec(clean(item));
+      if (m) out.push({ lastName: m[1].trim(), firstName: m[2].trim(), ...(m[3] ? { birthYear: Number(m[3]) } : {}) });
+    } else if (item && typeof item === 'object') {
+      const a = item as Partial<RosterAlias>;
+      const lastName = clean(a.lastName);
+      const firstName = clean(a.firstName);
+      const birthYear = a.birthYear ? Number(a.birthYear) : undefined;
+      if (lastName && firstName) out.push({ lastName, firstName, ...(birthYear && birthYear > 1900 && birthYear < 2100 ? { birthYear } : {}) });
+    }
+  }
+  return out;
+}
+
+/** Autres noms au format du tableur : « DUPOND, Emma (2012) | … ». */
+export function aliasesText(aliases: RosterAlias[] | undefined): string {
+  return (aliases ?? []).map((a) => `${a.lastName}, ${a.firstName}${a.birthYear ? ` (${a.birthYear})` : ''}`).join(' | ');
 }
 
 const norm = (s: string) =>
@@ -205,11 +247,12 @@ export function memberKey(m: { lastName: string; firstName: string; birthYear?: 
 /**
  * Liste en clair au format tableur (CSV, séparateur ; , ou tabulation) :
  * groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut (« ancien »
- * pour un ancien membre, sinon vide). Ligne d'en-tête facultative.
+ * pour un ancien membre, sinon vide) ; autres noms (facultatif : « NOM, Prénom (AAAA) »,
+ * séparés par « | »). Ligne d'en-tête facultative.
  */
 export function parseRosterCsv(
   text: string,
-): { group: string; lastName: string; firstName: string; birthYear?: number; gender: string; former?: boolean }[] {
+): { group: string; lastName: string; firstName: string; birthYear?: number; gender: string; former?: boolean; aliases?: string }[] {
   const lines = text
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
@@ -224,12 +267,13 @@ export function parseRosterCsv(
     const c = g.trim().toUpperCase()[0];
     return c === 'F' ? 'F' : c === 'M' || c === 'G' || c === 'H' ? 'M' : g;
   };
-  return (isHeader ? rows.slice(1) : rows).map(([group = '', lastName = '', firstName = '', year = '', gender = '', status = '']) => ({
+  return (isHeader ? rows.slice(1) : rows).map(([group = '', lastName = '', firstName = '', year = '', gender = '', status = '', aliases = '']) => ({
     group: group.replace(/^groupe\s*/i, ''),
     lastName,
     firstName,
     birthYear: year ? Number(year) : undefined,
     gender: sex(gender),
     ...(/^anc/i.test(status.trim()) ? { former: true } : {}),
+    ...(aliases.trim() ? { aliases: aliases.trim() } : {}),
   }));
 }

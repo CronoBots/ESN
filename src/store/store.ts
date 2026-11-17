@@ -13,10 +13,11 @@ const STORAGE_KEY = 'nageo:data:v1';
 const DATA_KEY = 'data';
 
 /**
- * Version de la lecture de la liste du club. 2 : anciens membres. Une liste
- * appliquée par une version précédente est relue une fois, même inchangée.
+ * Version de la lecture de la liste du club. 2 : anciens membres. 3 : autres noms d'un
+ * nageur (fiches en double réunies). Une liste appliquée par une version précédente est
+ * relue une fois, même inchangée.
  */
-export const ROSTER_PARSER = 2;
+export const ROSTER_PARSER = 3;
 
 const DEFAULT_SETTINGS: Settings = {
   theme: 'auto',
@@ -454,7 +455,8 @@ export const actions = {
   /**
    * Liste des membres du club (lecture version ROSTER_PARSER) : ajoute les nouveaux nageurs (suivis, avec leur
    * groupe), met à jour les groupes, et retire les anciens membres sans
-   * résultat (ceux qui ont des résultats restent, sans groupe).
+   * résultat (ceux qui ont des résultats restent, sans groupe). Une fiche à l'un des
+   * autres noms d'un membre (doublon) est réunie avec la sienne.
    */
   applyRoster(roster: Roster, code: string, version: string): { added: number; total: number } {
     let added = 0;
@@ -462,8 +464,18 @@ export const actions = {
       const now = Date.now();
       const swimmers = [...s.swimmers];
       const kept = new Set<string>();
+      /** Fiche en double → fiche gardée. */
+      const merged = new Map<string, string>();
+      const mergeAliases = (m: Roster['members'][number], mainId: string) => {
+        for (const a of m.aliases ?? [])
+          for (const sw of swimmers) if (sw.id !== mainId && !kept.has(sw.id) && !merged.has(sw.id) && sameSwimmer(a, sw)) merged.set(sw.id, mainId);
+      };
+      const free = (sw: Swimmer) => !kept.has(sw.id) && !merged.has(sw.id);
       for (const m of roster.members) {
-        const i = swimmers.findIndex((sw) => !kept.has(sw.id) && sameSwimmer(m, sw));
+        let i = swimmers.findIndex((sw) => free(sw) && sameSwimmer(m, sw));
+        // Seulement une fiche à un autre nom : c'est elle qui prend le nom de la liste
+        const byAlias = i < 0 && m.aliases ? swimmers.findIndex((sw) => free(sw) && m.aliases!.some((a) => sameSwimmer(a, sw))) : -1;
+        if (i < 0) i = byAlias;
         if (i >= 0) {
           const sw = swimmers[i];
           // Nom et prénom écrits comme dans la liste du club (même orthographe pour tous)
@@ -474,10 +486,11 @@ export const actions = {
             group: m.group,
             member: true,
             former: m.former || undefined,
-            birthYear: sw.birthYear ?? m.birthYear,
+            birthYear: byAlias >= 0 ? (m.birthYear ?? sw.birthYear) : (sw.birthYear ?? m.birthYear),
             club: sw.club || roster.club,
           };
           kept.add(sw.id);
+          mergeAliases(m, sw.id);
         } else {
           const sw: Swimmer = {
             id: uid(),
@@ -497,11 +510,45 @@ export const actions = {
           };
           swimmers.push(sw);
           kept.add(sw.id);
+          mergeAliases(m, sw.id);
           added++;
         }
       }
-      const used = new Set([...s.swims.map((x) => x.swimmerId), ...s.goals.map((g) => g.swimmerId)]);
+      for (const id of kept) merged.delete(id);
+      // Fiches en double : courses (sans répéter une course déjà là), objectifs et suivi passent sur la fiche gardée
+      let swims = s.swims;
+      let goals = s.goals;
+      let selectedSwimmerId = s.settings.selectedSwimmerId;
+      if (merged.size) {
+        const key = (x: Swim) => `${x.swimmerId}|${x.distance}|${x.stroke}|${x.course}|${x.timeCs}|${x.date}`;
+        const have = new Set(s.swims.filter((x) => !merged.has(x.swimmerId)).map(key));
+        swims = [];
+        for (const x of s.swims) {
+          const to = merged.get(x.swimmerId);
+          if (!to) {
+            swims.push(x);
+            continue;
+          }
+          const moved = { ...x, swimmerId: to };
+          if (have.has(key(moved))) continue;
+          have.add(key(moved));
+          swims.push(moved);
+        }
+        goals = s.goals.map((g) => (merged.has(g.swimmerId) ? { ...g, swimmerId: merged.get(g.swimmerId)! } : g));
+        for (const [dupId, mainId] of merged) {
+          const dup = swimmers.find((sw) => sw.id === dupId)!;
+          const j = swimmers.findIndex((sw) => sw.id === mainId);
+          swimmers[j] = {
+            ...swimmers[j],
+            favorite: swimmers[j].favorite || dup.favorite,
+            relation: dup.relation === 'child' ? 'child' : swimmers[j].relation,
+          };
+        }
+        if (selectedSwimmerId && merged.has(selectedSwimmerId)) selectedSwimmerId = merged.get(selectedSwimmerId);
+      }
+      const used = new Set([...swims.map((x) => x.swimmerId), ...goals.map((g) => g.swimmerId)]);
       const next = swimmers
+        .filter((sw) => !merged.has(sw.id))
         .filter((sw) => !sw.member || kept.has(sw.id) || sw.discovered || used.has(sw.id) || sw.relation === 'child' || sw.favorite)
         .map((sw) =>
           kept.has(sw.id) && sw.discovered
@@ -513,8 +560,11 @@ export const actions = {
       return {
         ...s,
         swimmers: next,
+        swims,
+        goals,
         settings: {
           ...s.settings,
+          selectedSwimmerId,
           onboarded: true,
           club: { code, version, updated: roster.updated, groups: roster.groups, count: roster.members.length, rosterParser: ROSTER_PARSER },
         },

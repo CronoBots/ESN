@@ -32,6 +32,12 @@ swimrankings.net a tout l'historique des nageurs, mais refuse les lectures autom
 
 Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scripts/roster.mjs manquants CODE`, relève ces nageurs, puis refais les étapes 5 à 7. Avant de publier, récupère la dernière version (`git pull --rebase`) : l'application évolue aussi depuis d'autres sessions.
 
+**Même nageur deux fois dans la liste** (autre orthographe ou autre année de naissance sur swimrankings), quand l'utilisateur confirme que c'est la même personne :
+1. Garde la fiche qui a le plus de points au total.
+2. Ajoute à son fichier `historique/` les temps de l'autre fiche, sans répéter une course déjà là, puis retire l'autre fichier.
+3. Dans la liste (`lire`, puis `chiffrer`), supprime la ligne de l'autre fiche. Écris son nom dans la 7e colonne « autres noms » de la fiche gardée : `NOM, Prénom (AAAA)`, plusieurs séparés par « | ».
+4. Refais les étapes 5 à 7. `historique` retire alors l'ancienne fiche de l'historique publié. Dans l'application, la fiche en double (temps, objectifs, suivi) est réunie avec celle gardée à la prochaine ouverture.
+
 ## Format d'un fichier `historique/NOM_Prenom.txt`
 
 ```

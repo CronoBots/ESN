@@ -154,6 +154,53 @@ describe('nouveaux nageurs du club trouvés en compétition', async () => {
   });
 });
 
+describe('même nageur à deux noms dans la liste du club', async () => {
+  const { actions, getState } = await import('../src/store/store');
+  const roster = (members: string) => validateRoster({ updated: '2026-11-17', members: parseRosterCsv(members) });
+  const swim = (swimmerId: string, timeCs: number, date: string) =>
+    actions.addSwim({ swimmerId, context: 'competition', date, distance: 50, stroke: 'FREE', course: 'SCM', timeCs, status: 'OK', round: 'TIM', source: 'swimrankings' });
+
+  it('lit les autres noms du tableur', () => {
+    const r = roster(';DUPONT;Emma;2001;F;ancien;DUPOND, Emma (2001) | DUPONT, Ema\n;MARTIN;Lucas;2011;M;;DUPONT, Emma (2001)');
+    expect(r.members[0]).toMatchObject({ former: true, aliases: [{ lastName: 'DUPOND', firstName: 'Emma', birthYear: 2001 }, { lastName: 'DUPONT', firstName: 'Ema' }] });
+    // Le nom d'un autre membre de la liste n'est pas un « autre nom »
+    expect(r.members[1]).not.toHaveProperty('aliases');
+  });
+
+  it('réunit les deux fiches : courses sans doublon, objectifs, suivi et nageur affiché', () => {
+    actions.resetAll();
+    actions.applyRoster(roster(';MARTIN;Hugo;2001;M;ancien\n;MARTIN;Hugo;2000;M;ancien'), 'ESN-TEST', 'v1');
+    const [main, dup] = getState().swimmers;
+    expect(dup.birthYear).toBe(2000);
+    swim(main.id, 3000, '2012-11-24');
+    swim(dup.id, 3000, '2012-11-24'); // même course sur les deux fiches
+    swim(dup.id, 3500, '2011-10-15');
+    actions.addGoal({ swimmerId: dup.id, distance: 50, stroke: 'FREE', course: 'SCM', targetCs: 2900 });
+    actions.follow(dup.id, true);
+    expect(getState().settings.selectedSwimmerId).toBe(dup.id);
+
+    actions.applyRoster(roster(';MARTIN;Hugo;2001;M;ancien;MARTIN, Hugo (2000)'), 'ESN-TEST', 'v2');
+    const s = getState();
+    expect(s.swimmers.map((x) => `${x.lastName} ${x.firstName} ${x.birthYear}`)).toEqual(['MARTIN Hugo 2001']);
+    expect(s.swims.map((x) => `${x.swimmerId === main.id}:${x.timeCs}`).sort()).toEqual(['true:3000', 'true:3500']);
+    expect(s.goals.map((g) => g.swimmerId)).toEqual([main.id]);
+    expect(s.swimmers[0].favorite).toBe(true);
+    expect(s.settings.selectedSwimmerId).toBe(main.id);
+  });
+
+  it('une seule fiche, à l’autre nom : elle prend le nom de la liste', () => {
+    actions.resetAll();
+    actions.applyRoster(roster(';CLAES;Zoé;2014;F;ancien'), 'ESN-TEST', 'v1');
+    const old = getState().swimmers[0];
+    swim(old.id, 4000, '2024-11-09');
+    actions.applyRoster(roster(';CLAES;Zoë;2015;F;ancien;CLAES, Zoé (2014)'), 'ESN-TEST', 'v2');
+    const s = getState();
+    expect(s.swimmers).toHaveLength(1);
+    expect(s.swimmers[0]).toMatchObject({ id: old.id, firstName: 'Zoë', birthYear: 2015, member: true, former: true });
+    expect(s.swims).toHaveLength(1);
+  });
+});
+
 describe('noms écrits autrement sur les feuilles', async () => {
   const { actions, getState } = await import('../src/store/store');
   it('ne crée pas de doublon pour une lettre d’écart', () => {
