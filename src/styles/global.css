@@ -609,6 +609,17 @@ html.pwa .large-brand {
   padding: 4px 0;
 }
 
+/* Lien d'en-tête de section (« Tout voir ») : zone tactile de 44 px sans changer la mise en page */
+.section-head .section-link {
+  padding: 13px 10px;
+  margin: -9px -10px;
+}
+
+/* Morceau de texte insécable (« limite 2:45.53 ») */
+.nowrap {
+  white-space: nowrap;
+}
+
 .section-foot {
   padding: 8px 16px 0;
   color: var(--text-2);

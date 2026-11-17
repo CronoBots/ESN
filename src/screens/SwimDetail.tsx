@@ -216,7 +216,7 @@ export function SwimDetail({ id }: { id: string }) {
             {swim.heat || swim.lane != null ? (
               <Row
                 title={swim.heat && swim.lane != null ? 'Série et ligne' : swim.heat ? 'Série' : 'Ligne'}
-                value={[swim.heat ? `série ${swim.heat}` : null, swim.lane != null ? `ligne ${swim.lane}` : null].filter(Boolean).join(' · ')}
+                value={[swim.heat ? `série ${swim.heat}` : null, swim.lane != null ? `ligne ${swim.lane}` : null].filter(Boolean).join('\u00a0· ')}
               />
             ) : null}
             {swim.place && <Row title="Classement" value={`${swim.place}${swim.place === 1 ? 're' : 'e'}`} />}

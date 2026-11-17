@@ -109,7 +109,7 @@ export function ClubRecords() {
                             {age != null ? ` · à ${age} ans` : ''}
                             {swimmer.former ? ' · ancien membre' : ''}
                           </div>
-                          <div className="row-sub">{[formatDate(swim.date), meet?.name].filter(Boolean).join(' · ')}</div>
+                          <div className="row-sub">{[formatDate(swim.date), meet?.name].filter(Boolean).join('\u00a0· ')}</div>
                           {!recordComplete(course, d, st.id) && <div className="row-sub record-partial">Meilleur temps connu : anciens membres pas encore relevés</div>}
                         </div>
                         <div className="row-end">

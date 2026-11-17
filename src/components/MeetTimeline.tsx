@@ -61,7 +61,7 @@ export function TimelineMeetCard({
         <DateBlock iso={entry.startDate} />
         <div className="row-body">
           <div className="tl-title">{entry.name}</div>
-          <div className="row-sub">{meta.join(' · ')}</div>
+          <div className="row-sub">{meta.join('\u00a0· ')}</div>
           <div className="tl-badges">
             <span className="badge">{plural(entry.swims.length, 'course')}</span>
             {entry.pbs > 0 && <span className="badge pb">{plural(entry.pbs, 'record')}</span>}
@@ -91,7 +91,7 @@ export function TimelineMeetCard({
               <StrokeTag stroke={s.stroke} distance={s.distance} size={30} />
               <div className="row-body">
                 <div className="tl-event">{eventLabel(s.distance, s.stroke)}</div>
-                {sub.length > 0 && <div className="tl-sub">{sub.join(' · ')}</div>}
+                {sub.length > 0 && <div className="tl-sub">{sub.join('\u00a0· ')}</div>}
               </div>
               <div className="tl-time">
                 <span className="time-big">{s.status === 'OK' || s.status === 'DSQ' ? formatTime(s.timeCs) : ''}</span>

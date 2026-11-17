@@ -89,7 +89,7 @@ export function Settings() {
                     {fullName(sw)}
                   </div>
                   <div className="row-sub">
-                    {[sw.birthYear, groupName(club?.groups ?? [], sw.group) ?? sw.club].filter(Boolean).join(' · ')}
+                    {[sw.birthYear, groupName(club?.groups ?? [], sw.group) ?? sw.club].filter(Boolean).join('\u00a0· ')}
                   </div>
                 </div>
                 <Icon name="chevronRight" className="chev" />
@@ -224,7 +224,7 @@ export function About() {
             <Row title="E-mail" value={CLUB.email} />
             <Row title="Site du club" href={CLUB.website} external />
           </div>
-          <div className="section-foot">{CLUB.sections.join(' · ')}</div>
+          <div className="section-foot">{CLUB.sections.join('\u00a0· ')}</div>
         </Section>
         <Section title="Vos données">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>

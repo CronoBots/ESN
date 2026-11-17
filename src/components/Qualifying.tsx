@@ -58,7 +58,7 @@ function championshipWhen(c: Championship): string {
   return c.start ? formatRange(c.start, c.end) : `saison ${c.edition - 1}-${c.edition}`;
 }
 
-const limitsText = (s: LimitStatus) => s.lines.map((l) => `${l.label === 'Limite' ? '' : `${l.label} `}${formatTime(l.cs)}`).join(' · ');
+const limitsText = (s: LimitStatus) => s.lines.map((l) => `${l.label === 'Limite' ? '' : `${l.label} `}${formatTime(l.cs)}`).join('\u00a0· ');
 
 function statusText(s: LimitStatus): string {
   const c = s.championship;
@@ -258,12 +258,15 @@ export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swi
               <StrokeTag stroke={s.stroke} distance={s.distance} />
               <div className="row-body">
                 <div className="row-title">{eventLabel(s.distance, s.stroke)}</div>
-                <div className="row-sub">
-                  {championshipShort(c)} · {limitsText(s)}
-                </div>
+                <div className="row-sub">{championshipShort(c)}</div>
+                {/* Morceaux insécables : la ligne se coupe après un « · », jamais devant */}
                 <div className="row-sub muted">
-                  record {formatTime(s.best!.timeCs)}
-                  {s.best!.course !== c.course ? ` en ${courseLabel(s.best!.course)}` : ''}
+                  <span className="nowrap">limite {limitsText(s)}</span>
+                  {'\u00a0· '}
+                  <span className="nowrap">
+                    record {formatTime(s.best!.timeCs)}
+                    {s.best!.course !== c.course ? ` en ${courseLabel(s.best!.course)}` : ''}
+                  </span>
                 </div>
               </div>
               <div className="row-end">

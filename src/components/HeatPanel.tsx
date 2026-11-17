@@ -166,7 +166,7 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
                     row={r}
                     mine={isSwimmer(r, swimmer)}
                     lead={r.lane ?? '–'}
-                    sub={[r.club, fullYear(r.yy)].filter(Boolean).join(' · ')}
+                    sub={[r.club, fullYear(r.yy)].filter(Boolean).join('\u00a0· ')}
                     time={r.timeCs != null ? formatTime(r.timeCs) : r.status !== 'OK' ? statusLabel(r) : r.entryCs ? formatTime(r.entryCs) : 'NT'}
                   />
                 ))}
@@ -204,7 +204,7 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
                   row={r}
                   mine={isSwimmer(r, swimmer)}
                   lead={r.overall ?? '–'}
-                  sub={[r.club, fullYear(r.yy), groups.length > 1 ? r.category : null].filter(Boolean).join(' · ')}
+                  sub={[r.club, fullYear(r.yy), groups.length > 1 ? r.category : null].filter(Boolean).join('\u00a0· ')}
                   pts={r.points}
                   time={r.timeCs != null && r.status === 'OK' ? formatTime(r.timeCs) : statusLabel(r)}
                 />
@@ -221,7 +221,7 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
                       row={r}
                       mine={isSwimmer(r, swimmer)}
                       lead={r.place ?? '–'}
-                      sub={[r.club, fullYear(r.yy)].filter(Boolean).join(' · ')}
+                      sub={[r.club, fullYear(r.yy)].filter(Boolean).join('\u00a0· ')}
                       pts={r.points}
                       time={r.timeCs != null && r.status === 'OK' ? formatTime(r.timeCs) : statusLabel(r)}
                     />

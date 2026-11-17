@@ -31,7 +31,7 @@ function weekendTitle(w: ClubWeekend): string {
 function meetsLine(w: ClubWeekend): string {
   const names = w.meets.map((m) => m.name);
   const shown = names.length > 2 ? [...names.slice(0, 2), `${names.length - 2} autre${names.length > 3 ? 's' : ''}`] : names;
-  return [shown.join(' · '), formatRange(w.start, w.end)].filter(Boolean).join(' · ');
+  return [shown.join('\u00a0· '), formatRange(w.start, w.end)].filter(Boolean).join('\u00a0· ');
 }
 
 function WeekendTiles({ w }: { w: ClubWeekend }) {

@@ -106,7 +106,7 @@ export function Meets() {
                     <div className="row-body">
                       <div className="row-title">{m.name}</div>
                       <div className="row-sub">
-                        {[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join(' · ')}
+                        {[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join('\u00a0· ')}
                       </div>
                       <div className="tl-badges">
                         <span className="badge first">{ongoing ? 'En cours' : capitalize(relativeDay(m.startDate))}</span>
@@ -186,7 +186,7 @@ export function Meets() {
                   <div className="row-body">
                     <div className="row-title">{m.name}</div>
                     <div className="row-sub">
-                      {[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join(' · ')}
+                      {[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join('\u00a0· ')}
                     </div>
                   </div>
                   <Icon name="chevronRight" className="chev" />
@@ -302,7 +302,7 @@ export function MeetDetail({ id }: { id: string }) {
                           {s.eventNo ? `${s.eventNo}. ` : ''}
                           {eventLabel(s.distance, s.stroke)}
                         </div>
-                        <div className="row-sub">{sub.join(' · ') || (rank ? null : formatDate(s.date))}</div>
+                        <div className="row-sub">{sub.join('\u00a0· ') || (rank ? null : formatDate(s.date))}</div>
                         {rank && <div className="row-sub">{rank}</div>}
                       </div>
                       <div className="row-end">
@@ -503,7 +503,7 @@ export function MeetDetail({ id }: { id: string }) {
           <div className="list">
             <Row title="Date" value={formatRange(meet.startDate, meet.endDate)} />
             <Row title="Bassin" value={courseLabel(meet.course)} />
-            {meet.city && <Row title="Localité" value={[meet.city, meet.nation].filter(Boolean).join(' · ')} />}
+            {meet.city && <Row title="Localité" value={[meet.city, meet.nation].filter(Boolean).join('\u00a0· ')} />}
             {meet.organizer && <Row title="Organisateur" value={meet.organizer} />}
             {meet.city && (
               <Row

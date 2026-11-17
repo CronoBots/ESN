@@ -248,7 +248,7 @@ export function ProgressChart({
                     ? p.label
                       ? formatDate(p.date)
                       : ''
-                    : [formatDate(p.date), p.label].filter(Boolean).join(' · ')}
+                    : [formatDate(p.date), p.label].filter(Boolean).join('\u00a0· ')}
               </span>
             </span>
           </div>

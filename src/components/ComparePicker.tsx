@@ -93,7 +93,7 @@ function ComparePicker({
           <div className="list">
             {sec.items.map(({ swimmer: sw, bestCs }) => {
               const on = sel.includes(sw.id);
-              const sub = [sec.yearShown ? null : sw.birthYear, sw.former ? 'ancien membre' : null].filter(Boolean).join(' · ');
+              const sub = [sec.yearShown ? null : sw.birthYear, sw.former ? 'ancien membre' : null].filter(Boolean).join('\u00a0· ');
               return (
                 <button key={sw.id} type="button" className="row" role="checkbox" aria-checked={on} onClick={() => toggle(sw.id)}>
                   <Avatar swimmer={sw} size={36} />

@@ -115,7 +115,7 @@ export function yearsLabel(swimmers: Swimmer[]): string {
 export function clubSummary(groups: RosterGroup[], members: Swimmer[]): string {
   return [`${members.length}\u00a0nageur${members.length > 1 ? 's' : ''}`, groups.length ? groupsLabel(groups) : yearsLabel(members)]
     .filter(Boolean)
-    .join(' · ');
+    .join('\u00a0· ');
 }
 
 export function groupName(groups: RosterGroup[], id?: string): string | undefined {
@@ -370,7 +370,7 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
                       {fullName(sw)}
                     </div>
                     {(sw.former || (!yearInTitle(sec.id) && sw.birthYear)) && (
-                      <div className="row-sub">{[yearInTitle(sec.id) ? null : sw.birthYear, sw.former ? 'ancien membre' : null].filter(Boolean).join(' · ')}</div>
+                      <div className="row-sub">{[yearInTitle(sec.id) ? null : sw.birthYear, sw.former ? 'ancien membre' : null].filter(Boolean).join('\u00a0· ')}</div>
                     )}
                   </div>
                   <span className={`follow-mark${on ? ' on' : ''}`} aria-hidden="true">
@@ -551,7 +551,7 @@ export function ClubScreen() {
                         <div className="row-title" style={isFollowed(sw) ? { fontWeight: 600 } : undefined}>
                           {fullName(sw)}
                         </div>
-                        <div className="row-sub">{sub.join(' · ')}</div>
+                        <div className="row-sub">{sub.join('\u00a0· ')}</div>
                       </div>
                     </button>
                     <FollowButton swimmer={sw} />

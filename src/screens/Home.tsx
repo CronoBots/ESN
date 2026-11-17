@@ -153,7 +153,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
           <div className="grow">
             <div className="hero-name">{fullName(swimmer)}</div>
             <div className="hero-sub">
-              {[swimmer.club, age != null ? `${age} ans` : null].filter(Boolean).join(' · ') || 'Voir le profil'}
+              {[swimmer.club, age != null ? `${age} ans` : null].filter(Boolean).join('\u00a0· ') || 'Voir le profil'}
             </div>
           </div>
           <Icon name="chevronRight" style={{ width: 18, height: 18, opacity: 0.7 }} />
@@ -191,7 +191,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                 <div className="row-body">
                   <div className="row-title">{meet.name}</div>
                   <div className="row-sub">
-                    {[formatRange(meet.startDate, meet.endDate), meet.city, `${entries}\u00a0épreuve${entries > 1 ? 's' : ''} au programme`].filter(Boolean).join(' · ')}
+                    {[formatRange(meet.startDate, meet.endDate), meet.city, `${entries}\u00a0épreuve${entries > 1 ? 's' : ''} au programme`].filter(Boolean).join('\u00a0· ')}
                   </div>
                 </div>
                 <Icon name="chevronRight" className="chev" />
@@ -258,7 +258,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                       <div className="muted small" style={{ marginTop: 2 }}>
                         {[formatRange(upcoming.startDate, upcoming.endDate), upcoming.city, courseLabel(upcoming.course)]
                           .filter(Boolean)
-                          .join(' · ')}
+                          .join('\u00a0· ')}
                       </div>
                     </div>
                     <span className="badge first" style={{ height: 24, fontSize: 12 }}>

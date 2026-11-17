@@ -364,7 +364,7 @@ export function Rankings() {
                           r.swimmer.former ? 'ancien membre' : null,
                         ]
                           .filter(Boolean)
-                          .join(' · ')}
+                          .join('\u00a0· ')}
                       </div>
                       <div className="row-sub">{formatDate(r.best.date)}</div>
                     </div>

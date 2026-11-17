@@ -51,7 +51,7 @@ export function SwimRow({
       <div className="row-body">
         <div className="row-title">{eventLabel(swim.distance, swim.stroke)}</div>
         {where && <div className="row-sub">{where}</div>}
-        <div className="row-sub">{details.join(' · ')}</div>
+        <div className="row-sub">{details.join('\u00a0· ')}</div>
       </div>
       <div className="row-end">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
