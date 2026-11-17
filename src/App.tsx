@@ -15,6 +15,7 @@ import { SwimDetail } from './screens/SwimDetail';
 import { SwimmerHistory, SwimmerProfile } from './screens/Swimmer';
 import { About, Settings, APP_VERSION } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
+import { LevelsScreen } from './screens/Levels';
 import { ClubScreen, ensureClub, refreshClubRoster } from './screens/Club';
 import { resultsMessage } from './screens/autoResults';
 import type { Course, Stroke } from './store/types';
@@ -33,7 +34,7 @@ let lastTab = 'home';
 
 function activeTab(path: string[]): string {
   const p = path[0] ?? '';
-  if (p === 'swim' || p === 'swimmer' || p === 'club' || p === 'event' || p === 'club-weekend') return lastTab;
+  if (p === 'swim' || p === 'swimmer' || p === 'club' || p === 'event' || p === 'club-weekend' || p === 'levels') return lastTab;
   if (p === 'meets' || p === 'meet') lastTab = 'meets';
   else if (p === 'records' || p === 'rankings' || p === 'club-records') lastTab = 'records';
   else if (p === 'progress') lastTab = 'progress';
@@ -61,6 +62,8 @@ function Screen({ path }: { path: string[] }) {
       return <ClubWeekendScreen />;
     case 'progress':
       return <Progression />;
+    case 'levels':
+      return <LevelsScreen />;
     case 'event':
       return <EventDetail key={path.join('/')} swimmerId={b} course={c as Course} distance={Number(d)} stroke={e as Stroke} />;
     case 'swim':

@@ -102,6 +102,17 @@ export function Records() {
               />
             </div>
 
+            <button className="card lv-link" onClick={() => navigate('/levels')}>
+              <span className="row-icon" style={{ background: 'var(--lvl-trident)' }} aria-hidden="true">
+                <Icon name="target" />
+              </span>
+              <span className="grow">
+                <span className="lv-link-title">Niveaux FFBN</span>
+                <span className="lv-link-sub">Mistral, Trident et Requin sur chaque épreuve</span>
+              </span>
+              <Icon name="chevronRight" className="chev" />
+            </button>
+
             {bests.size === 0 ? (
               <div className="card" style={{ marginTop: 16 }}>
                 <Empty

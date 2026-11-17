@@ -1242,6 +1242,240 @@ a.row:active {
   height: 42px;
 }
 
+/* Écran « Niveaux FFBN » : résumé par niveau, tableau épreuves × niveaux */
+.lv-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lv-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px 10px;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  color: var(--text-3);
+}
+
+.lv-tile-n {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-tile-l {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lv-tile-s {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.lv-tile.on.lvl-mistral {
+  color: var(--lvl-mistral);
+}
+
+.lv-tile.on.lvl-trident {
+  color: var(--lvl-trident);
+}
+
+.lv-tile.on.lvl-requin {
+  color: var(--lvl-requin);
+}
+
+.lv-table {
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lv-head,
+.lv-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(var(--lv-cols, 3), 64px);
+  align-items: center;
+  column-gap: 4px;
+  padding: 0 10px 0 14px;
+}
+
+.lv-head {
+  min-height: 40px;
+  border-bottom: 0.5px solid var(--separator);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lv-head > span:not(:first-child) {
+  text-align: center;
+}
+
+.lv-row {
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.lv-row + .lv-row {
+  border-top: 0.5px solid var(--separator);
+}
+
+.lv-row:active {
+  background: var(--fill);
+}
+
+.lv-event {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.lv-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.lv-best {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.lv-cell.none {
+  color: var(--text-3);
+}
+
+.lv-cell.later {
+  color: var(--text-3);
+}
+
+.lv-cell.done {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+}
+
+.lv-cell.done svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lv-cell.done.lvl-mistral {
+  background: var(--lvl-mistral);
+}
+
+.lv-cell.done.lvl-trident {
+  background: var(--lvl-trident);
+}
+
+.lv-cell.done.lvl-requin {
+  background: var(--lvl-requin);
+}
+
+.lv-cell.next b {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lv-cell.next small {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.lv-cell.next.lvl-mistral b {
+  color: var(--lvl-mistral);
+}
+
+.lv-cell.next.lvl-trident b {
+  color: var(--lvl-trident);
+}
+
+.lv-cell.next.lvl-requin b {
+  color: var(--lvl-requin);
+}
+
+.lv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin: 12px 4px 0;
+  font-size: 12.5px;
+}
+
+.lv-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lv-legend .lv-cell.done {
+  width: 20px;
+  height: 20px;
+}
+
+.lv-legend .lv-cell.done svg {
+  width: 12px;
+  height: 12px;
+}
+
+.lv-legend b {
+  color: var(--lvl-trident);
+}
+
+/* Lien vers les niveaux (écran Records) */
+.lv-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+}
+
+.lv-link .grow {
+  display: flex;
+  flex-direction: column;
+}
+
+.lv-link-title {
+  font-weight: 600;
+}
+
+.lv-link-sub {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
 /* Invitation : QR code, partage du lien */
 .invite {
   display: flex;
