@@ -60,6 +60,28 @@ describe('médailles', () => {
     expect(t.map((x) => `${x.id}:${x.unlocked}:${x.pending ?? ''}`)).toEqual(['podium:true:', 'win:false:']);
   });
 
+  it('résultats officiels d’une course déjà connue (historique) : la place est ajoutée, sans doublon', async () => {
+    const { actions, getState } = await import('../src/store/store');
+    actions.resetAll();
+    const sw = actions.addSwimmer({ firstName: 'Emma', lastName: 'Dupont', gender: 'F', birthYear: 2013, relation: 'followed' });
+    // Course venue de l'historique swimrankings : ni place, ni tour
+    actions.addSwim({ swimmerId: sw.id, context: 'competition', date: '2026-10-17', distance: 200, stroke: 'FLY', course: 'SCM', timeCs: 18921, status: 'OK', round: 'TIM', source: 'swimrankings' });
+    const r = actions.importClubResults(sw.id, [
+      {
+        meet: { name: 'Championnat de district', course: 'SCM', startDate: '2026-10-17', endDate: '2026-10-18', liveId: '1' },
+        swims: [
+          { distance: 200, stroke: 'FLY', course: 'SCM', round: 'TIM', timeCs: 18921, status: 'OK', place: 1, eventNo: 12, date: '2026-10-17' },
+          { distance: 100, stroke: 'BACK', course: 'SCM', round: 'TIM', timeCs: 8193, status: 'OK', place: 2, date: '2026-10-18' },
+        ],
+      },
+    ]);
+    expect(r.added).toBe(1); // le 100 dos est nouveau ; le 200 papillon est complété, pas ajouté
+    const swims = getState().swims.filter((s) => s.swimmerId === sw.id);
+    expect(swims).toHaveLength(2);
+    expect(swims.find((s) => s.stroke === 'FLY')).toMatchObject({ place: 1, eventNo: 12, source: 'swimrankings', timeCs: 18921 });
+    expect(medalCount(medalSwims(swims, sw.id))).toEqual({ gold: 1, silver: 1, bronze: 0, total: 2 });
+  });
+
   it('sait depuis quand les classements sont connus', () => {
     const swims = [swim({ date: '2026-11-15', place: 5 }), swim({ date: '2026-10-11', place: 2 }), swim({ date: '2020-01-01' })];
     expect(placesKnownSince(swims, 'a')).toBe('2026-10-11');

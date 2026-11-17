@@ -50,7 +50,7 @@ export interface Progress {
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
 /** 2 : lecture des feuilles PDF (résultats et listes de départ). */
-export const SYNC_ENGINE = 6; // 3 : fiche swimrankings reliée ; 4 : séries en direct ; 5 : nouveaux nageurs du club ; 6 : noms à une lettre près
+export const SYNC_ENGINE = 7; // 3 : fiche swimrankings reliée ; 4 : séries en direct ; 5 : nouveaux nageurs du club ; 6 : noms à une lettre près ; 7 : places ajoutées aux courses déjà connues (historique)
 
 export interface LiveMeet {
   id: string;

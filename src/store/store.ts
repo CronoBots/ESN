@@ -291,8 +291,13 @@ function findMeet(meets: Meet[], name: string, date: string, course: Meet['cours
 
 /** Vrai si une course identique (même épreuve, même temps, dates proches) existe déjà. */
 function isDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId'>): boolean {
+  return !!findDuplicate(existing, s);
+}
+
+/** Même course déjà enregistrée (même épreuve, même temps, à quelques jours près). */
+function findDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId'>): Swim | undefined {
   const t = new Date(s.date).getTime();
-  return existing.some(
+  return existing.find(
     (x) =>
       x.course === s.course &&
       x.distance === s.distance &&
@@ -721,7 +726,32 @@ export const actions = {
               continue;
             }
           }
-          if (isDuplicate([...mine, ...addedSwims], candidate)) continue;
+          const dup = findDuplicate([...mine, ...addedSwims], candidate);
+          if (dup) {
+            // Course déjà connue (historique swimrankings, import précédent) : les résultats officiels la
+            // complètent (place dans la catégorie, temps de passage, tour) sans changer le temps
+            const known = !addedSwims.some((a) => a.id === dup.id);
+            const base = refreshed.find((x) => x.id === dup.id) ?? dup;
+            const round = base.source === 'swimrankings' && rs.round ? rs.round : base.round;
+            const more =
+              (rs.place != null && base.place == null) || (!!rs.splits?.length && !base.splits?.length) || round !== base.round || (rs.eventNo != null && base.eventNo == null);
+            if (known && more) {
+              const enriched: Swim = {
+                ...base,
+                place: base.place ?? rs.place,
+                splits: base.splits?.length ? base.splits : rs.splits,
+                round,
+                eventNo: base.eventNo ?? rs.eventNo,
+                heat: base.heat ?? rs.heat,
+                lane: base.lane ?? rs.lane,
+                updatedAt: now,
+              };
+              const i = refreshed.findIndex((x) => x.id === dup.id);
+              if (i >= 0) refreshed[i] = enriched;
+              else refreshed.push(enriched);
+            }
+            continue;
+          }
           const planned = mine.find(
             (x) =>
               x.meetId === meet!.id &&
