@@ -97,6 +97,14 @@ export function ageAllows(ev: ClubEvent, birthYear?: number): boolean {
   return (ev.minAge == null || age >= ev.minAge) && (ev.maxAge == null || age <= ev.maxAge);
 }
 
+/** « 11-16 ans », « 15 ans et plus », « jusqu'à 12 ans » ; vide sans limite d'âge. */
+export function ageLabel(ev: ClubEvent): string {
+  if (ev.minAge != null && ev.maxAge != null) return `${ev.minAge}-${ev.maxAge}\u00a0ans`;
+  if (ev.minAge != null) return `${ev.minAge}\u00a0ans et plus`;
+  if (ev.maxAge != null) return `jusqu’à ${ev.maxAge}\u00a0ans`;
+  return '';
+}
+
 /** Accueil : prochaine compétition du club pour ce nageur (son âge le permet), avant la publication du programme. */
 export function nextClubEventFor(events: ClubEvent[], birthYear?: number): ClubEvent | undefined {
   return events.find((e) => ageAllows(e, birthYear));

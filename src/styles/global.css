@@ -4307,3 +4307,18 @@ button.meet-nav-btn:active {
 .club-event-group b {
   font-weight: 700;
 }
+
+/* Compétition du club plus proche, mais pas pour ce nageur (âge) */
+.club-event-skipped {
+  margin: -2px 0 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.club-event-skipped b {
+  color: var(--text);
+}

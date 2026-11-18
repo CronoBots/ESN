@@ -308,7 +308,12 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                 </button>
               }
             >
-              <ClubEventCard ev={clubNext} cal={cal} />
+              <ClubEventCard
+                ev={clubNext}
+                cal={cal}
+                firstName={swimmer.firstName}
+                skipped={upcomingClubEvents(cal, data.meets, today).filter((e) => e.start < clubNext.start)}
+              />
             </Section>
           )}
 

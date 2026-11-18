@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { ageAllows, eventAsMeet, groupsLabel, groupsShort, nextClubEventFor, parseClubCalendar, publishedMeet, upcomingClubEvents } from '../src/lib/clubCalendar';
+import { ageAllows, ageLabel, eventAsMeet, groupsLabel, groupsShort, nextClubEventFor, parseClubCalendar, publishedMeet, upcomingClubEvents } from '../src/lib/clubCalendar';
 import { buildMeetCalendar } from '../src/lib/ics';
 import type { Meet } from '../src/store/types';
 
@@ -40,6 +40,14 @@ describe('calendrier du club', () => {
     expect(nextClubEventFor(later, 2010)?.name).toBe('Championnats FFBN 25\u00a0m 15\u00a0ans et plus');
     expect(ageAllows(cal.events.find((e) => e.start === '2026-11-20')!, 2018)).toBe(false); // 8 ans
     expect(ageAllows(cal.events.find((e) => e.start === '2026-11-20')!, undefined)).toBe(true);
+    // À 17 ans, la prochaine est dans 10 jours : la carte dit pourquoi celle dans 2 jours ne compte pas
+    const now = upcomingClubEvents(cal, [], '2026-11-18');
+    const next = nextClubEventFor(now, 2009)!;
+    expect(next.start).toBe('2026-11-28');
+    const skipped = now.filter((e) => e.start < next.start);
+    expect(skipped.map((e) => `${e.start} ${ageLabel(e)}`)).toEqual(['2026-11-20 11-16\u00a0ans']);
+    expect(ageLabel(next)).toBe('15\u00a0ans et plus');
+    expect(ageLabel(cal.events.find((e) => e.city === 'Waremme')!)).toBe('');
   });
 
   it('libellés et export vers l’agenda', () => {

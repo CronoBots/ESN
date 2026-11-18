@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { eventAsMeet, groupsLabel, groupsShort, parseClubCalendar, type ClubCalendar, type ClubEvent } from '../lib/clubCalendar';
+import { ageLabel, eventAsMeet, groupsLabel, groupsShort, parseClubCalendar, type ClubCalendar, type ClubEvent } from '../lib/clubCalendar';
 import { courseLabel } from '../lib/events';
 import { formatDate, formatRange, relativeDay, todayISO } from '../lib/dates';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
@@ -119,10 +119,20 @@ export function ClubEventRow({ ev, cal }: { ev: ClubEvent; cal: ClubCalendar }) 
   );
 }
 
-export function ClubEventCard({ ev, cal }: { ev: ClubEvent; cal: ClubCalendar }) {
+/**
+ * Accueil : prochaine compétition du nageur. `skipped` : compétitions du club plus proches mais pas
+ * pour lui (âge), dites clairement plutôt que passées sous silence.
+ */
+export function ClubEventCard({ ev, cal, skipped = [], firstName }: { ev: ClubEvent; cal: ClubCalendar; skipped?: ClubEvent[]; firstName?: string }) {
   const today = todayISO();
   return (
     <button className="card club-event-card" onClick={() => openClubEvent(ev, cal)}>
+      {skipped.map((s) => (
+        <div key={`${s.start}-${s.city}`} className="club-event-skipped">
+          <b>{capitalize(relativeDay(s.start))}</b> : {s.name}, réservés aux {ageLabel(s)}
+          {firstName ? ` (pas pour ${firstName})` : ''}.
+        </div>
+      ))}
       <div className="hstack between">
         <div className="grow">
           <div style={{ fontWeight: 700, fontSize: 18 }}>{ev.name}</div>
