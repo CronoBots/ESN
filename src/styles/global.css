@@ -4189,3 +4189,99 @@ button.meet-nav-btn:active {
 .sheet-head {
   touch-action: none;
 }
+
+/* ------------------------------------------------------------ Calendrier du club */
+
+.badge.muted-badge {
+  background: transparent;
+  border: 1px dashed var(--separator-strong, var(--fill-2));
+  color: var(--text-3, var(--text-2));
+}
+
+.club-event-card {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.club-event-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.club-event-meta span:first-child {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.club-event-wait {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--separator);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.club-event-wait svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.club-event {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.club-event-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.club-event-name {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.club-event-note {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.club-event-note svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--accent);
+}
+
+.club-event-text {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.4;
+}

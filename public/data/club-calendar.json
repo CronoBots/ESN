@@ -1,0 +1,75 @@
+{
+  "title": "Calendrier des compétitions de l’ESN",
+  "season": "2026-2027",
+  "version": "2026-09-23",
+  "until": "2026-12-31",
+  "note": "Ce calendrier peut évoluer (suppressions, ajouts) selon les invitations reçues par le club. Il couvre la première partie de la saison, jusqu’en décembre 2026 ; la deuxième partie sera communiquée en temps utile.",
+  "events": [
+    {
+      "start": "2026-10-10",
+      "end": "2026-10-11",
+      "city": "Liège (Outremeuse)",
+      "name": "Challenge M. Petit et éliminatoires du Challenge J. George",
+      "groups": ["B", "C"],
+      "note": "Nombre de séries limité"
+    },
+    {
+      "start": "2026-10-17",
+      "end": "2026-10-18",
+      "city": "Bastogne",
+      "name": "Championnat de District LNL",
+      "course": "SCM",
+      "groups": ["A", "B"],
+      "note": "Temps limites"
+    },
+    {
+      "start": "2026-11-13",
+      "end": "2026-11-15",
+      "dates": "13-14 ou 14-15 novembre",
+      "city": "Crisnée",
+      "name": "Meeting de fin d’année",
+      "course": "SCM",
+      "groups": ["A", "B", "C"],
+      "note": "Sélection pour les non-qualifiés aux championnats de Belgique 25\u00a0m"
+    },
+    {
+      "start": "2026-11-20",
+      "end": "2026-11-22",
+      "city": "Bastogne",
+      "name": "Championnats de Belgique 25\u00a0m 11-16\u00a0ans",
+      "course": "SCM",
+      "groups": ["A", "B"],
+      "minAge": 11,
+      "maxAge": 16,
+      "note": "11-16\u00a0ans, suivant la qualification FRBN (limites, nombre de nageurs)"
+    },
+    {
+      "start": "2026-11-28",
+      "end": "2026-11-29",
+      "city": "Bastogne",
+      "name": "Championnats FFBN 25\u00a0m 15\u00a0ans et plus",
+      "course": "SCM",
+      "groups": ["A"],
+      "minAge": 15,
+      "note": "Attention : sélection et/ou temps limites"
+    },
+    {
+      "start": "2026-12-05",
+      "end": "2026-12-06",
+      "city": "Bastogne",
+      "name": "Championnats FFBN 25\u00a0m Jeunes",
+      "course": "SCM",
+      "groups": ["A", "B"],
+      "note": "Attention : sélection et/ou temps limites"
+    },
+    {
+      "start": "2026-12-12",
+      "end": "2026-12-13",
+      "dates": "samedi et dimanche",
+      "city": "Waremme",
+      "name": "Dernière Chance",
+      "groups": ["A", "B", "C"],
+      "note": "Limites d’inscription possibles"
+    }
+  ]
+}

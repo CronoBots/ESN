@@ -16,6 +16,8 @@ import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, useSyncStatus } from './autoResults';
 import { clubSummary, ensureClub, openFollow, openFollowPicker, useRosterAvailable } from './Club';
+import { ClubEventCard, useClubCalendar } from '../components/ClubCalendar';
+import { nextClubEventFor, upcomingClubEvents } from '../lib/clubCalendar';
 import type { Swimmer } from '../store/types';
 
 import { capitalize, deName } from '../lib/text';
@@ -122,6 +124,12 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
   const upcomingEntries = upcoming ? mine.filter((s) => s.meetId === upcoming.id).sort(chronoCompare) : [];
   const multiDay = !!upcoming?.endDate && upcoming.endDate !== upcoming.startDate;
   const awaiting = useMemo(() => awaitingMeets(data, swimmer.id), [data, swimmer.id]);
+  // Pas encore de programme publié : la prochaine compétition annoncée par le calendrier du club (si son âge le permet)
+  const cal = useClubCalendar();
+  const clubNext = useMemo(
+    () => (upcoming ? undefined : nextClubEventFor(upcomingClubEvents(cal, data.meets, today), swimmer.birthYear)),
+    [upcoming, cal, data.meets, today, swimmer.birthYear],
+  );
 
   const recentPBs = useMemo(
     () =>
@@ -288,6 +296,19 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                   </span>
                 )}
               </button>
+            </Section>
+          )}
+
+          {!upcoming && clubNext && cal && (
+            <Section
+              title={clubNext.start <= today ? 'Compétition en cours' : 'Prochaine compétition'}
+              action={
+                <button className="section-link" onClick={() => navigate('/meets')}>
+                  Calendrier
+                </button>
+              }
+            >
+              <ClubEventCard ev={clubNext} cal={cal} />
             </Section>
           )}
 

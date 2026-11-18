@@ -9,12 +9,14 @@ import { eventLabel, courseLabel, ROUND_LABEL } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { chronoCompare, clubMeets, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
-import type { Swim, Swimmer } from '../store/types';
+import type { Meet, Swim, Swimmer } from '../store/types';
 import { overlay } from '../components/ui';
 import { DateBlock, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
 import { capitalize, deName, placeLabel } from '../lib/text';
+import { ClubEventRow, useClubCalendar } from '../components/ClubCalendar';
+import { groupsLabel, publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
 
 
 type Order = 'recent' | 'chrono';
@@ -57,6 +59,12 @@ export function Meets() {
   const upcoming = data.meets
     .filter((m) => (m.endDate ?? m.startDate) >= today && clubMeetIds.has(m.id))
     .sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
+  // Calendrier du club : les compétitions annoncées, avant que l'organisateur publie le programme
+  const cal = useClubCalendar();
+  const calEvents = useMemo(() => upcomingClubEvents(cal, data.meets, today), [cal, data.meets, today]);
+  const comingUp: ({ meet: Meet } | { ev: ClubEvent })[] = [...upcoming.map((meet) => ({ meet })), ...calEvents.map((ev) => ({ ev }))].sort((a, b) =>
+    ('meet' in a ? a.meet.startDate : a.ev.start) < ('meet' in b ? b.meet.startDate : b.ev.start) ? -1 : 1,
+  );
 
   // Chronologie par saison, dans l'ordre choisi
   const seasons = useMemo(() => {
@@ -98,12 +106,15 @@ export function Meets() {
       <main className="page">
         {swimmer && <SwimmerChips swimmer={swimmer} />}
 
-        {upcoming.length > 0 && (
+        {comingUp.length > 0 && (
           <Section title="À venir">
             <div className="list">
-              {upcoming.map((m) => {
+              {comingUp.map((item) => {
+                if ('ev' in item) return <ClubEventRow key={`cal-${item.ev.start}-${item.ev.city}`} ev={item.ev} cal={cal!} />;
+                const m = item.meet;
                 const ongoing = m.startDate <= today;
                 const n = entriesByMeet.get(m.id) ?? 0;
+                const planned = cal?.events.find((e) => publishedMeet(e, [m]));
                 return (
                   <button key={m.id} className="row" onClick={() => navigate(`/meet/${m.id}`)}>
                     <DateBlock iso={m.startDate} accent={ongoing} />
@@ -119,6 +130,7 @@ export function Meets() {
                             {n} épreuve{n > 1 ? 's' : ''} au programme
                           </span>
                         )}
+                        {planned && planned.groups.length > 0 && <span className="badge">{groupsLabel(planned.groups)}</span>}
                       </div>
                     </div>
                     <Icon name="chevronRight" className="chev" />
@@ -126,6 +138,12 @@ export function Meets() {
                 );
               })}
             </div>
+            {cal && calEvents.length > 0 && (
+              <div className="section-foot">
+                Annoncées par le calendrier du club (version du {formatDate(cal.version)}, jusqu’au {formatDate(cal.until)}). Le programme de
+                chaque nageur s’affiche dès la publication des listes de départ.
+              </div>
+            )}
           </Section>
         )}
 

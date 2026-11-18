@@ -1,6 +1,6 @@
 import type { JSX, SVGProps } from 'react';
 
-const PATHS: Record<string, JSX.Element> = {
+const PATHS = {
   home: (
     <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z" fill="currentColor" />
   ),
@@ -237,7 +237,7 @@ const PATHS: Record<string, JSX.Element> = {
       <path d="M8.5 20.5h7M12 7v6.5M9.5 11l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
-};
+} satisfies Record<string, JSX.Element>;
 
 export type IconName = keyof typeof PATHS;
 
