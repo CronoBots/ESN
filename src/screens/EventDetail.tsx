@@ -17,6 +17,7 @@ import { addCompare, openComparePicker, type CompareCandidate } from '../compone
 import { LevelLadder, levelYear } from '../components/Levels';
 import { levelStatus } from '../lib/levels';
 import { QualifyingSection } from '../components/Qualifying';
+import { NationalRankSection } from '../components/NationalRanks';
 
 const COMPARE_COLORS = ['var(--chart-line)', 'var(--chart-2)', 'var(--chart-3)'];
 
@@ -291,6 +292,8 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
             {levels && <LevelLadder status={levels} course={course} />}
 
             <QualifyingSection swimmer={swimmer} swims={data.swims} course={course} distance={distance} stroke={stroke} />
+
+            <NationalRankSection swimmerId={swimmer.id} course={course} distance={distance} stroke={stroke} />
           </>
         )}
 

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { AppData, Goal, LiveSyncSettings, Meet, Settings, Swim, Swimmer } from './types';
+import type { AppData, Goal, LiveSyncSettings, Meet, NationalRank, Settings, Swim, Swimmer } from './types';
 import { closeSwimmer, sameSwimmer, type ReportMeet, type ReportSwim } from '../lib/results';
 import type { Roster } from '../lib/roster';
 import { CLUB } from '../club';
@@ -62,6 +62,7 @@ export function normalizeData(raw: unknown): AppData {
     meets,
     swims,
     goals,
+    rankings: arr<NationalRank>(d.rankings).filter((r) => r && r.swimmerId && !demo.has(r.swimmerId)),
     settings: {
       ...DEFAULT_SETTINGS,
       ...(d.settings ?? {}),
@@ -978,6 +979,15 @@ export const actions = {
    * (nagées pour un autre club, corrigées) sont retirées, puis les compétitions restées vides.
    * Les résultats trouvés par la recherche automatique ne sont jamais touchés.
    */
+  /** Classements nationaux publiés par le club : remplacent les précédents. */
+  setRankings(rankings: NationalRank[], version: string) {
+    setState((s) => ({
+      ...s,
+      rankings,
+      settings: s.settings.club ? { ...s.settings, club: { ...s.settings.club, rankingsVersion: version } } : s.settings,
+    }));
+  },
+
   pruneHistorySwims(swimmerId: string, keep: Pick<ParsedSwim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date'>[]): number {
     const key = (x: Pick<Swim, 'course' | 'distance' | 'stroke' | 'date'> & { timeCs?: number | null }) =>
       `${x.course}|${x.distance}|${x.stroke}|${x.timeCs}|${x.date}`;

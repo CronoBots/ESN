@@ -13,6 +13,7 @@ import { findResultsNow } from './autoResults';
 import { deName } from '../lib/text';
 import { groupName } from './Club';
 import { LevelChip, levelYear } from '../components/Levels';
+import { latestRankText, ranksFor } from '../lib/rankings';
 import { levelStatus } from '../lib/levels';
 
 export function SwimmerChips({ swimmer }: { swimmer: Swimmer }) {
@@ -162,6 +163,10 @@ export function Records() {
                                 {formatDate(s.date)}
                                 {entry!.count > 1 ? ` · ${entry!.count} courses` : ''}
                               </div>
+                              {(() => {
+                                const rank = latestRankText(ranksFor(data.rankings, swimmer.id, course, d, st.id));
+                                return rank ? <div className="row-sub rank-line">{rank}</div> : null;
+                              })()}
                               {(meet || s.context === 'training') && (
                                 <div className="row-sub">{meet ? meet.name : 'Entraînement'}</div>
                               )}

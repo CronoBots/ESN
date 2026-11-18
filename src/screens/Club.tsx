@@ -7,18 +7,20 @@ import { Icon } from '../components/Icon';
 import { openShareApp } from '../components/Invite';
 import { offerInstall } from './Install';
 import { navigate } from '../router';
-import { decryptHistory, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptHistory, decryptRankings, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
 import { parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
 import { formatDate, formatDayMonth } from '../lib/dates';
 import { CLUB } from '../club';
-import type { Swim, Swimmer } from '../store/types';
+import type { NationalRank, Swim, Swimmer } from '../store/types';
+import { parseRankingsText } from '../lib/rankings';
 
 /** Liste chiffrée des membres, publiée avec l'application (voir scripts/roster.mjs). */
 const ROSTER_URL = './data/club-roster.json';
 /** Historique swimrankings des membres, chiffré avec le même code. */
 const HISTORY_URL = './data/club-history.json';
+const RANKINGS_URL = './data/club-rankings.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ». */
 const HISTORY_PARSER = 4;
 
@@ -29,6 +31,29 @@ const letters = (s: string) => normName(s);
  * swimrankings.net par le club) : ajouté une fois par version publiée.
  * Renvoie le nombre de courses ajoutées.
  */
+/**
+ * Classements nationaux publiés par le club (swimrankings) : appliqués une fois par version,
+ * en remplaçant les précédents. Pas de fichier publié : rien à faire.
+ */
+export async function applyClubRankings(): Promise<number> {
+  const club = getState().settings.club;
+  if (!club || club.expired) return 0;
+  const res = await fetch(RANKINGS_URL, { cache: 'no-cache' }).catch(() => null);
+  if (!res?.ok) return 0;
+  const enc: unknown = await res.json().catch(() => null);
+  if (!isEncryptedRoster(enc, 'esn-rankings') || enc.iv === club.rankingsVersion) return 0;
+  const published = await decryptRankings(enc, club.code).catch(() => null);
+  if (!published) return 0;
+  const members = getState().swimmers.filter((s) => s.member);
+  const list: NationalRank[] = [];
+  for (const a of published.athletes) {
+    const sw = members.find((s) => normName(s.lastName) === normName(a.lastName) && normName(s.firstName) === normName(a.firstName) && sameSwimmer(a, s));
+    if (sw) for (const r of parseRankingsText(a.text)) list.push({ swimmerId: sw.id, ...r });
+  }
+  actions.setRankings(list, enc.iv);
+  return list.length;
+}
+
 export async function applyClubHistory(): Promise<number> {
   const club = getState().settings.club;
   if (!club || club.expired) return 0;
@@ -165,7 +190,7 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
   if (!enc) throw new Error('indisponible');
   const roster = await decryptRoster(enc, code);
   const r = actions.applyRoster(roster, code.trim(), enc.iv);
-  void applyClubHistory();
+  void applyClubHistory().then(applyClubRankings);
   return r;
 }
 
@@ -199,11 +224,13 @@ export async function refreshClubRoster(): Promise<number> {
   // Même liste déjà lue par cette version de l'application : rien à refaire
   if (!enc || (enc.iv === club.version && (club.rosterParser ?? 1) >= ROSTER_PARSER)) {
     await applyClubHistory();
+    await applyClubRankings();
     return 0;
   }
   try {
     const added = actions.applyRoster(await decryptRoster(enc, club.code), club.code, enc.iv).added;
     await applyClubHistory();
+    await applyClubRankings();
     return added;
   } catch (e) {
     // Le club a changé de code : on le redemandera

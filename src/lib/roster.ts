@@ -57,7 +57,7 @@ export interface ClubHistory {
 }
 
 export interface EncryptedRoster {
-  format: 'esn-roster' | 'esn-history';
+  format: 'esn-roster' | 'esn-history' | 'esn-rankings';
   v: 1;
   kdf: 'PBKDF2-SHA-256';
   iterations: number;
@@ -145,6 +145,11 @@ export function encryptHistory(history: ClubHistory, code: string, iterations = 
   return encryptJson(history, code, 'esn-history', iterations);
 }
 
+/** Classements nationaux des nageurs du club : même forme que l'historique (un texte par nageur). */
+export function encryptRankings(rankings: ClubHistory, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
+  return encryptJson(rankings, code, 'esn-rankings', iterations);
+}
+
 export function isEncryptedRoster(x: unknown, format: EncryptedRoster['format'] = 'esn-roster'): x is EncryptedRoster {
   const e = x as EncryptedRoster;
   return !!e && e.format === format && e.v === 1 && typeof e.data === 'string' && typeof e.iv === 'string' && typeof e.salt === 'string';
@@ -156,6 +161,12 @@ export async function decryptRoster(enc: EncryptedRoster, code: string): Promise
 }
 
 /** Déchiffre l'historique du club ; WrongCodeError si le code ne correspond pas. */
+export async function decryptRankings(enc: EncryptedRoster, code: string): Promise<ClubHistory> {
+  const h = (await decryptJson(enc, code)) as ClubHistory;
+  if (!h || !Array.isArray(h.athletes)) throw new Error('Classements invalides');
+  return h;
+}
+
 export async function decryptHistory(enc: EncryptedRoster, code: string): Promise<ClubHistory> {
   const h = (await decryptJson(enc, code)) as ClubHistory;
   if (!h || !Array.isArray(h.athletes)) throw new Error('Historique invalide');

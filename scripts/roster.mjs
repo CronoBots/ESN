@@ -9,6 +9,8 @@
 //                                                        dans public/data/club-history.json (fusionné avec
 //                                                        l'historique déjà publié : rien n'est perdu) ; seules
 //                                                        les courses nagées pour l'ESN sont gardées (8e colonne)
+//   node scripts/roster.mjs classements DOSSIER CODE     chiffre les classements nationaux (un .txt par nageur)
+//                                                        dans public/data/club-rankings.json (fusionnés de même)
 //
 // membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut ; autres noms, une ligne par nageur.
 // Statut : « ancien » pour un ancien membre (liste à part, classements sur option), sinon vide.
@@ -19,7 +21,7 @@
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { aliasesText, decryptHistory, decryptRoster, encryptHistory, encryptRoster, generateCode, historyHeader, keepClubRaces, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { aliasesText, decryptHistory, decryptRankings, decryptRoster, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, keepClubRaces, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
 import { existsSync } from 'node:fs';
 import { CLUB } from '../src/club.ts';
 
@@ -35,6 +37,7 @@ const sameMember = (a, b) =>
 
 const OUT = new URL('../public/data/club-roster.json', import.meta.url);
 const HISTORY = new URL('../public/data/club-history.json', import.meta.url);
+const RANKINGS = new URL('../public/data/club-rankings.json', import.meta.url);
 const [cmd, ...args] = process.argv.slice(2);
 
 function summary(roster) {
@@ -119,6 +122,34 @@ if (cmd === 'code') {
   mkdirSync(new URL('./', HISTORY), { recursive: true });
   writeFileSync(HISTORY, `${JSON.stringify(await encryptHistory({ updated: new Date().toISOString().slice(0, 10), athletes }, code))}\n`);
   console.log(`Historique de ${athletes.length} nageurs chiffré dans public/data/club-history.json`);
+} else if (cmd === 'classements') {
+  const [dir, argCode] = args;
+  const code = argCode ?? process.env.ESN_CODE ?? CLUB.accessKey;
+  if (!dir || !code) throw new Error('Usage : node scripts/roster.mjs classements DOSSIER CODE');
+  // Contrôle léger des lignes (la lecture complète est celle de l'application, src/lib/rankings.ts)
+  const okLine = (l) => {
+    const c = l.split('\t').map((x) => x.trim());
+    return /^\d{4}(\s*[-/]\s*\d{2,4})?$/.test(c[0]) && /^(25|50)\s?m$|^(SCM|LCM)$/i.test(c[1]) && /\d+\s?m\b/i.test(c[2]) && !!c[3] && /^\d{1,4}\b/.test(c[4]);
+  };
+  const parseRankingsText = (text) => text.split('\n').filter((l) => l.split('\t').length >= 5 && okLine(l));
+  const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
+  const athletes = [];
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.txt')).sort()) {
+    const text = readFileSync(join(dir, f), 'utf8').trim();
+    const h = historyHeader(text);
+    if (!h) throw new Error(`${f} : en-tête « NOM, Prénom (AAAA) » introuvable`);
+    const lines = text.split('\n').filter((l) => l.split('\t').length >= 5).length;
+    const ranks = parseRankingsText(text).length;
+    const known = roster.members.some((m) => sameMember(m, h));
+    console.log(`${known ? '✓' : '⚠ pas dans la liste du club :'} ${f} : ${ranks} classements${ranks < lines ? ` ⚠ ${lines - ranks} ligne(s) illisible(s)` : ''}`);
+    athletes.push({ ...h, text });
+  }
+  const before = existsSync(RANKINGS) ? (await decryptRankings(JSON.parse(readFileSync(RANKINGS, 'utf8')), code)).athletes : [];
+  const kept = before.filter((a) => !athletes.some((b) => sameMember(a, b)));
+  if (kept.length) console.log(`${kept.length} nageurs des classements déjà publiés gardés tels quels`);
+  athletes.push(...kept);
+  writeFileSync(RANKINGS, `${JSON.stringify(await encryptRankings({ updated: new Date().toISOString().slice(0, 10), athletes }, code))}\n`);
+  console.log(`Classements de ${athletes.length} nageurs chiffrés dans public/data/club-rankings.json`);
 } else {
-  console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(0, 15).join('\n'));
+  console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(0, 17).join('\n'));
 }

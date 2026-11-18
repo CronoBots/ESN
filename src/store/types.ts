@@ -133,6 +133,8 @@ export interface ClubAccess {
   historyParser?: number;
   /** Version de la lecture de la liste (une nouvelle version la réapplique). */
   rosterParser?: number;
+  /** Version des classements nationaux déjà appliquée. */
+  rankingsVersion?: string;
 }
 
 export interface LiveSyncSettings {
@@ -144,11 +146,30 @@ export interface LiveSyncSettings {
   engine?: number;
 }
 
+/** Classement national d'un nageur du club (swimrankings.net) sur une épreuve, une saison. */
+export interface NationalRank {
+  swimmerId: string;
+  /** « 2026-2027 » (ou une année). */
+  season: string;
+  course: Course;
+  distance: number;
+  stroke: Stroke;
+  /** Classement tel qu'affiché sur swimrankings : « Belgique · filles nées en 2015 ». */
+  label: string;
+  rank: number;
+  /** Nombre de nageurs classés. */
+  of?: number;
+  /** Temps classé. */
+  timeCs?: number;
+}
+
 export interface AppData {
   version: 1;
   swimmers: Swimmer[];
   meets: Meet[];
   swims: Swim[];
   goals: Goal[];
+  /** Classements nationaux des nageurs du club (remplacés à chaque version publiée). */
+  rankings?: NationalRank[];
   settings: Settings;
 }

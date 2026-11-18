@@ -4307,3 +4307,9 @@ button.meet-nav-btn:active {
 .club-event-group b {
   font-weight: 700;
 }
+
+/* Classement national sous un meilleur temps (onglet Records) */
+.row-sub.rank-line {
+  color: var(--accent);
+  font-weight: 600;
+}
