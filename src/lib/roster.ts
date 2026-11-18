@@ -215,6 +215,9 @@ export function keepClubRaces(text: string, club: RegExp): { text: string; kept:
   return { text: out.join('\n'), kept, dropped, verified };
 }
 
+/** Fichier d'un nageur dans historique/ ou classements/ : « NOM_Prenom.txt » ; « _suivi.txt » (suivi du relevé) n'en est pas un. */
+export const isSwimmerFile = (name: string) => name.endsWith('.txt') && !name.startsWith('_');
+
 /** En-tête d'un texte d'import swimrankings : « NOM, Prénom (AAAA) » et l'identifiant swimrankings. */
 export function historyHeader(text: string): { lastName: string; firstName: string; birthYear?: number; swimrankingsId?: string } | null {
   const id = /athleteId=(\d+)/.exec(text)?.[1];

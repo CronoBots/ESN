@@ -21,7 +21,7 @@
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { aliasesText, decryptHistory, decryptRankings, decryptRoster, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, keepClubRaces, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { aliasesText, decryptHistory, decryptRankings, decryptRoster, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
 import { existsSync } from 'node:fs';
 import { CLUB } from '../src/club.ts';
 
@@ -100,7 +100,7 @@ if (cmd === 'code') {
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   const members = new Map(roster.members.map((m) => [memberKey(m), m]));
   const athletes = [];
-  for (const f of readdirSync(dir).filter((f) => f.endsWith('.txt')).sort()) {
+  for (const f of readdirSync(dir).filter(isSwimmerFile).sort()) {
     const raw = readFileSync(join(dir, f), 'utf8').trim();
     const h = historyHeader(raw);
     if (!h) throw new Error(`${f} : en-tête « NOM, Prénom (AAAA) » introuvable`);
@@ -134,7 +134,7 @@ if (cmd === 'code') {
   const parseRankingsText = (text) => text.split('\n').filter((l) => l.split('\t').length >= 5 && okLine(l));
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
   const athletes = [];
-  for (const f of readdirSync(dir).filter((f) => f.endsWith('.txt')).sort()) {
+  for (const f of readdirSync(dir).filter(isSwimmerFile).sort()) {
     const text = readFileSync(join(dir, f), 'utf8').trim();
     const h = historyHeader(text);
     if (!h) throw new Error(`${f} : en-tête « NOM, Prénom (AAAA) » introuvable`);

@@ -114,6 +114,11 @@ describe('liste du club dans l’application', async () => {
 });
 
 describe('historique du club', () => {
+  it('ignore le fichier de suivi du relevé', async () => {
+    const { isSwimmerFile } = await import('../src/lib/roster');
+    expect(['DUPONT_Emma.txt', '_suivi.txt', 'notes.md'].filter(isSwimmerFile)).toEqual(['DUPONT_Emma.txt']);
+  });
+
   it('lit l’en-tête d’un texte d’import et le chiffre', async () => {
     const { historyHeader, encryptHistory, decryptHistory } = await import('../src/lib/roster');
     const text = '@@URL:https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=1234567\n@@GENDER:F\nDUPONT, Emma (2014)\nBEL - Club\n100m Libre\t25m\t1:31.08\t171\t11 oct 2025\tLiège\tMeeting';
