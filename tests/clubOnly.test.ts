@@ -17,7 +17,7 @@ DUPONT, Emma (2012)
 BEL - Ecole Seraing Natation`;
 
 describe('historique : seulement les courses nagées pour l’ESN', () => {
-  it('retire les courses d’un autre club et la colonne du club, puis marque l’historique vérifié', () => {
+  it('retire les courses d’un autre club, puis marque l’historique vérifié', () => {
     const text = `${HEADER}
 100m Libre\t25m\t1:20.00\t300\t12 oct 2019\tLiège\tMeeting d'automne\tBEL - Club Exemple Natation
 100m Libre\t25m\t1:10.00\t400\t11 oct 2025\tSeraing\tMeeting Janus\tBEL - Ecole Seraing Natation
@@ -26,12 +26,28 @@ describe('historique : seulement les courses nagées pour l’ESN', () => {
     expect(r).toMatchObject({ kept: 2, dropped: 1, verified: true });
     expect(r.text).not.toMatch(/Club Exemple/);
     expect(r.text).toMatch(/^@@CLUBS$/m);
-    // 7 colonnes : l'application lit les courses comme avant
-    expect(r.text.split('\n').filter((l) => l.includes('\t')).every((l) => l.split('\t').length === 7)).toBe(true);
+    // Les colonnes restent (club, puis place, tour, passages quand ils sont relevés)
+    expect(r.text.split('\n').filter((l) => l.includes('\t')).every((l) => l.split('\t').length === 8)).toBe(true);
     const swims = parseSwimrankings(r.text).swims;
     expect(swims.map((s) => s.date)).toEqual(['2025-10-11', '2026-03-15']);
     // Relu (historique déjà publié) : rien ne change, il reste vérifié
     expect(keepClubRaces(r.text, CLUB.match)).toMatchObject({ text: r.text, kept: 2, dropped: 0, verified: true });
+  });
+
+  it('lit la place, le tour et les temps de passage relevés sur swimrankings', () => {
+    const text = `${HEADER}
+200m Libre\t25m\t2:30.00\t400\t11 oct 2025\tSeraing\tMeeting Janus\tBEL - Ecole Seraing Natation\t2\tFinale\t35.10 1:13.20 1:51.80
+100m Dos\t50m\t1:20.00\t350\t12 oct 2025\tSeraing\tMeeting Janus\tESN\t12\tSéries\t39.00
+50m Brasse\t25m\t40.00\t300\t13 oct 2025\tLiège\tCoupe\tESN\t\t\t`;
+    const swims = parseSwimrankings(keepClubRaces(text, CLUB.match).text).swims;
+    // Les temps de passage ne deviennent jamais des courses
+    expect(swims).toHaveLength(3);
+    expect(swims[0]).toMatchObject({ distance: 200, timeCs: 15000, place: 2, round: 'FINAL', splits: [3510, 7320, 11180], splitEvery: 50 });
+    expect(swims[1]).toMatchObject({ distance: 100, course: 'LCM', place: 12, round: 'HEAT', splits: [3900], splitEvery: 50 });
+    // Colonnes vides : rien d'inventé
+    expect(swims[2].place).toBeUndefined();
+    expect(swims[2].round).toBeUndefined();
+    expect(swims[2].splits).toBeUndefined();
   });
 
   it('historique sans club par course : gardé tel quel, mais pas vérifié', () => {

@@ -1,4 +1,4 @@
-import type { Course, Gender, Stroke } from '../store/types';
+import type { Course, Gender, Round, Stroke } from '../store/types';
 import { makeISO, monthFromToken } from './dates';
 import { parseTime } from './time';
 import { isValidEvent } from './events';
@@ -25,6 +25,13 @@ export interface ParsedSwim {
   courseGuessed?: boolean;
   /** Temps réalisé en compétition masters (marqué « M » après le temps sur swimrankings). */
   masters?: boolean;
+  /** Place dans la compétition (colonne « Place » de l'historique du club). */
+  place?: number;
+  /** Tour : séries, demi-finale, finale (colonne « Tour »). */
+  round?: Round;
+  /** Temps de passage cumulés (colonne « Passages »). */
+  splits?: number[];
+  splitEvery?: 25 | 50;
 }
 
 export interface ParsedAthlete {
@@ -227,8 +234,36 @@ interface Draft {
 const NOISE_TEXT =
   /^(?:séries?|heats?|finale?s?(?: directe)?|final|demi-?finale|semi-?final|tim|ok|dsq|dq|ds|abd|dnf|dns|forfait|ns|nt|pts?\.?|points|temps|time|date|bassin|course|ville|city|lieu|compétition|competition|meet|épreuve|event|pays|rang|rank)$/i;
 
+/** « Finale », « Finale B », « Demi-finale », « Séries » → tour de la course (vide : épreuve unique). */
+export function roundFromText(s: string | undefined): Round | undefined {
+  const t = (s ?? '').trim();
+  if (!t) return undefined;
+  if (/demi|semi/i.test(t)) return 'SEMI';
+  if (/final/i.test(t)) return 'FINAL';
+  if (/s[ée]rie|heat|prelim|reeks|vorl/i.test(t)) return 'HEAT';
+  return 'TIM';
+}
+
+/** « 32.10 1:08.20 1:45.33 » → temps de passage cumulés, gardés seulement s'ils tombent juste (tous les 50 ou 25 m). */
+export function splitsFromText(s: string | undefined, distance: number, timeCs: number): { splits: number[]; splitEvery: 25 | 50 } | undefined {
+  const list = tokenize(s ?? '')
+    .filter((t): t is Extract<Token, { t: 'TIME' }> => t.t === 'TIME')
+    .map((t) => t.cs);
+  if (!list.length || list.some((v, i) => v >= timeCs || (i > 0 && v <= list[i - 1]))) return undefined;
+  const legs = list.length + 1;
+  const every = distance / legs === 50 ? 50 : distance / legs === 25 ? 25 : null;
+  return every ? { splits: list, splitEvery: every } : undefined;
+}
+
 export function parseSwimrankings(text: string): ParseResult {
-  const tokens = tokenize(text);
+  // Historique du club en colonnes : la lecture des temps ne voit que les 7 premières (épreuve … compétition) ;
+  // club, place, tour et passages sont lus à part (un temps de passage n'est pas une course)
+  const tokens = tokenize(
+    text
+      .split(/\r?\n/)
+      .map((l) => (l.split('\t').length > 7 ? l.split('\t').slice(0, 7).join('\t') : l))
+      .join('\n'),
+  );
   const swims: ParsedSwim[] = [];
 
   let ctxEvent: { distance: number; stroke: Stroke } | null = null;
@@ -322,21 +357,29 @@ export function parseSwimrankings(text: string): ParseResult {
   }
   finalize();
 
-  // Format d'import en colonnes (épreuve, bassin, temps, points, date, ville, compétition, séparés par
-  // des tabulations) : ville et compétition reprises telles quelles (« 4e édition… », « Interclubs U15 »)
-  const columns = new Map<string, { city?: string; meet?: string }>();
+  // Format d'import en colonnes (épreuve, bassin, temps, points, date, ville, compétition, puis club,
+  // place, tour, passages, séparés par des tabulations) : ville et compétition reprises telles quelles
+  // (« 4e édition… », « Interclubs U15 ») ; place, tour et passages quand ils ont été relevés
+  const columns = new Map<string, { city?: string; meet?: string; place?: string; round?: string; splits?: string }>();
   for (const line of text.split(/\r?\n/)) {
     const c = line.split('\t');
     if (c.length < 7) continue;
     const time = tokenize(c[2]).find((t) => t.t === 'TIME');
     const date = tokenize(c[4]).find((t) => t.t === 'DATE');
-    if (time?.t === 'TIME' && date?.t === 'DATE') columns.set(`${time.cs}|${date.iso}`, { city: c[5].trim() || undefined, meet: c[6].trim() || undefined });
+    if (time?.t === 'TIME' && date?.t === 'DATE')
+      columns.set(`${time.cs}|${date.iso}`, { city: c[5].trim() || undefined, meet: c[6].trim() || undefined, place: c[8], round: c[9], splits: c[10] });
   }
   if (columns.size) {
     for (const s of swims) {
       const c = columns.get(`${s.timeCs}|${s.date}`);
       if (c?.meet) s.meet = cleanText(c.meet);
       if (c?.city) s.city = cleanText(c.city);
+      const place = Number(/^\s*(\d{1,3})\b/.exec(c?.place ?? '')?.[1]);
+      if (place >= 1) s.place = place;
+      const round = roundFromText(c?.round);
+      if (round) s.round = round;
+      const sp = splitsFromText(c?.splits, s.distance, s.timeCs);
+      if (sp) Object.assign(s, sp);
     }
   }
 
@@ -359,6 +402,9 @@ function dedupe(list: ParsedSwim[]): ParsedSwim[] {
       if (!prev.city && s.city) prev.city = s.city;
       if (prev.points == null && s.points != null) prev.points = s.points;
       if (s.masters) prev.masters = true;
+      if (prev.place == null && s.place != null) prev.place = s.place;
+      if (!prev.round && s.round) prev.round = s.round;
+      if (!prev.splits && s.splits) Object.assign(prev, { splits: s.splits, splitEvery: s.splitEvery });
     }
   }
   return [...map.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));

@@ -13,7 +13,7 @@ import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
 import { formatDate, formatDayMonth } from '../lib/dates';
 import { CLUB } from '../club';
-import type { Swimmer } from '../store/types';
+import type { Swim, Swimmer } from '../store/types';
 
 /** Liste chiffrée des membres, publiée avec l'application (voir scripts/roster.mjs). */
 const ROSTER_URL = './data/club-roster.json';
@@ -82,6 +82,14 @@ export async function applyClubHistory(): Promise<number> {
         const swim = mine.get(key(ps));
         // Temps masters déjà présents sans la marque (lus par une version précédente) : on la rajoute
         if (ps.masters && swim && !swim.masters) actions.updateSwim(swim.id, { masters: true });
+        // Place, tour et passages relevés depuis : la course déjà présente est complétée (jamais écrasée)
+        if (swim) {
+          const extra: Partial<Swim> = {};
+          if (ps.place != null && swim.place == null) extra.place = ps.place;
+          if (ps.round && ps.round !== 'TIM' && swim.round === 'TIM') extra.round = ps.round;
+          if (ps.splits && !swim.splits?.length) Object.assign(extra, { splits: ps.splits, splitEvery: ps.splitEvery });
+          if (Object.keys(extra).length) actions.updateSwim(swim.id, extra);
+        }
         if (!ps.meet) continue;
         const meet = swim?.meetId ? meetsById.get(swim.meetId) : undefined;
         if (!meet || meet.name === ps.meet || !letters(ps.meet).includes(letters(meet.name))) continue;

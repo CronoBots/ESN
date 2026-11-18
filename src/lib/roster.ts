@@ -165,7 +165,7 @@ export async function decryptHistory(enc: EncryptedRoster, code: string): Promis
 /**
  * Courses nagées pour le club seulement. Sur swimrankings, chaque course est relevée avec le club
  * pour lequel le nageur nageait (8e colonne) : une course nagée pour un autre club (avant son
- * arrivée, après son départ) est retirée, puis la colonne aussi (l'application lit 7 colonnes).
+ * arrivée, après son départ) est retirée. Les colonnes suivantes (place, tour, passages) restent.
  * Quand toutes les courses portent leur club, l'en-tête reçoit « @@CLUBS » : historique vérifié.
  */
 export function keepClubRaces(text: string, club: RegExp): { text: string; kept: number; dropped: number; verified: boolean } {
@@ -190,8 +190,8 @@ export function keepClubRaces(text: string, club: RegExp): { text: string; kept:
         dropped++;
         continue;
       }
-      out.push(cols.slice(0, 7).join('\t'));
-    } else out.push(cols.length >= 8 ? cols.slice(0, 7).join('\t') : line);
+    }
+    out.push(line);
     kept++;
   }
   const verified = marked || (kept + dropped > 0 && withClub === kept + dropped);

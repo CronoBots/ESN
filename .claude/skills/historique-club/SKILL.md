@@ -27,8 +27,8 @@ swimrankings.net a tout l'historique des nageurs, mais refuse les lectures autom
 4. **Pour chaque nageur :**
    1. Recherche : `https://www.swimrankings.net/index.php?page=athleteSelect&nationId=0&athleteLastName=NOM` (nom en majuscules, sans accents si besoin). Choisis la ligne avec le même prénom, la même année de naissance et le club de Seraing (« Ecole Seraing Natation », « ESN »). Doute ou homonyme : demande à l'utilisateur. Introuvable : note-le et passe au suivant.
    2. Meilleurs temps : `https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=ID&athletePage=PBEST`, lis la page en texte (en-tête : NOM, Prénom, année, sexe si indiqué, club).
-   3. Historique : pour chaque épreuve de la page, ouvre la liste de **tous** ses temps (lien de l'épreuve, ou menu « Tous les résultats » / « All results » puis chaque nage), en petit bassin (25 m) **et** en grand bassin (50 m). Relève chaque ligne : épreuve, bassin, temps, points, date, ville, compétition (nom complet : infobulle ou texte du lien si tronqué), **club**. Ignore les relais.
-   4. **Club de chaque course** (règle du club : un nageur qui a changé de club n'a dans l'application que ses résultats nagés pour l'ESN). Relève pour chaque course le club sous lequel il a nagé, tel que swimrankings l'affiche : colonne « Club » de la liste des temps, sinon la liste des compétitions du nageur (onglet « Compétitions » / « Meets » de sa fiche, une ligne par compétition avec son club), sinon la page de la compétition (ligne du nageur). Une seule page par compétition suffit : toutes les courses d'une même compétition ont le même club. Club introuvable pour une course : laisse la colonne vide et signale-le dans le résumé (la course est gardée, mais l'historique n'est pas marqué vérifié). Ne devine jamais un club.
+   3. Historique : pour chaque épreuve de la page, ouvre la liste de **tous** ses temps (lien de l'épreuve, ou menu « Tous les résultats » / « All results » puis chaque nage), en petit bassin (25 m) **et** en grand bassin (50 m). Relève chaque ligne : épreuve, bassin, temps, points, date, ville, compétition (nom complet : infobulle ou texte du lien si tronqué), **club**, et quand swimrankings les affiche : **place** (rang dans la compétition), **tour** (séries, demi-finale, finale) et **temps de passage**. Ignore les relais.
+   4. **Club de chaque course** (règle du club : un nageur qui a changé de club n'a dans l'application que ses résultats nagés pour l'ESN). Relève pour chaque course le club sous lequel il a nagé, tel que swimrankings l'affiche : colonne « Club » de la liste des temps, sinon la liste des compétitions du nageur (onglet « Compétitions » / « Meets » de sa fiche, une ligne par compétition avec son club), sinon la page de la compétition (ligne du nageur). Une seule page par compétition suffit : toutes les courses d'une même compétition ont le même club. Sur la page d'une compétition, la ligne du nageur donne aussi sa place, le tour et souvent ses temps de passage : relève-les en même temps (aucune page de plus). Club introuvable pour une course : laisse la colonne vide et signale-le dans le résumé (la course est gardée, mais l'historique n'est pas marqué vérifié). Ne devine jamais un club.
    5. Écris `historique/NOM_Prenom.txt` au format ci-dessous.
 5. **Chiffrer.** `node scripts/roster.mjs historique historique` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste, ⚠ « club des courses non relevé » pour un fichier sans colonne Club), retire les courses nagées pour un autre club (« N nagés pour un autre club, retirés ») et écrit `public/data/club-history.json`. Dans l'application, les courses retirées disparaissent aussi chez chacun à l'ouverture suivante. L'historique déjà publié est fusionné : un nageur absent du dossier `historique/` garde ses temps publiés, un fichier présent les remplace.
 6. **Vérifier.** `git status` ne doit montrer que `public/data/club-history.json` ; `grep -c "NOM_D_UN_NAGEUR" public/data/club-history.json` doit renvoyer 0.
@@ -50,7 +50,7 @@ Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scri
 @@GENDER:F
 NOM, Prénom (AAAA)
 BEL - Ecole Seraing Natation
-<Épreuve>	<Bassin>	<Temps>	<Points>	<Date>	<Ville>	<Compétition>	<Club>
+<Épreuve>	<Bassin>	<Temps>	<Points>	<Date>	<Ville>	<Compétition>	<Club>	<Place>	<Tour>	<Passages>
 ```
 
 - `@@GENDER:` : `F` ou `M`.
@@ -58,6 +58,7 @@ BEL - Ecole Seraing Natation
 - Épreuve : `50m Libre`, `100m Dos`, `200m Brasse`, `100m Papillon`, `200m 4 nages`…
 - Bassin : `25m` ou `50m`. Temps : `m:ss.cc` ou `ss.cc`, suivi de `M` pour un temps masters, tel qu'écrit sur swimrankings (`2:21.62M`) : l'application garde la marque et affiche « Masters ». Les lignes « Lap » (temps de passage) ne sont pas des courses : ne les relève pas. Points : nombre, ou vide. Date : `11 oct 2025`.
 - Club : tel qu'écrit sur swimrankings (`BEL - Ecole Seraing Natation`, `Ecole Seraing Natation`, `ESN`, ou le nom d'un autre club). Seules les courses de l'ESN sont publiées ; la colonne est retirée à la publication (l'application lit 7 colonnes) et l'en-tête reçoit `@@CLUBS` (historique vérifié).
+- Place : le rang du nageur dans l'épreuve (`1`, `2`, `14`…), vide s'il n'est pas affiché. Tour : `Séries`, `Demi-finale`, `Finale` (`Finale B` accepté), vide pour une épreuve en une seule course ou inconnue. Passages : temps cumulés séparés par des espaces (`35.10 1:13.20 1:51.80` pour un 200 m), vide s'ils ne sont pas affichés. Une colonne vide n'est jamais devinée. Dans l'application : places, podiums et médailles, finales, temps de passage de chaque course.
 - Colonnes séparées par une **tabulation**, une course par ligne, sans ligne d'en-tête de tableau.
 
 Exemple (fictif) :
@@ -67,8 +68,8 @@ Exemple (fictif) :
 @@GENDER:F
 DUPONT, Emma (2014)
 BEL - Ecole Seraing Natation
-100m Libre	25m	1:31.08	171	11 oct 2025	Liège	Meeting d'automne	BEL - Ecole Seraing Natation
-100m Libre	25m	1:35.40	148	14 déc 2024	Seraing	Coupe de Noël	BEL - Ecole Seraing Natation
+100m Libre	25m	1:31.08	171	11 oct 2025	Liège	Meeting d'automne	BEL - Ecole Seraing Natation	3	Finale	43.90
+100m Libre	25m	1:35.40	148	14 déc 2024	Seraing	Coupe de Noël	BEL - Ecole Seraing Natation	12
 50m Dos	50m	45.12	180	14 juin 2023	Namur	Meeting de Namur	BEL - Club Exemple Natation
 ```
 
