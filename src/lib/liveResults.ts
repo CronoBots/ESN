@@ -291,11 +291,12 @@ export async function readMeetPdfs(
       };
       let swim: PdfSwim | null = null;
       if (isResult) {
-        const r = findSwimmerResult([text], sw, header);
+        // Seulement une ligne de l'ESN : rien d'un autre club (nageur parti, homonyme)
+        const r = findSwimmerResult([text], sw, header, CLUB.match);
         if (r && (r.timeCs != null || r.status !== 'OK'))
           swim = { ...base, timeCs: r.timeCs, status: r.status, place: r.place, points: r.points, splits: lapsToSplits(r.laps) };
       } else {
-        const e = findSwimmerEntry(text, sw);
+        const e = findSwimmerEntry(text, sw, CLUB.match);
         // Heure de passage : départ estimé de sa série
         const heatStart = e?.heat ? estimateHeatStarts(parseStartSheet(text), header.distance).heats.find((h) => h.heat === e.heat)?.start : undefined;
         if (e) swim = { ...base, startTime: heatStart ?? base.startTime, status: 'OK', entryCs: e.entryCs, heat: e.heat, lane: e.lane };
@@ -407,6 +408,11 @@ function toImport(l: LenexMeet, a: LenexAthlete) {
       notes: s.comment ? `${s.status === 'DSQ' ? 'Disqualification' : 'Remarque'} : ${s.comment}` : undefined,
     })),
   };
+}
+
+/** Le nageur nage-t-il pour l'ESN dans cette compétition (club indiqué dans le fichier de résultats) ? */
+export function swimsForClub(a: Pick<LenexAthlete, 'club'>): boolean {
+  return CLUB.match.test((a.club ?? '').trim());
 }
 
 async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void>, onDone?: () => void) {
@@ -534,7 +540,10 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       for (const x of l.athletes) for (const k of nameKeys(x)) index.set(k, [...(index.get(k) ?? []), x]);
       for (const sw of pending) {
         // Nom identique, sinon à une lettre près (« VERBRUGGEN » / « VERBRUGEN ») avec même prénom et même année
-        const a = (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw)) ?? l.athletes.find((x) => closeSwimmer(x, sw));
+        // Seulement s'il nage pour l'ESN dans cette compétition : rien d'un autre club (nageur parti, homonyme)
+        const a =
+          (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw) && swimsForClub(x)) ??
+          l.athletes.find((x) => closeSwimmer(x, sw) && swimsForClub(x));
         if (!a) continue;
         const report = toImport(l, a);
         found.set(sw.id, [...(found.get(sw.id) ?? []), { ...report, meet: { ...report.meet, liveId: m.id } }]);

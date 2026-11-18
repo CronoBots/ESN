@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon';
 import { openShareApp } from '../components/Invite';
 import { offerInstall } from './Install';
 import { navigate } from '../router';
-import { decryptHistory, decryptRoster, isEncryptedRoster, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptHistory, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
 import { parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
@@ -55,7 +55,8 @@ export async function applyClubHistory(): Promise<number> {
   for (const a of history.athletes) {
     const sw = byName.get(`${normName(a.lastName)}|${normName(a.firstName)}`)?.find((s) => sameSwimmer(a, s));
     if (!sw) continue;
-    todo.push({ a, swimmerId: sw.id, parsed: parseSwimrankings(a.text) });
+    // Seulement les courses nagées pour l'ESN (club relevé pour chaque course)
+    todo.push({ a, swimmerId: sw.id, parsed: parseSwimrankings(keepClubRaces(a.text, CLUB.match).text) });
     if (performance.now() - slice > 12) {
       await new Promise((r) => setTimeout(r, 0));
       slice = performance.now();
@@ -66,6 +67,8 @@ export async function applyClubHistory(): Promise<number> {
     for (const { a, swimmerId, parsed } of todo) {
       const sw = getState().swimmers.find((s) => s.id === swimmerId);
       if (!sw) continue;
+      // L'historique publié fait foi : ses courses retirées (autre club, correction) disparaissent aussi ici
+      if (parsed.swims.length) actions.pruneHistorySwims(swimmerId, parsed.swims);
       // Sans changer le nageur affiché sur l'accueil
       if (parsed.swims.length) added += actions.importSwimrankings({ swimmerId }, parsed.swims, { select: false }).added;
       // Noms de compétitions tronqués par une version précédente (« e édition… ») : on les rétablit

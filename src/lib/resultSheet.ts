@@ -284,7 +284,16 @@ function inferPlace(lines: string[], idx: number): number | undefined {
   return n >= 2 ? best : undefined;
 }
 
-export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = parseSheetHeader(texts)): SheetResult | null {
+/** La ligne d'un nageur (ou la suivante, quand la ligne est coupée) porte-t-elle ce club ? */
+function clubOnLine(lines: string[], idx: number, club: RegExp | undefined): boolean {
+  return !club || club.test(lines[idx]) || club.test(lines[idx + 1] ?? '');
+}
+
+/**
+ * Résultat d'un nageur dans une feuille. `club` : seulement une ligne de ce club (un nageur qui a
+ * changé de club ne reçoit que ses résultats nagés pour le club).
+ */
+export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = parseSheetHeader(texts), club?: RegExp): SheetResult | null {
   let best: SheetResult | null = null;
   let bestAt: { lines: string[]; idx: number } | null = null;
   const yy = sw.birthYear ? String(sw.birthYear % 100).padStart(2, '0') : null;
@@ -292,7 +301,7 @@ export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = pa
     const lines = t.split('\n').filter((l) => l.trim());
     for (let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx];
-      if (nameOnLine(line, sw) < 0) continue;
+      if (nameOnLine(line, sw) < 0 || !clubOnLine(lines, idx, club)) continue;
       const r = readLine(line, sw, header);
       if (!r) continue;
       // Homonyme d'une autre année : on écarte
@@ -353,16 +362,18 @@ export interface SheetEntry {
  *   Série 2 de 3
  *       4 DUPONT, Emma            14       Esn                 1:23.45
  */
-export function findSwimmerEntry(text: string, sw: SheetSwimmer): SheetEntry | null {
+export function findSwimmerEntry(text: string, sw: SheetSwimmer, club?: RegExp): SheetEntry | null {
   const yy = sw.birthYear ? String(sw.birthYear % 100).padStart(2, '0') : null;
   let heat: number | undefined;
-  for (const raw of text.split('\n')) {
+  const rows = text.split('\n');
+  for (let idx = 0; idx < rows.length; idx++) {
+    const raw = rows[idx];
     const h = /(?:S[ée]rie|Heat|Reeks)\s+(\d+)\b/i.exec(raw);
     if (h && !/\d{1,2}[.:]\d{2}/.test(raw)) {
       heat = Number(h[1]);
       continue;
     }
-    if (nameOnLine(raw, sw) < 0) continue;
+    if (nameOnLine(raw, sw) < 0 || !clubOnLine(rows, idx, club)) continue;
     const line = clean(raw);
     // Homonyme d'une autre année de naissance : ce n'est pas lui
     if (yy && /\s\d{2}\s/.test(` ${line} `) && !new RegExp(`(^|\\s)${yy}(\\s|$)`).test(line)) continue;

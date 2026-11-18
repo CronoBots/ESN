@@ -970,5 +970,28 @@ export const actions = {
     });
     return { swimmerId, added, skipped, meetsCreated };
   },
+
+  /**
+   * Nouvelle version de l'historique du club : les courses d'historique d'un nageur qui n'y sont plus
+   * (nagées pour un autre club, corrigées) sont retirées, puis les compétitions restées vides.
+   * Les résultats trouvés par la recherche automatique ne sont jamais touchés.
+   */
+  pruneHistorySwims(swimmerId: string, keep: Pick<ParsedSwim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date'>[]): number {
+    const key = (x: Pick<Swim, 'course' | 'distance' | 'stroke' | 'date'> & { timeCs?: number | null }) =>
+      `${x.course}|${x.distance}|${x.stroke}|${x.timeCs}|${x.date}`;
+    const wanted = new Set(keep.map(key));
+    let removed = 0;
+    setState((s) => {
+      const gone = new Set(s.swims.filter((x) => x.swimmerId === swimmerId && x.source === 'swimrankings' && !wanted.has(key(x))).map((x) => x.id));
+      if (!gone.size) return s;
+      removed = gone.size;
+      const touched = new Set(s.swims.filter((x) => gone.has(x.id)).map((x) => x.meetId));
+      const swims = s.swims.filter((x) => !gone.has(x.id));
+      const used = new Set(swims.map((x) => x.meetId));
+      // Compétitions de ces courses restées sans aucune course (et sans lien vers les résultats en direct)
+      return { ...s, swims, meets: s.meets.filter((m) => !touched.has(m.id) || used.has(m.id) || m.liveId) };
+    });
+    return removed;
+  },
 };
 

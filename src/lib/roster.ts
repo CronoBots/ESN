@@ -162,6 +162,48 @@ export async function decryptHistory(enc: EncryptedRoster, code: string): Promis
   return h;
 }
 
+/**
+ * Courses nagées pour le club seulement. Sur swimrankings, chaque course est relevée avec le club
+ * pour lequel le nageur nageait (8e colonne) : une course nagée pour un autre club (avant son
+ * arrivée, après son départ) est retirée, puis la colonne aussi (l'application lit 7 colonnes).
+ * Quand toutes les courses portent leur club, l'en-tête reçoit « @@CLUBS » : historique vérifié.
+ */
+export function keepClubRaces(text: string, club: RegExp): { text: string; kept: number; dropped: number; verified: boolean } {
+  const out: string[] = [];
+  let kept = 0;
+  let dropped = 0;
+  let withClub = 0;
+  let marked = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (/^@@CLUBS\b/.test(line.trim())) {
+      marked = true;
+      continue;
+    }
+    const cols = line.split('\t');
+    if (cols.length < 5) {
+      out.push(line);
+      continue;
+    }
+    if (cols.length >= 8 && cols[7].trim()) {
+      withClub++;
+      if (!club.test(cols[7].trim())) {
+        dropped++;
+        continue;
+      }
+      out.push(cols.slice(0, 7).join('\t'));
+    } else out.push(cols.length >= 8 ? cols.slice(0, 7).join('\t') : line);
+    kept++;
+  }
+  const verified = marked || (kept + dropped > 0 && withClub === kept + dropped);
+  if (verified) {
+    // Marque après les lignes « @@… » du début
+    let at = 0;
+    while (at < out.length && /^@@/.test(out[at].trim())) at++;
+    out.splice(at, 0, '@@CLUBS');
+  }
+  return { text: out.join('\n'), kept, dropped, verified };
+}
+
 /** En-tête d'un texte d'import swimrankings : « NOM, Prénom (AAAA) » et l'identifiant swimrankings. */
 export function historyHeader(text: string): { lastName: string; firstName: string; birthYear?: number; swimrankingsId?: string } | null {
   const id = /athleteId=(\d+)/.exec(text)?.[1];

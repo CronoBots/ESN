@@ -19,16 +19,21 @@ swimrankings.net a tout l'historique des nageurs, mais refuse les lectures autom
 
 1. **Préparer.** Tu travailles dans le dossier du dépôt ESN, sur l'ordinateur de l'utilisateur. Lis la skill du navigateur disponible (`built-in-browser` ou `chrome-browser`). Si `node_modules` manque : `npm install`.
 2. **Clé du club.** Rien à demander : les commandes utilisent la clé de `src/club.ts` quand `CODE` est omis.
-3. **Qui relever.** `node scripts/roster.mjs manquants` affiche les membres **actifs** dont l'historique n'est pas encore publié : ce sont eux à relever (les anciens membres, statut « ancien », ne sont relevés que si l'utilisateur le demande). Pour tout refaire, `node scripts/roster.mjs lire` affiche toute la liste (groupe ; nom ; prénom ; année ; sexe ; statut).
+3. **Qui relever.** `node scripts/roster.mjs manquants` affiche deux listes :
+   - les membres **actifs** dont l'historique n'est pas encore publié ;
+   - les membres actifs dont l'historique est publié **sans le club de chaque course** (relevé avant cette règle) : on refait leur historique avec la colonne Club, pour retirer les courses nagées pour un autre club.
+
+   Les anciens membres (statut « ancien ») ne sont relevés que si l'utilisateur le demande. Pour tout refaire, `node scripts/roster.mjs lire` affiche toute la liste (groupe ; nom ; prénom ; année ; sexe ; statut).
 4. **Pour chaque nageur :**
    1. Recherche : `https://www.swimrankings.net/index.php?page=athleteSelect&nationId=0&athleteLastName=NOM` (nom en majuscules, sans accents si besoin). Choisis la ligne avec le même prénom, la même année de naissance et le club de Seraing (« Ecole Seraing Natation », « ESN »). Doute ou homonyme : demande à l'utilisateur. Introuvable : note-le et passe au suivant.
    2. Meilleurs temps : `https://www.swimrankings.net/index.php?page=athleteDetail&athleteId=ID&athletePage=PBEST`, lis la page en texte (en-tête : NOM, Prénom, année, sexe si indiqué, club).
-   3. Historique : pour chaque épreuve de la page, ouvre la liste de **tous** ses temps (lien de l'épreuve, ou menu « Tous les résultats » / « All results » puis chaque nage), en petit bassin (25 m) **et** en grand bassin (50 m). Relève chaque ligne : épreuve, bassin, temps, points, date, ville, compétition (nom complet : infobulle ou texte du lien si tronqué). Ignore les relais.
-   4. Écris `historique/NOM_Prenom.txt` au format ci-dessous.
-5. **Chiffrer.** `node scripts/roster.mjs historique historique` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste) et écrit `public/data/club-history.json`. L'historique déjà publié est fusionné : un nageur absent du dossier `historique/` garde ses temps publiés, un fichier présent les remplace.
+   3. Historique : pour chaque épreuve de la page, ouvre la liste de **tous** ses temps (lien de l'épreuve, ou menu « Tous les résultats » / « All results » puis chaque nage), en petit bassin (25 m) **et** en grand bassin (50 m). Relève chaque ligne : épreuve, bassin, temps, points, date, ville, compétition (nom complet : infobulle ou texte du lien si tronqué), **club**. Ignore les relais.
+   4. **Club de chaque course** (règle du club : un nageur qui a changé de club n'a dans l'application que ses résultats nagés pour l'ESN). Relève pour chaque course le club sous lequel il a nagé, tel que swimrankings l'affiche : colonne « Club » de la liste des temps, sinon la liste des compétitions du nageur (onglet « Compétitions » / « Meets » de sa fiche, une ligne par compétition avec son club), sinon la page de la compétition (ligne du nageur). Une seule page par compétition suffit : toutes les courses d'une même compétition ont le même club. Club introuvable pour une course : laisse la colonne vide et signale-le dans le résumé (la course est gardée, mais l'historique n'est pas marqué vérifié). Ne devine jamais un club.
+   5. Écris `historique/NOM_Prenom.txt` au format ci-dessous.
+5. **Chiffrer.** `node scripts/roster.mjs historique historique` : affiche le nombre de temps par nageur (⚠ pour un fichier qui ne correspond à aucun nageur de la liste, ⚠ « club des courses non relevé » pour un fichier sans colonne Club), retire les courses nagées pour un autre club (« N nagés pour un autre club, retirés ») et écrit `public/data/club-history.json`. Dans l'application, les courses retirées disparaissent aussi chez chacun à l'ouverture suivante. L'historique déjà publié est fusionné : un nageur absent du dossier `historique/` garde ses temps publiés, un fichier présent les remplace.
 6. **Vérifier.** `git status` ne doit montrer que `public/data/club-history.json` ; `grep -c "NOM_D_UN_NAGEUR" public/data/club-history.json` doit renvoyer 0.
 7. **Publier.** `git add public/data/club-history.json`, commit « Historique du club (N nageurs) », `git push origin main`. La publication GitHub Pages met l'application à jour ; chaque membre reçoit l'historique à la prochaine ouverture (une seule fois par version publiée, sans doublon avec les résultats déjà présents).
-8. **Résumé** pour l'utilisateur : nombre de nageurs, de temps, période couverte, nageurs introuvables ou lignes illisibles.
+8. **Résumé** pour l'utilisateur : nombre de nageurs, de temps, période couverte, courses retirées car nagées pour un autre club (par nageur), nageurs introuvables, lignes illisibles ou sans club.
 
 Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scripts/roster.mjs manquants`, relève ces nageurs, puis refais les étapes 5 à 7. Avant de publier, récupère la dernière version (`git pull --rebase`) : l'application évolue aussi depuis d'autres sessions.
 
@@ -45,13 +50,14 @@ Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scri
 @@GENDER:F
 NOM, Prénom (AAAA)
 BEL - Ecole Seraing Natation
-<Épreuve>	<Bassin>	<Temps>	<Points>	<Date>	<Ville>	<Compétition>
+<Épreuve>	<Bassin>	<Temps>	<Points>	<Date>	<Ville>	<Compétition>	<Club>
 ```
 
 - `@@GENDER:` : `F` ou `M`.
 - `@@PARTIEL` (ligne facultative) : historique provisoire, avec seulement les meilleurs temps ESN relevés dans les classements « Meilleurs à vie » du club. Ces pages de classement ne comptent pas dans la limite de pages de swimrankings. `manquants` liste encore ce nageur ; son historique complet remplacera ce fichier.
 - Épreuve : `50m Libre`, `100m Dos`, `200m Brasse`, `100m Papillon`, `200m 4 nages`…
 - Bassin : `25m` ou `50m`. Temps : `m:ss.cc` ou `ss.cc`, suivi de `M` pour un temps masters, tel qu'écrit sur swimrankings (`2:21.62M`) : l'application garde la marque et affiche « Masters ». Les lignes « Lap » (temps de passage) ne sont pas des courses : ne les relève pas. Points : nombre, ou vide. Date : `11 oct 2025`.
+- Club : tel qu'écrit sur swimrankings (`BEL - Ecole Seraing Natation`, `Ecole Seraing Natation`, `ESN`, ou le nom d'un autre club). Seules les courses de l'ESN sont publiées ; la colonne est retirée à la publication (l'application lit 7 colonnes) et l'en-tête reçoit `@@CLUBS` (historique vérifié).
 - Colonnes séparées par une **tabulation**, une course par ligne, sans ligne d'en-tête de tableau.
 
 Exemple (fictif) :
@@ -61,7 +67,9 @@ Exemple (fictif) :
 @@GENDER:F
 DUPONT, Emma (2014)
 BEL - Ecole Seraing Natation
-100m Libre	25m	1:31.08	171	11 oct 2025	Liège	Meeting d'automne
-100m Libre	25m	1:35.40	148	14 déc 2024	Seraing	Coupe de Noël
-50m Dos	50m	45.12	180	14 juin 2025	Namur	Meeting de Namur
+100m Libre	25m	1:31.08	171	11 oct 2025	Liège	Meeting d'automne	BEL - Ecole Seraing Natation
+100m Libre	25m	1:35.40	148	14 déc 2024	Seraing	Coupe de Noël	BEL - Ecole Seraing Natation
+50m Dos	50m	45.12	180	14 juin 2023	Namur	Meeting de Namur	BEL - Club Exemple Natation
 ```
+
+(La dernière course, nagée pour un autre club avant l'arrivée à l'ESN, est retirée à la publication.)
