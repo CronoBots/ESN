@@ -189,7 +189,8 @@ describe('bilan de la récupération', () => {
       const fuzzy: string[] = [];
       let matched = 0;
       for (const { a, meets: ms, results } of esn.values()) {
-        const exact = members.find((m) => sameSwimmer(a, m));
+        // Même nageur, ou un de ses « autres noms » de la liste (orthographe déjà confirmée) : relié sans doute
+        const exact = members.find((m) => sameSwimmer(a, m) || (m.aliases ?? []).some((al) => sameSwimmer(a, al)));
         const close = exact ? undefined : members.find((m) => closeSwimmer(a, m));
         const m = exact ?? close;
         const line = `${who({ lastName: a.lastName.toUpperCase(), firstName: a.firstName, birthYear: a.birthYear })} : ${results} résultat(s), ${ms.size} compétition(s)`;
