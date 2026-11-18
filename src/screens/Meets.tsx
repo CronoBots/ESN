@@ -7,7 +7,7 @@ import { navigate } from '../router';
 import { formatDate, formatLongDay, formatRange, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
 import { eventLabel, courseLabel, ROUND_LABEL } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
-import { chronoCompare, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
+import { chronoCompare, clubMeets, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
 import type { Swim, Swimmer } from '../store/types';
 import { overlay } from '../components/ui';
@@ -50,8 +50,12 @@ export function Meets() {
     return map;
   }, [data.swims, swimmer]);
 
+  // Compétitions où au moins un membre actuel de l'ESN a nagé ou est inscrit. Celles des seuls anciens
+  // membres (souvent déjà dans un autre club) restent sur leur fiche, pas dans ces listes.
+  const clubMeetIds = useMemo(() => clubMeets(data.swims, data.swimmers), [data.swims, data.swimmers]);
+
   const upcoming = data.meets
-    .filter((m) => (m.endDate ?? m.startDate) >= today)
+    .filter((m) => (m.endDate ?? m.startDate) >= today && clubMeetIds.has(m.id))
     .sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
 
   // Chronologie par saison, dans l'ordre choisi
@@ -70,9 +74,9 @@ export function Meets() {
   const others = useMemo(() => {
     const seen = new Set(timeline.map((e) => e.key));
     return data.meets
-      .filter((m) => (m.endDate ?? m.startDate) < today && !seen.has(m.id))
+      .filter((m) => (m.endDate ?? m.startDate) < today && !seen.has(m.id) && clubMeetIds.has(m.id))
       .sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
-  }, [data.meets, timeline, today]);
+  }, [data.meets, timeline, today, clubMeetIds]);
 
   const pastCount = timeline.filter((e) => e.startDate <= today).length;
   // Autres compétitions du club : les 12 derniers mois d'abord, tout l'historique sur demande
@@ -198,7 +202,9 @@ export function Meets() {
                 Voir les {others.length - shownOthers.length} compétitions plus anciennes
               </button>
             )}
-            {swimmer && <div className="section-foot">Compétitions où d’autres nageurs de l’ESN ont nagé.</div>}
+            <div className="section-foot">
+              Compétitions où {swimmer ? 'd’autres membres' : 'des membres'} de l’ESN ont nagé. Celles des anciens membres restent sur leur fiche.
+            </div>
           </Section>
         )}
 

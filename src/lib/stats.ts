@@ -541,3 +541,11 @@ export function meetTimeline(
   }
   return out;
 }
+
+/** Compétitions avec au moins un membre actuel de l'ESN (pas seulement d'anciens membres). */
+export function clubMeets(swims: Swim[], swimmers: Swimmer[]): Set<string> {
+  const active = new Set(swimmers.filter((s) => !s.former).map((s) => s.id));
+  const ids = new Set<string>();
+  for (const s of swims) if (s.meetId && active.has(s.swimmerId)) ids.add(s.meetId);
+  return ids;
+}
