@@ -24,6 +24,8 @@ export interface LevelTime {
 }
 
 export interface LevelStatus {
+  /** Grille utilisée : filles (F) ou garçons (M), les temps de référence ne sont pas les mêmes. */
+  gender: Gender;
   /** Âge atteint dans l'année, celui de la grille. */
   age: number;
   year: number;
@@ -68,7 +70,12 @@ export function levelStatus(
   if (!levels.length) return null;
   const reached = [...levels].reverse().find((l) => l.reached)?.level;
   const next = levels.find((l) => !l.reached);
-  return { age, year, levels, reached, next };
+  return { gender: sw.gender, age, year, levels, reached, next };
+}
+
+/** « filles de 12 ans », « garçons de 19 ans et plus » : la grille appliquée, en clair. */
+export function gridLabel(gender: Gender, age: number): string {
+  return `${gender === 'F' ? 'filles' : 'garçons'} de ${age >= 19 ? '19 ans et plus' : `${age} ans`}`;
 }
 
 /** Écart relatif au prochain niveau (0,02 = 2 % du temps) : pour choisir les objectifs les plus proches. */

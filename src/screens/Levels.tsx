@@ -4,7 +4,7 @@ import { swimsOf, useSelectedSwimmer } from '../store/hooks';
 import { Empty, NavBar, Section, Segmented } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LevelChip, gapLabel, levelYear, useLevelGoals } from '../components/Levels';
-import { levelStatus, LEVELS, type Level, type LevelStatus } from '../lib/levels';
+import { gridLabel, levelStatus, LEVELS, type Level, type LevelStatus } from '../lib/levels';
 import { FFBN_GRID_URL } from '../lib/ffbnGrid';
 import { personalBests } from '../lib/stats';
 import { COURSES, STROKES, distancesFor, eventLabel, fullEventKey } from '../lib/events';
@@ -97,7 +97,11 @@ export function LevelsScreen() {
 
   return (
     <>
-      <NavBar title="Niveaux FFBN" subtitle={age ? `${swimmer.firstName} · ${age >= 19 ? '19 ans et plus' : `${age} ans`} en ${year}` : swimmer.firstName} back="/" />
+      <NavBar
+        title="Niveaux FFBN"
+        subtitle={age ? `${swimmer.firstName} · ${swimmer.gender === 'F' ? 'filles' : 'garçons'}, ${age >= 19 ? '19 ans et plus' : `${age} ans`} en ${year}` : swimmer.firstName}
+        back="/"
+      />
       <main className="page">
         <SwimmerChips swimmer={swimmer} />
 
@@ -177,7 +181,7 @@ export function LevelsScreen() {
           <span className="muted">2:33.66 temps à viser ensuite</span>
         </div>
         <div className="section-foot">
-          Temps de référence de la fédération francophone (grille 2026-2028) pour l’âge atteint en {year}, comparés au record de chaque
+          Temps de référence de la fédération francophone (grille 2026-2028) des {age != null ? gridLabel(swimmer.gender, age) : swimmer.gender === 'F' ? 'filles' : 'garçons'} en {year}, comparés au record de chaque
           épreuve. Requin : bassin de 50&nbsp;m, dès 13 ans. Touchez une épreuve pour sa courbe.{' '}
           <a href={FFBN_GRID_URL} target="_blank" rel="noreferrer">
             Voir la grille

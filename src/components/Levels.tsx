@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Course, Swim, Swimmer } from '../store/types';
-import { levelStatus, relativeGap, LEVELS, type Level, type LevelStatus } from '../lib/levels';
+import { gridLabel, levelStatus, relativeGap, LEVELS, type Level, type LevelStatus } from '../lib/levels';
 import { FFBN_GRID_URL } from '../lib/ffbnGrid';
 import { personalBests } from '../lib/stats';
 import { courseLabel, eventLabel } from '../lib/events';
@@ -25,7 +25,14 @@ export function LevelChip({ level }: { level: Level }) {
 /** Fiche d'une épreuve : les niveaux FFBN de l'âge du nageur, atteints ou à atteindre. */
 export function LevelLadder({ status, course }: { status: LevelStatus; course: Course }) {
   return (
-    <Section title="Niveaux FFBN" action={<span className="muted">{status.age >= 19 ? '19 ans et plus' : `${status.age} ans`} en {status.year}</span>}>
+    <Section
+      title="Niveaux FFBN"
+      action={
+        <span className="muted">
+          {status.gender === 'F' ? 'Filles' : 'Garçons'} · {status.age >= 19 ? '19 ans et plus' : `${status.age} ans`} en {status.year}
+        </span>
+      }
+    >
       <div className="list">
         {status.levels.map((l) => {
           const isNext = status.next?.level === l.level;
@@ -46,7 +53,7 @@ export function LevelLadder({ status, course }: { status: LevelStatus; course: C
         })}
       </div>
       <div className="section-foot">
-        Temps de référence de la fédération francophone (grille 2026-2028) pour l’âge atteint en {status.year}, comparés au record en
+        Temps de référence de la fédération francophone (grille 2026-2028) des {gridLabel(status.gender, status.age)} en {status.year}, comparés au record en
         bassin de {courseLabel(course)}.{course === 'SCM' && status.age >= 13 ? ' Le niveau Requin se nage en bassin de 50 m.' : ''}{' '}
         <a href={FFBN_GRID_URL} target="_blank" rel="noreferrer">
           Voir la grille
@@ -126,7 +133,7 @@ export function LevelGoals({ swimmer, swims, includeTraining }: { swimmer: Swimm
         ))}
       </div>
       <div className="section-foot">
-        Niveaux de la fédération francophone (Mistral, Trident, Requin) pour l’âge atteint en {next[0].status.year}.
+        Niveaux de la fédération francophone (Mistral, Trident, Requin) : grille des {gridLabel(next[0].status.gender, next[0].status.age)} en {next[0].status.year}.
         {summary ? ` Déjà atteint : ${summary}.` : ''}
       </div>
     </Section>
