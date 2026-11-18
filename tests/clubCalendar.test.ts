@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { ageAllows, eventAsMeet, groupsLabel, nextClubEventFor, parseClubCalendar, publishedMeet, upcomingClubEvents } from '../src/lib/clubCalendar';
+import { ageAllows, eventAsMeet, groupsLabel, groupsShort, nextClubEventFor, parseClubCalendar, publishedMeet, upcomingClubEvents } from '../src/lib/clubCalendar';
 import { buildMeetCalendar } from '../src/lib/ics';
 import type { Meet } from '../src/store/types';
 
@@ -46,6 +46,15 @@ describe('calendrier du club', () => {
     expect(groupsLabel(['A'])).toBe('Groupe A');
     expect(groupsLabel(['A', 'B'])).toBe('Groupes A et B');
     expect(groupsLabel(['A', 'B', 'C'])).toBe('Groupes A, B et C');
+    // Avec le prénom de l'entraîneur de chaque groupe, comme sur le calendrier du club
+    expect(cal.groupNames).toMatchObject({ A: 'Guillaume', B: 'Emilie', C: 'Synclair' });
+    expect(groupsLabel(['A'], cal.groupNames)).toBe('Groupe de Guillaume');
+    expect(groupsLabel(['A', 'B'], cal.groupNames)).toBe('Groupes de Guillaume et d’Emilie');
+    expect(groupsLabel(['A', 'B', 'C'], cal.groupNames)).toBe('Groupes de Guillaume, d’Emilie et de Synclair');
+    expect(groupsShort(['B', 'C'], cal.groupNames)).toBe('Emilie, Synclair');
+    // Prénom manquant : la lettre
+    expect(groupsLabel(['A', 'D'], cal.groupNames)).toBe('Groupes A et D');
+    expect(groupsShort(['A', 'D'], cal.groupNames)).toBe('Guillaume, D');
     const ics = buildMeetCalendar(eventAsMeet(cal.events.find((e) => e.start === '2026-12-12')!), [], []);
     expect(ics).toMatch(/DTSTART;VALUE=DATE:20261212/);
     expect(ics).toMatch(/DTEND;VALUE=DATE:20261214/);

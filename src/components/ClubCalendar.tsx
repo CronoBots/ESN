@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { eventAsMeet, groupsLabel, parseClubCalendar, type ClubCalendar, type ClubEvent } from '../lib/clubCalendar';
+import { eventAsMeet, groupsLabel, groupsShort, parseClubCalendar, type ClubCalendar, type ClubEvent } from '../lib/clubCalendar';
 import { courseLabel } from '../lib/events';
 import { formatDate, formatRange, relativeDay, todayISO } from '../lib/dates';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
@@ -52,8 +52,19 @@ function DetailSheet({ ev, cal, close }: { ev: ClubEvent; cal: ClubCalendar; clo
         </div>
         <div className="tl-badges">
           <span className="badge first">{ev.start <= today ? 'En cours' : capitalize(relativeDay(ev.start))}</span>
-          {ev.groups.length > 0 && <span className="badge">{groupsLabel(ev.groups)}</span>}
+          {ev.groups.length > 0 && <GroupsBadge groups={ev.groups} names={cal.groupNames} />}
         </div>
+        {ev.groups.length > 0 && (
+          <div className="club-event-groups">
+            <span className="muted small">Groupes concernés</span>
+            {ev.groups.map((g) => (
+              <span key={g} className="club-event-group">
+                <b>{g}</b>
+                {cal.groupNames[g] ? ` · ${cal.groupNames[g]}` : ''}
+              </span>
+            ))}
+          </div>
+        )}
         {ev.note && (
           <p className="club-event-note">
             <Icon name="info" /> {ev.note}
@@ -74,6 +85,15 @@ function DetailSheet({ ev, cal, close }: { ev: ClubEvent; cal: ClubCalendar; clo
   );
 }
 
+/** Groupes concernés, avec le prénom de leur entraîneur (« Guillaume, Emilie »). */
+export function GroupsBadge({ groups, names }: { groups: string[]; names: Record<string, string> }) {
+  return (
+    <span className="badge" aria-label={groupsLabel(groups, names)}>
+      <Icon name="users" /> {groupsShort(groups, names)}
+    </span>
+  );
+}
+
 export function openClubEvent(ev: ClubEvent, cal: ClubCalendar) {
   overlay.sheet((close) => <DetailSheet ev={ev} cal={cal} close={close} />);
 }
@@ -90,7 +110,7 @@ export function ClubEventRow({ ev, cal }: { ev: ClubEvent; cal: ClubCalendar }) 
         <div className="row-sub">{where(ev)}</div>
         <div className="tl-badges">
           <span className="badge first">{ongoing ? 'En cours' : capitalize(relativeDay(ev.start))}</span>
-          {ev.groups.length > 0 && <span className="badge">{groupsLabel(ev.groups)}</span>}
+          {ev.groups.length > 0 && <GroupsBadge groups={ev.groups} names={cal.groupNames} />}
           <span className="badge muted-badge">Programme à venir</span>
         </div>
       </div>
@@ -115,7 +135,7 @@ export function ClubEventCard({ ev, cal }: { ev: ClubEvent; cal: ClubCalendar })
         </span>
       </div>
       <div className="club-event-meta">
-        {ev.groups.length > 0 && <span>{groupsLabel(ev.groups)}</span>}
+        {ev.groups.length > 0 && <span>{groupsLabel(ev.groups, cal.groupNames)}</span>}
         {ev.note && <span>{ev.note}</span>}
       </div>
       <div className="club-event-wait">

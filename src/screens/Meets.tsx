@@ -15,8 +15,8 @@ import { DateBlock, TimelineMeetCard, useTimeline } from '../components/MeetTime
 import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
 import { capitalize, deName, placeLabel } from '../lib/text';
-import { ClubEventRow, useClubCalendar } from '../components/ClubCalendar';
-import { groupsLabel, publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
+import { ClubEventRow, GroupsBadge, useClubCalendar } from '../components/ClubCalendar';
+import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
 
 
 type Order = 'recent' | 'chrono';
@@ -130,7 +130,7 @@ export function Meets() {
                             {n} épreuve{n > 1 ? 's' : ''} au programme
                           </span>
                         )}
-                        {planned && planned.groups.length > 0 && <span className="badge">{groupsLabel(planned.groups)}</span>}
+                        {planned && planned.groups.length > 0 && <GroupsBadge groups={planned.groups} names={cal!.groupNames} />}
                       </div>
                     </div>
                     <Icon name="chevronRight" className="chev" />

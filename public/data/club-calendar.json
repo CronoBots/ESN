@@ -3,6 +3,7 @@
   "season": "2026-2027",
   "version": "2026-09-23",
   "until": "2026-12-31",
+  "groupNames": { "A": "Guillaume", "B": "Emilie", "C": "Synclair" },
   "note": "Ce calendrier peut évoluer (suppressions, ajouts) selon les invitations reçues par le club. Il couvre la première partie de la saison, jusqu’en décembre 2026 ; la deuxième partie sera communiquée en temps utile.",
   "events": [
     {

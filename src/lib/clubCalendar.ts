@@ -30,6 +30,8 @@ export interface ClubCalendar {
   version: string;
   /** Dernier jour couvert : la suite sera ajoutée quand le club la communique. */
   until: string;
+  /** Prénom de l'entraîneur de chaque groupe (A → Guillaume), comme sur le calendrier du club. */
+  groupNames: Record<string, string>;
   note?: string;
   events: ClubEvent[];
 }
@@ -55,6 +57,10 @@ export function parseClubCalendar(raw: unknown): ClubCalendar | null {
     season: String(r.season ?? ''),
     version: String(r.version ?? ''),
     until: isDate(r.until) ? r.until : events.reduce((d, e) => ((e.end ?? e.start) > d ? (e.end ?? e.start) : d), ''),
+    groupNames:
+      r.groupNames && typeof r.groupNames === 'object'
+        ? Object.fromEntries(Object.entries(r.groupNames).filter((e): e is [string, string] => typeof e[1] === 'string' && !!e[1].trim()))
+        : {},
     note: r.note,
     events: events.sort((a, b) => (a.start < b.start ? -1 : 1)),
   };
@@ -102,11 +108,22 @@ export function upcomingClubEvents(cal: ClubCalendar | null, meets: Meet[], toda
   return cal.events.filter((e) => (e.end ?? e.start) >= today && !publishedMeet(e, meets));
 }
 
-/** « Groupe A », « Groupes A et B », « Groupes A, B et C ». */
-export function groupsLabel(groups: string[]): string {
+const of = (name: string) => (/^[aeiouyhàâäéèêëîïôöùûü]/i.test(name) ? `d’${name}` : `de ${name}`);
+const joinFr = (items: string[]) => (items.length === 1 ? items[0] : `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}`);
+
+/**
+ * En phrase : « Groupes de Guillaume et d’Emilie » avec les prénoms des entraîneurs,
+ * sinon « Groupe A », « Groupes A et B », « Groupes A, B et C ».
+ */
+export function groupsLabel(groups: string[], names: Record<string, string> = {}): string {
   if (!groups.length) return '';
-  if (groups.length === 1) return `Groupe ${groups[0]}`;
-  return `Groupes ${groups.slice(0, -1).join(', ')} et ${groups[groups.length - 1]}`;
+  const withNames = groups.every((g) => names[g]);
+  return `${groups.length > 1 ? 'Groupes' : 'Groupe'} ${joinFr(withNames ? groups.map((g) => of(names[g])) : groups)}`;
+}
+
+/** Court, pour un badge : « Guillaume, Emilie » (la lettre quand un prénom manque). */
+export function groupsShort(groups: string[], names: Record<string, string> = {}): string {
+  return groups.map((g) => names[g] ?? g).join(', ');
 }
 
 /** Compétition « fictive » pour l'export vers l'agenda du téléphone (journées entières). */

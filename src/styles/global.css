@@ -4285,3 +4285,25 @@ button.meet-nav-btn:active {
   font-size: 15px;
   line-height: 1.4;
 }
+
+.badge svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.club-event-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  font-size: 15px;
+}
+
+.club-event-groups .muted {
+  flex-basis: 100%;
+}
+
+.club-event-group b {
+  font-weight: 700;
+}

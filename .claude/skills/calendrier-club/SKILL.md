@@ -9,7 +9,7 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
 
 ## Règles
 
-- Le dépôt est **public** : aucun nom de personne. Les groupes s'écrivent seulement par leur lettre (`A`, `B`, `C`), jamais avec le prénom de l'entraîneur ; aucun nom de nageur.
+- Le dépôt est **public** : aucun nom de nageur. Les groupes s'écrivent par leur lettre (`A`, `B`, `C`) ; le **prénom** de l'entraîneur de chaque groupe va dans `groupNames`, comme sur le calendrier du club (décision de l'utilisateur), jamais son nom de famille.
 - Recopie fidèlement le document : n'invente ni date, ni lieu, ni groupe, ni condition. Une case illisible ou ambiguë : demande à l'utilisateur.
 - Garde les compétitions déjà passées de la saison (l'application ne montre que celles à venir) ; une compétition supprimée par le club est retirée du fichier.
 
@@ -21,6 +21,7 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
   "season": "2026-2027",
   "version": "AAAA-MM-JJ (date de version du document)",
   "until": "AAAA-MM-JJ (dernier jour couvert par le document)",
+  "groupNames": { "A": "Prénom de l'entraîneur du groupe A", "B": "…", "C": "…" },
   "note": "Avertissement du document (le calendrier peut évoluer…)",
   "events": [
     {
@@ -39,6 +40,7 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
 }
 ```
 
+- `groupNames` : recopie l'en-tête « Groupes concernés » du document (« A Guillaume B Emilie C Synclair »). L'application affiche « Groupes de Guillaume et d’Emilie » et, dans les badges, « Guillaume, Emilie ».
 - Dates au format `AAAA-MM-JJ` ; `end` absent pour une compétition d'un jour.
 - Nom en clair et en français (« Championnats FFBN 25 m Jeunes », « Dernière Chance »), sans abréviation obscure (« Champ » → « Championnats »).
 - Espace insécable ` ` entre un nombre et son unité (`25 m`, `15 ans`), pour éviter une coupure à l'écran.
