@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "icons": "node scripts/generate-icons.mjs",
-    "roster": "node scripts/roster.mjs"
+    "roster": "node scripts/roster.mjs",
+    "audit": "vitest run --config vitest.audit.config.ts && node scripts/audit/show.mjs"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",
