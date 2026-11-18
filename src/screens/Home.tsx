@@ -17,7 +17,7 @@ import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, useSyncStatus } from './autoResults';
 import { clubSummary, ensureClub, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import { ClubEventCard, useClubCalendar } from '../components/ClubCalendar';
-import { nextClubEventFor, upcomingClubEvents } from '../lib/clubCalendar';
+import { upcomingClubEvents } from '../lib/clubCalendar';
 import type { Swimmer } from '../store/types';
 
 import { capitalize, deName } from '../lib/text';
@@ -124,11 +124,11 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
   const upcomingEntries = upcoming ? mine.filter((s) => s.meetId === upcoming.id).sort(chronoCompare) : [];
   const multiDay = !!upcoming?.endDate && upcoming.endDate !== upcoming.startDate;
   const awaiting = useMemo(() => awaitingMeets(data, swimmer.id), [data, swimmer.id]);
-  // Pas encore de programme publié : la prochaine compétition annoncée par le calendrier du club (si son âge le permet)
+  // Pas encore de programme publié : la prochaine compétition annoncée par le calendrier du club (la même pour tous)
   const cal = useClubCalendar();
   const clubNext = useMemo(
-    () => (upcoming ? undefined : nextClubEventFor(upcomingClubEvents(cal, data.meets, today), swimmer.birthYear)),
-    [upcoming, cal, data.meets, today, swimmer.birthYear],
+    () => (upcoming ? undefined : upcomingClubEvents(cal, data.meets, today)[0]),
+    [upcoming, cal, data.meets, today],
   );
 
   const recentPBs = useMemo(
@@ -308,12 +308,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
                 </button>
               }
             >
-              <ClubEventCard
-                ev={clubNext}
-                cal={cal}
-                firstName={swimmer.firstName}
-                skipped={upcomingClubEvents(cal, data.meets, today).filter((e) => e.start < clubNext.start)}
-              />
+              <ClubEventCard ev={clubNext} cal={cal} />
             </Section>
           )}
 

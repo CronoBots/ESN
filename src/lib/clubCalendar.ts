@@ -16,9 +16,6 @@ export interface ClubEvent {
   course?: Course;
   /** Groupes d'entraînement concernés (A, B, C). */
   groups: string[];
-  /** Âge (atteint dans l'année) : compétition réservée à ces âges. */
-  minAge?: number;
-  maxAge?: number;
   /** Conditions : temps limites, sélection… */
   note?: string;
 }
@@ -88,26 +85,6 @@ export function publishedMeet(ev: ClubEvent, meets: Meet[]): Meet | undefined {
     const mName = words(m.name);
     return [...city].some((w) => mCity.has(w) || mName.has(w)) || [...name].some((w) => mName.has(w));
   });
-}
-
-/** L'âge (atteint dans l'année de la compétition) permet-il d'y nager ? Âge inconnu : oui. */
-export function ageAllows(ev: ClubEvent, birthYear?: number): boolean {
-  if (!birthYear) return true;
-  const age = Number(ev.start.slice(0, 4)) - birthYear;
-  return (ev.minAge == null || age >= ev.minAge) && (ev.maxAge == null || age <= ev.maxAge);
-}
-
-/** « 11-16 ans », « 15 ans et plus », « jusqu'à 12 ans » ; vide sans limite d'âge. */
-export function ageLabel(ev: ClubEvent): string {
-  if (ev.minAge != null && ev.maxAge != null) return `${ev.minAge}-${ev.maxAge}\u00a0ans`;
-  if (ev.minAge != null) return `${ev.minAge}\u00a0ans et plus`;
-  if (ev.maxAge != null) return `jusqu’à ${ev.maxAge}\u00a0ans`;
-  return '';
-}
-
-/** Accueil : prochaine compétition du club pour ce nageur (son âge le permet), avant la publication du programme. */
-export function nextClubEventFor(events: ClubEvent[], birthYear?: number): ClubEvent | undefined {
-  return events.find((e) => ageAllows(e, birthYear));
 }
 
 /** Compétitions du calendrier pas encore terminées et pas encore publiées, dans l'ordre. */

@@ -32,8 +32,6 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
       "name": "Championnats de Belgique 25 m 11-16 ans",
       "course": "SCM (25 m) ou LCM (50 m), seulement s'il est indiqué",
       "groups": ["A", "B"],
-      "minAge": 11,
-      "maxAge": 16,
       "note": "Conditions : temps limites, sélection, limite de séries…"
     }
   ]
@@ -44,7 +42,7 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
 - Dates au format `AAAA-MM-JJ` ; `end` absent pour une compétition d'un jour.
 - Nom en clair et en français (« Championnats FFBN 25 m Jeunes », « Dernière Chance »), sans abréviation obscure (« Champ » → « Championnats »).
 - Espace insécable ` ` entre un nombre et son unité (`25 m`, `15 ans`), pour éviter une coupure à l'écran.
-- `minAge` / `maxAge` seulement si le document les donne (« 11-16 ans », « 15 ans et plus ») : l'accueil ne propose pas à un nageur une compétition hors de son âge.
+- Pas de filtre par âge : toutes les compétitions du club s'affichent pour tout le monde (décision de l'utilisateur). Une condition d'âge (« 11-16 ans ») s'écrit dans le nom ou dans `note`.
 - Deuxième partie de saison : ajoute les compétitions à la suite, mets à jour `version`, `until` et `note`.
 
 ## Étapes

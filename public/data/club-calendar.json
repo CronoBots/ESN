@@ -40,8 +40,6 @@
       "name": "Championnats de Belgique 25\u00a0m 11-16\u00a0ans",
       "course": "SCM",
       "groups": ["A", "B"],
-      "minAge": 11,
-      "maxAge": 16,
       "note": "11-16\u00a0ans, suivant la qualification FRBN (limites, nombre de nageurs)"
     },
     {
@@ -51,7 +49,6 @@
       "name": "Championnats FFBN 25\u00a0m 15\u00a0ans et plus",
       "course": "SCM",
       "groups": ["A"],
-      "minAge": 15,
       "note": "Attention : sélection et/ou temps limites"
     },
     {
