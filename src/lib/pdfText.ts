@@ -40,12 +40,94 @@ export function groupLines(items: TextItem[]): string[] {
 
 let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
+/** Copie profonde minimale (objets, tableaux, Map, Set, dates, tableaux binaires) pour les navigateurs sans structuredClone. */
+function deepClone<T>(value: T, seen = new Map<unknown, unknown>()): T {
+  if (typeof value !== 'object' || value === null) return value;
+  if (seen.has(value)) return seen.get(value) as T;
+  let out: unknown;
+  if (value instanceof ArrayBuffer) out = value.slice(0);
+  else if (ArrayBuffer.isView(value)) {
+    const v = value as unknown as { constructor: new (b: ArrayBuffer) => unknown; buffer: ArrayBuffer; byteOffset: number; byteLength: number };
+    out = new v.constructor(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength));
+  } else if (value instanceof Date) out = new Date(value.getTime());
+  else if (value instanceof Map) {
+    const m = new Map();
+    seen.set(value, m);
+    value.forEach((x, k) => m.set(deepClone(k, seen), deepClone(x, seen)));
+    return m as T;
+  } else if (value instanceof Set) {
+    const st = new Set();
+    seen.set(value, st);
+    value.forEach((x) => st.add(deepClone(x, seen)));
+    return st as T;
+  } else {
+    const o: Record<string, unknown> = Array.isArray(value) ? ([] as unknown as Record<string, unknown>) : {};
+    seen.set(value, o);
+    for (const k of Object.keys(value)) o[k] = deepClone((value as Record<string, unknown>)[k], seen);
+    return o as T;
+  }
+  seen.set(value, out);
+  return out as T;
+}
+
+/**
+ * Navigateurs plus anciens (iPhone avant iOS 17.4, Chrome avant 119) : il leur manque quelques
+ * fonctions récentes dont le lecteur PDF a besoin. On les ajoute, et le lecteur travaille alors
+ * dans la page (où ces ajouts existent) plutôt que dans un « worker » séparé.
+ * Renvoie true si le navigateur a eu besoin de cette aide.
+ */
+function helpOlderBrowser(): boolean {
+  const P = Promise as unknown as { withResolvers?: () => unknown };
+  if (typeof P.withResolvers === 'function') return false;
+  P.withResolvers = () => {
+    let resolve!: (v: unknown) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+  const define = (proto: object, name: string, value: (this: ArrayLike<unknown>, ...args: never[]) => unknown) => {
+    if (typeof (proto as Record<string, unknown>)[name] !== 'function') Object.defineProperty(proto, name, { configurable: true, writable: true, value });
+  };
+  // Tableaux, chaînes et tableaux binaires : at, findLast, findLastIndex (iOS < 15.4, Chrome < 97)
+  const typed = Object.getPrototypeOf(Int8Array.prototype) as object;
+  for (const proto of [Array.prototype, String.prototype, typed])
+    define(proto, 'at', function (this: ArrayLike<unknown>, n: number) {
+      const i = Math.trunc(n) || 0;
+      const k = i < 0 ? this.length + i : i;
+      return k < 0 || k >= this.length ? undefined : this[k];
+    });
+  for (const proto of [Array.prototype, typed]) {
+    define(proto, 'findLastIndex', function (this: ArrayLike<unknown>, fn: (v: unknown, i: number, a: unknown) => boolean, thisArg?: unknown) {
+      for (let i = this.length - 1; i >= 0; i--) if (fn.call(thisArg, this[i], i, this)) return i;
+      return -1;
+    });
+    define(proto, 'findLast', function (this: ArrayLike<unknown>, fn: (v: unknown, i: number, a: unknown) => boolean, thisArg?: unknown) {
+      for (let i = this.length - 1; i >= 0; i--) if (fn.call(thisArg, this[i], i, this)) return this[i];
+      return undefined;
+    });
+  }
+  const O = Object as unknown as { hasOwn?: unknown };
+  if (typeof O.hasOwn !== 'function') O.hasOwn = (o: object, k: PropertyKey) => Object.prototype.hasOwnProperty.call(o, k);
+  const g = globalThis as unknown as { structuredClone?: unknown };
+  if (typeof g.structuredClone !== 'function') g.structuredClone = (v: unknown) => deepClone(v);
+  return true;
+}
+
 async function loadPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
+      const older = helpOlderBrowser();
       const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.min.mjs')) as unknown as typeof import('pdfjs-dist');
-      const worker = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
-      pdfjs.GlobalWorkerOptions.workerSrc = worker;
+      if (older) {
+        // Lecteur dans la page : pdf.js prend le module du worker déjà chargé (« pdfjsWorker »)
+        (globalThis as unknown as { pdfjsWorker?: unknown }).pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
+      } else {
+        const worker = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+        pdfjs.GlobalWorkerOptions.workerSrc = worker;
+      }
       return pdfjs;
     })();
   }

@@ -104,6 +104,7 @@ html {
 
 body {
   margin: 0;
+  min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
@@ -175,6 +176,7 @@ p,
 
 .app {
   display: flex;
+  min-height: 100vh;
   min-height: 100dvh;
 }
 
@@ -513,6 +515,7 @@ html.pwa .large-brand {
     flex-direction: column;
     gap: 4px;
     width: 264px;
+    height: 100vh;
     height: 100dvh;
     padding: 20px 14px;
     border-right: 0.5px solid var(--separator);
@@ -1544,11 +1547,13 @@ a.row:active {
 }
 
 .lvl-chip.lvl-mistral {
+  background: rgba(13, 132, 120, 0.13);
   background: color-mix(in srgb, var(--lvl-mistral) 13%, transparent);
   color: var(--lvl-mistral);
 }
 
 .lvl-chip.lvl-trident {
+  background: rgba(35, 87, 208, 0.13);
   background: color-mix(in srgb, var(--lvl-trident) 13%, transparent);
   color: var(--lvl-trident);
 }
@@ -2058,8 +2063,9 @@ textarea.textinput {
   animation: sheet-down 0.24s ease forwards;
 }
 
-/* Feuille avec une recherche : hauteur fixe, elle ne rétrécit pas quand la liste se filtre */
-.sheet:has(.sheet-search) {
+/* Feuille avec une recherche : hauteur fixe, elle ne rétrécit pas quand la liste se filtre
+   (classe posée par SheetFrame : « :has() » manque avant Firefox 121 et iOS 15.4) */
+.sheet.has-search {
   height: calc(var(--vvh, 100dvh) - var(--safe-top) - 12px);
 }
 
@@ -2151,6 +2157,7 @@ textarea.textinput {
     bottom: auto;
     top: 50%;
     width: 560px;
+    max-height: min(86vh, 860px);
     max-height: min(86dvh, 860px);
     border-radius: 16px;
     transform: translate(-50%, -50%);
@@ -2159,7 +2166,8 @@ textarea.textinput {
   .sheet.closing {
     animation: fade-out 0.18s ease forwards;
   }
-  .sheet:has(.sheet-search) {
+  .sheet.has-search {
+    height: min(86vh, 860px);
     height: min(86dvh, 860px);
   }
   .sheet-head::before {
@@ -2897,6 +2905,7 @@ textarea.textinput {
 
 /* Onboarding */
 .onboard {
+  min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;

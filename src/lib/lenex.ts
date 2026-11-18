@@ -1,4 +1,5 @@
 import type { Course, Gender, Round, Stroke } from '../store/types';
+import { inflateSync } from 'fflate';
 import { isValidEvent } from './events';
 import type { ReportMeet } from './results';
 
@@ -255,6 +256,6 @@ export async function unzipFirst(buf: ArrayBuffer): Promise<string> {
   const data = bytes.subarray(local + 30 + nameLen + extraLen, local + 30 + nameLen + extraLen + size);
   if (method === 0) return new TextDecoder('utf-8').decode(data);
   if (method !== 8) throw new Error('Compression non prise en charge');
-  const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return await new Response(stream).text();
+  // fflate plutôt que DecompressionStream (« deflate-raw » absent avant iOS 16.4 et Chrome 103)
+  return new TextDecoder('utf-8').decode(inflateSync(data));
 }

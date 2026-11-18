@@ -16,7 +16,7 @@ import { courseLabel, eventLabel } from '../lib/events';
 import { formatDate, formatRange, todayISO } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { navigate } from '../router';
-import { Section, StrokeTag } from './ui';
+import { Empty, Section, StrokeTag } from './ui';
 import { Icon } from './Icon';
 import { gapLabel } from './Levels';
 
@@ -229,7 +229,20 @@ export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swi
     // Seulement les limites à portée (10 % au plus) : pas l'écart d'un enfant de 10 ans aux championnats open
     return { ...s, close: s.close.filter((x) => relativeLimitGap(x) <= CLOSE_GAP) };
   }, [data, swimmer, swims]);
-  if (!summary || (!summary.qualified.length && !summary.close.length)) return null;
+  if (!summary || (!summary.qualified.length && !summary.close.length)) {
+    // Page Championnats : dire pourquoi elle est vide plutôt que n'afficher qu'une note
+    return all && summary ? (
+      <Section title="Qualifications">
+        <div className="card">
+          <Empty
+            icon="trophy"
+            title="Pas encore de limite à portée"
+            text={`Les championnats apparaissent ici dès que ${swimmer.firstName} réalise un temps limite ou s’en approche (moins de 10 % d’écart).`}
+          />
+        </div>
+      </Section>
+    ) : null;
+  }
   const rows = all
     ? [...summary.qualified, ...summary.close]
     : [...summary.qualified.slice(0, 4), ...summary.close.slice(0, Math.max(2, 5 - Math.min(summary.qualified.length, 4)))];

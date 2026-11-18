@@ -50,6 +50,14 @@ Le site des résultats en direct ne garde que les dernières semaines. L'histori
 
 `points = 1000 × (temps de base / temps)³`. Les points officiels publiés avec les résultats sont conservés ; à défaut, ils sont calculés avec les temps de base de `src/lib/points.ts`, recoupés avec les points « FINA 2026 » de swimrankings.net. Ils restent indicatifs : à mettre à jour chaque saison.
 
+## Compatibilité
+
+- **iPhone et iPad** : iOS 15 et plus récent (Safari, ou Chrome, Firefox, Edge sur iPhone). Installation par Partager → « Sur l’écran d’accueil ».
+- **Android** : Chrome, Samsung Internet, Firefox, Edge. Installation en un toucher (« Installer l’application »).
+- **Ordinateur** : Chrome et Edge (installables), Safari sur Mac (« Ajouter au Dock », macOS 14+), Firefox (dans un onglet).
+- Toutes tailles d’écran, en portrait comme en paysage ; le bouton retour (Android, navigateur) ferme d’abord la fenêtre ouverte.
+- Garde-fous dans `tests/compat.test.ts` : pas de « lookbehind » dans les expressions régulières (iOS < 16.4), pas de `DecompressionStream`, repli pour `dvh` et `color-mix`, pas de `:has()` pour la mise en page. Le lecteur PDF ajoute les quelques fonctions récentes qui manquent (iOS < 17.4) et travaille alors dans la page (`src/lib/pdfText.ts`).
+
 ## Développement
 
 ```bash

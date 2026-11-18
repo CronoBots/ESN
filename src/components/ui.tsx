@@ -1,6 +1,6 @@
-import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
-import { goBack } from '../router';
+import { bindLayers, goBack, isLayerAbove, popLayer, pushLayer } from '../router';
 import { STROKE_BY_ID } from '../lib/events';
 import type { Stroke, Swimmer } from '../store/types';
 
@@ -12,6 +12,8 @@ interface SheetEntry {
   id: number;
   render: (close: () => void) => ReactNode;
   closing: boolean;
+  /** Entrée d'historique de la fenêtre (bouton retour). */
+  layer: string;
 }
 interface ActionEntry {
   id: number;
@@ -20,6 +22,7 @@ interface ActionEntry {
   actions: { label: string; destructive?: boolean; onSelect: () => void }[];
   cancelLabel: string;
   onCancel?: () => void;
+  layer?: string;
 }
 interface ToastEntry {
   id: number;
@@ -42,20 +45,44 @@ const setUi = (patch: Partial<UiState>) => {
   uiListeners.forEach((l) => l());
 };
 
+/** Ferme une feuille ; fermée par un bouton (pas par le bouton retour), elle retire son entrée d'historique. */
+function closeSheet(id: number, fromHistory = false) {
+  const entry = ui.sheets.find((s) => s.id === id);
+  if (!entry || entry.closing) return;
+  setUi({ sheets: ui.sheets.map((s) => (s.id === id ? { ...s, closing: true } : s)) });
+  setTimeout(() => setUi({ sheets: ui.sheets.filter((s) => s.id !== id) }), 230);
+  if (!fromHistory) popLayer(entry.layer);
+}
+
+/** Ferme la confirmation ouverte, puis lance l'action choisie (ou l'annulation). */
+function dismissAction(run?: () => void, fromHistory = false) {
+  const a = ui.action;
+  if (!a) return;
+  setUi({ action: null });
+  if (!fromHistory && a.layer) popLayer(a.layer);
+  run?.();
+}
+
+// Bouton retour (Android, navigateur, geste de Safari) : il ferme les fenêtres au lieu de changer de page
+bindLayers({
+  isOpen: (token) => ui.sheets.some((s) => s.layer === token && !s.closing) || ui.action?.layer === token,
+  closeAbove: (token) => {
+    if (ui.action?.layer && isLayerAbove(ui.action.layer, token)) dismissAction(ui.action.onCancel, true);
+    for (const s of [...ui.sheets].reverse()) if (!s.closing && isLayerAbove(s.layer, token)) closeSheet(s.id, true);
+  },
+});
+
 export const overlay = {
   /** Ouvre une feuille modale ; renvoie une fonction de fermeture. */
   sheet(render: (close: () => void) => ReactNode): () => void {
     const id = seq++;
-    const close = () => {
-      setUi({ sheets: ui.sheets.map((s) => (s.id === id ? { ...s, closing: true } : s)) });
-      setTimeout(() => setUi({ sheets: ui.sheets.filter((s) => s.id !== id) }), 230);
-    };
-    setUi({ sheets: [...ui.sheets, { id, render, closing: false }] });
-    return close;
+    setUi({ sheets: [...ui.sheets, { id, render, closing: false, layer: pushLayer() }] });
+    return () => closeSheet(id);
   },
 
-  actions(opts: Omit<ActionEntry, 'id' | 'cancelLabel'> & { cancelLabel?: string }) {
-    setUi({ action: { ...opts, cancelLabel: opts.cancelLabel ?? 'Annuler', id: seq++ } });
+  actions(opts: Omit<ActionEntry, 'id' | 'cancelLabel' | 'layer'> & { cancelLabel?: string }) {
+    if (ui.action) dismissAction(ui.action.onCancel);
+    setUi({ action: { ...opts, cancelLabel: opts.cancelLabel ?? 'Annuler', id: seq++, layer: pushLayer() } });
   },
 
   confirm(opts: { title: string; message?: string; confirmLabel: string; destructive?: boolean }): Promise<boolean> {
@@ -174,10 +201,7 @@ export function UiHost() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (ui.action) {
-        ui.action.onCancel?.();
-        setUi({ action: null });
-      }
+      if (ui.action) dismissAction(ui.action.onCancel);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -193,10 +217,7 @@ export function UiHost() {
           <div
             className="sheet-backdrop"
             style={{ zIndex: 120 }}
-            onClick={() => {
-              state.action?.onCancel?.();
-              setUi({ action: null });
-            }}
+            onClick={() => dismissAction(state.action?.onCancel)}
           />
           <div className="action-sheet" role="dialog" aria-modal="true">
             <div className="group">
@@ -210,10 +231,7 @@ export function UiHost() {
                 <button
                   key={a.label}
                   className={a.destructive ? 'destructive' : ''}
-                  onClick={() => {
-                    setUi({ action: null });
-                    a.onSelect();
-                  }}
+                  onClick={() => dismissAction(a.onSelect)}
                 >
                   {a.label}
                 </button>
@@ -222,10 +240,7 @@ export function UiHost() {
             <div className="group cancel">
               <button
                 className="cancel"
-                onClick={() => {
-                  state.action?.onCancel?.();
-                  setUi({ action: null });
-                }}
+                onClick={() => dismissAction(state.action?.onCancel)}
               >
                 {state.action.cancelLabel}
               </button>
@@ -247,10 +262,12 @@ export function UiHost() {
 }
 
 function SheetFrame({ entry }: { entry: SheetEntry }) {
-  const close = () => {
-    setUi({ sheets: ui.sheets.map((s) => (s.id === entry.id ? { ...s, closing: true } : s)) });
-    setTimeout(() => setUi({ sheets: ui.sheets.filter((s) => s.id !== entry.id) }), 230);
-  };
+  const close = () => closeSheet(entry.id);
+  const ref = useRef<HTMLDivElement>(null);
+  // Feuille avec une recherche : hauteur fixe (classe plutôt que « :has() », absent des navigateurs plus anciens)
+  useLayoutEffect(() => {
+    ref.current?.classList.toggle('has-search', !!ref.current.querySelector('.sheet-search'));
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !ui.action && ui.sheets[ui.sheets.length - 1]?.id === entry.id) close();
@@ -262,7 +279,7 @@ function SheetFrame({ entry }: { entry: SheetEntry }) {
   return (
     <>
       <div className={`sheet-backdrop${entry.closing ? ' closing' : ''}`} onClick={close} />
-      <div className={`sheet${entry.closing ? ' closing' : ''}`} role="dialog" aria-modal="true">
+      <div ref={ref} className={`sheet${entry.closing ? ' closing' : ''}`} role="dialog" aria-modal="true">
         {entry.render(close)}
       </div>
     </>

@@ -99,40 +99,67 @@ type Token =
 const MONTH_ALT =
   'janv(?:ier)?|jan(?:uary|uari|uar)?|f[ée]vr?(?:ier)?|feb(?:ruary|ruari|ruar)?|mars|mar(?:ch)?|m[äa]rz|maart|mrt|avr(?:il)?|apr(?:il)?|mai|may|mei|juin|june?|juni|juil(?:let)?|july?|juli|ao[ûu]t?|aug(?:ust(?:us)?)?|sept?(?:embre|ember)?|oct(?:obre|ober)?|okt(?:ober)?|nov(?:embre|ember)?|d[ée]c(?:embre|ember)?|dez(?:ember)?';
 
-const TOKEN_RE = new RegExp(
-  [
-    // 0 — relais : "4x50m Libre" (ignoré, mais coupe le contexte)
-    `(?<relay>\\d\\s?[x×]\\s?\\d{2,4}\\s?m)`,
-    // 1 — épreuve : "100m Libre", "100 m nage libre", "200m 4 nages" (sauf relais "4x50m")
-    `(?<event>(?<![x×]\\s?)(?<![\\d])(?<dist>25|50|100|200|400|800|1500)\\s?m(?:[eè]tres?|eter)?\\.?\\s+(?<stroke>${STROKE_ALT})(?![a-zà-ÿ]))`,
-    // 2 — date texte : "11 oct 2026", "11. Okt. 2026", "11-Oct-2026"
-    `(?<dtext>(?<dd>\\d{1,2})\\.?[\\s-]+(?<mon>${MONTH_ALT})\\.?[\\s-]+(?<yy>\\d{4}|\\d{2})(?!\\d))`,
-    // 3 — date numérique : "11.10.2026", "11/10/2026"
-    `(?<dnum>(?<![\\d.])(?<nd>\\d{1,2})[./](?<nm>\\d{1,2})[./](?<ny>\\d{4})(?!\\d))`,
-    // 4 — date ISO
-    `(?<diso>(?<iy>\\d{4})-(?<im>\\d{2})-(?<id>\\d{2}))`,
-    // 5 — temps : "1:24.62", "38.45", "38,45"
-    `(?<time>(?<![\\d:.,])(?:\\d{1,2}:)?\\d{1,2}[.,]\\d{2}(?![\\d.,:]))`,
-    // 6 — bassin : "25m", "50 m", "SCM", "LCM"
-    `(?<course>(?<![\\d])(?:25|50)\\s?m(?![a-zà-ÿ\\d])|\\b(?:SCM|LCM)\\b)`,
-    // 7 — entier
-    `(?<int>(?<![\\d.,:])\\d{1,4}(?![\\d.,:]))`,
-  ].join('|'),
-  'gi',
-);
+/*
+ * Reconnaissance des éléments d'une cellule (épreuve, date, temps, bassin, nombre).
+ * Sans « lookbehind » dans les expressions régulières : non pris en charge avant iOS 16.4, il
+ * empêchait l'application de démarrer sur ces iPhone. La condition sur le caractère précédent est
+ * vérifiée à part ; chaque forme est essayée dans l'ordre, à chaque position (comme une alternance).
+ */
+const before = (s: string, i: number, n = 1) => s[i - n] ?? '';
+const notAfter = (chars: RegExp) => (s: string, i: number) => !chars.test(before(s, i));
+
+const TOKEN_FORMS: { re: RegExp; ok?: (s: string, i: number) => boolean }[] = [
+  // relais : "4x50m Libre" (ignoré, mais coupe le contexte)
+  { re: /(?<relay>\d\s?[x×]\s?\d{2,4}\s?m)/iy },
+  // épreuve : "100m Libre", "100 m nage libre", "200m 4 nages" (sauf relais "4x50m", "4 x 50m")
+  {
+    re: new RegExp(`(?<event>(?<dist>25|50|100|200|400|800|1500)\\s?m(?:[eè]tres?|eter)?\\.?\\s+(?<stroke>${STROKE_ALT})(?![a-zà-ÿ]))`, 'iy'),
+    ok: (s, i) => !/[\dx×]/i.test(before(s, i)) && !(/\s/.test(before(s, i)) && /[x×]/i.test(before(s, i, 2))),
+  },
+  // date texte : "11 oct 2026", "11. Okt. 2026", "11-Oct-2026"
+  { re: new RegExp(`(?<dtext>(?<dd>\\d{1,2})\\.?[\\s-]+(?<mon>${MONTH_ALT})\\.?[\\s-]+(?<yy>\\d{4}|\\d{2})(?!\\d))`, 'iy') },
+  // date numérique : "11.10.2026", "11/10/2026"
+  { re: /(?<dnum>(?<nd>\d{1,2})[./](?<nm>\d{1,2})[./](?<ny>\d{4})(?!\d))/iy, ok: notAfter(/[\d.]/) },
+  // date ISO
+  { re: /(?<diso>(?<iy>\d{4})-(?<im>\d{2})-(?<id>\d{2}))/iy },
+  // temps : "1:24.62", "38.45", "38,45"
+  { re: /(?<time>(?:\d{1,2}:)?\d{1,2}[.,]\d{2}(?![\d.,:]))/iy, ok: notAfter(/[\d:.,]/) },
+  // bassin : "25m", "50 m", "SCM", "LCM"
+  { re: /(?<course>(?:25|50)\s?m(?![a-zà-ÿ\d]))/iy, ok: notAfter(/\d/) },
+  { re: /(?<course>\b(?:SCM|LCM)\b)/iy },
+  // entier
+  { re: /(?<int>\d{1,4}(?![\d.,:]))/iy, ok: notAfter(/[\d.,:]/) },
+];
+
+/** Premier élément reconnu à partir de la position `from`. */
+function nextToken(s: string, from: number): RegExpExecArray | null {
+  for (let i = from; i < s.length; i++) {
+    // Toutes les formes commencent par un chiffre, sauf « SCM » / « LCM »
+    const c = s.charCodeAt(i);
+    if ((c < 48 || c > 57) && !/[sl]/i.test(s[i])) continue;
+    for (const f of TOKEN_FORMS) {
+      if (f.ok && !f.ok(s, i)) continue;
+      f.re.lastIndex = i;
+      const m = f.re.exec(s);
+      if (m) return m;
+    }
+  }
+  return null;
+}
 
 function tokenizeCell(cell: string, out: Token[]): void {
   let last = 0;
-  TOKEN_RE.lastIndex = 0;
+  let pos = 0;
   let m: RegExpExecArray | null;
   const pushText = (s: string) => {
     const txt = s.replace(/^[\s|:;,\-–—()]+|[\s|:;,\-–—(]+$/g, '').trim();
     if (txt.length >= 2 && /[a-zà-ÿ]/i.test(txt)) out.push({ t: 'TEXT', s: txt });
   };
-  while ((m = TOKEN_RE.exec(cell))) {
+  while ((m = nextToken(cell, pos))) {
     const g = m.groups!;
     if (m.index > last) pushText(cell.slice(last, m.index));
     last = m.index + m[0].length;
+    pos = last;
     if (g.relay) {
       out.push({ t: 'RELAY' });
     } else if (g.event) {
@@ -155,7 +182,7 @@ function tokenizeCell(cell: string, out: Token[]): void {
       const masters = cell[last] === 'M' && !/[a-zà-ÿ]/i.test(cell[last + 1] ?? '');
       if (masters) {
         last++;
-        TOKEN_RE.lastIndex = last;
+        pos = last;
       }
       if (cs != null && cs > 0) out.push({ t: 'TIME', cs, ...(masters ? { masters: true } : {}) });
     } else if (g.course) {
@@ -164,7 +191,6 @@ function tokenizeCell(cell: string, out: Token[]): void {
     } else if (g.int) {
       out.push({ t: 'INT', n: +g.int });
     }
-    if (m[0].length === 0) TOKEN_RE.lastIndex++;
   }
   if (last < cell.length) pushText(cell.slice(last));
 }

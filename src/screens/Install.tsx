@@ -141,6 +141,18 @@ function steps(platform: Platform): Step[] {
   }
   if (platform === 'android')
     return [
+      ...(inAppBrowser()
+        ? [
+            {
+              title: (
+                <>
+                  Ouvrez la page dans <b>Chrome</b> : touchez <Key icon="dotsV" />, puis « Ouvrir dans Chrome » (ou « Ouvrir dans le navigateur »).
+                </>
+              ),
+              note: 'Le navigateur intégré à cette application ne permet pas l’installation.',
+            },
+          ]
+        : []),
       {
         title: (
           <>
@@ -181,6 +193,15 @@ function steps(platform: Platform): Step[] {
           Safari sur Mac : menu <b>Fichier</b> → <Key>Ajouter au Dock</Key>.
         </>
       ),
+      note: 'macOS 14 (Sonoma) ou plus récent.',
+    },
+    {
+      title: (
+        <>
+          Firefox : ajoutez la page à vos favoris.
+        </>
+      ),
+      note: 'Firefox ne propose pas l’installation : l’application s’utilise dans un onglet, avec les mêmes fonctions.',
     },
   ];
 }

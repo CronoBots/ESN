@@ -44,6 +44,11 @@ function emit() {
 }
 
 function setUrl(raw: string, mode: 'push' | 'replace') {
+  // Retour arrière en cours (fermeture d'une fenêtre) : l'adresse change juste après
+  if (ownBacks > 0) {
+    deferred.push(() => setUrl(raw, mode));
+    return;
+  }
   try {
     const url = `${window.location.pathname}${window.location.search}#${raw}`;
     if (mode === 'push') {
@@ -63,6 +68,99 @@ function scrollTop() {
   }
 }
 
+/* ------------------------------------------------------------------------ */
+/* Fenêtres ouvertes (feuilles, confirmations) et bouton retour               */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Chaque fenêtre ouverte ajoute une entrée d'historique (même adresse) : le bouton retour d'Android,
+ * du navigateur ou le geste retour de Safari ferme la fenêtre au lieu de changer la page derrière.
+ * Fermée par un de ses boutons, la fenêtre retire son entrée (retour arrière « silencieux »).
+ */
+const SESSION = Math.random().toString(36).slice(2, 8);
+let layerSeq = 0;
+/** Retours arrière lancés par l'application (fermeture d'une fenêtre) : sans effet sur la page. */
+let ownBacks = 0;
+let deferred: (() => void)[] = [];
+const pendingLayers = new Set<string>();
+let layerHooks: { isOpen: (token: string) => boolean; closeAbove: (token: string | undefined) => void } = {
+  isOpen: () => false,
+  closeAbove: () => {},
+};
+
+/** Branché par l'hôte des fenêtres : savoir si une fenêtre est ouverte, fermer celles au-dessus d'une entrée. */
+export function bindLayers(hooks: typeof layerHooks) {
+  layerHooks = hooks;
+}
+
+const layerSeqOf = (token: unknown) => (typeof token === 'string' && token.startsWith(`${SESSION}-`) ? Number(token.slice(SESSION.length + 1)) : 0);
+
+/** Fenêtres ouvertes après l'entrée `token` (toutes si `token` est absent ou d'une session précédente). */
+export function isLayerAbove(layer: string, token: string | undefined): boolean {
+  return layerSeqOf(layer) > layerSeqOf(token);
+}
+
+function flushDeferred() {
+  const list = deferred;
+  deferred = [];
+  list.forEach((f) => f());
+}
+
+function ownBack() {
+  ownBacks++;
+  try {
+    window.history.back();
+  } catch {
+    ownBacks--;
+    flushDeferred();
+    return;
+  }
+  // Sécurité : navigateur qui ne répond pas au retour arrière
+  setTimeout(() => {
+    if (ownBacks > 0) {
+      ownBacks = 0;
+      flushDeferred();
+    }
+  }, 600);
+}
+
+/** Nouvelle fenêtre : entrée d'historique à la même adresse. */
+export function pushLayer(): string {
+  const token = `${SESSION}-${++layerSeq}`;
+  const push = () => {
+    if (!pendingLayers.delete(token)) return; // déjà refermée
+    try {
+      window.history.pushState({ ...(window.history.state ?? {}), layer: token }, '', window.location.href);
+    } catch {
+      /* historique indisponible */
+    }
+  };
+  pendingLayers.add(token);
+  if (ownBacks > 0) deferred.push(push);
+  else push();
+  return token;
+}
+
+/** Fenêtre fermée par un de ses boutons : son entrée d'historique est retirée. */
+export function popLayer(token: string) {
+  if (pendingLayers.delete(token)) return;
+  if (window.history.state?.layer === token) ownBack();
+}
+
+function onPopState() {
+  if (ownBacks > 0) {
+    ownBacks--;
+    if (!ownBacks) flushDeferred();
+    return;
+  }
+  const layer: string | undefined = window.history.state?.layer;
+  // Retour arrière : les fenêtres ouvertes au-dessus de cette entrée se ferment
+  layerHooks.closeAbove(layer);
+  syncFromLocation();
+  // Entrée d'une fenêtre déjà fermée : on la saute
+  if (layer && !layerHooks.isOpen(layer)) ownBack();
+}
+
 // Changement d'adresse venu de l'extérieur (bouton retour du navigateur, lien, favori)
 function syncFromLocation() {
   const raw = parse(window.location.hash).raw;
@@ -76,7 +174,7 @@ function syncFromLocation() {
   scrollTop();
 }
 window.addEventListener('hashchange', syncFromLocation);
-window.addEventListener('popstate', syncFromLocation);
+window.addEventListener('popstate', onPopState);
 
 export function useRoute(): Route {
   return useSyncExternalStore(
