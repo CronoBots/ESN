@@ -99,11 +99,57 @@ function useUi(): UiState {
   );
 }
 
+/**
+ * Le glissé (dx, dy depuis le début du toucher) peut-il faire défiler un élément de la fenêtre
+ * ouverte, sous le doigt ? Une liste en butée (tout en haut et on tire vers le bas, ou tout en bas
+ * et on pousse vers le haut) ne défile plus : le geste n'est alors transmis à rien d'autre.
+ */
+function canScrollInside(target: EventTarget | null, dx: number, dy: number): boolean {
+  let el = target instanceof Element ? target : null;
+  if (el?.closest('input[type="range"]')) return true;
+  const vertical = Math.abs(dy) >= Math.abs(dx);
+  while (el && el !== document.body) {
+    const st = getComputedStyle(el);
+    if (vertical) {
+      if (/(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+        if (dy > 0) return el.scrollTop > 0;
+        if (dy < 0) return el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+        return true;
+      }
+    } else if (/(auto|scroll)/.test(st.overflowX) && el.scrollWidth > el.clientWidth + 1) return true;
+    if (el.classList.contains('sheet') || el.classList.contains('action-sheet')) return false;
+    el = el.parentElement;
+  }
+  return false;
+}
+
 export function UiHost() {
   const state = useUi();
   const anyOpen = state.sheets.length > 0 || !!state.action;
   useEffect(() => {
     document.body.style.overflow = anyOpen ? 'hidden' : '';
+    if (!anyOpen) return;
+    // Fenêtre ouverte : un glissé ne fait défiler que la liste de la fenêtre, et seulement si elle
+    // peut encore défiler dans ce sens. Sinon rien ne bouge : ni la page derrière, ni (iPhone, clavier
+    // ouvert) la zone visible, qui emportait la fenêtre avec elle pendant la saisie.
+    let x0 = 0;
+    let y0 = 0;
+    const onStart = (e: TouchEvent) => {
+      x0 = e.touches[0]?.clientX ?? 0;
+      y0 = e.touches[0]?.clientY ?? 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || !e.cancelable) return;
+      const dx = e.touches[0].clientX - x0;
+      const dy = e.touches[0].clientY - y0;
+      if (!canScrollInside(e.target, dx, dy)) e.preventDefault();
+    };
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchmove', onMove);
+    };
   }, [anyOpen]);
 
   // Clavier ouvert (iPhone) : la page garde sa hauteur, seule la zone visible rétrécit. Les feuilles

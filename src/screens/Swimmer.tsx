@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { actions, useData } from '../store/store';
-import { fullName, usePbFlags } from '../store/hooks';
+import { fullName, swimsOf, usePbFlags } from '../store/hooks';
 import { Avatar, Empty, NavBar, Row, Section, Toggle } from '../components/ui';
 import { SwimRow } from '../components/SwimRow';
 import { firstGroups, useProgressive } from '../components/progressive';
@@ -18,10 +18,8 @@ export function SwimmerProfile({ id }: { id: string }) {
   const data = useData();
   const pbFlags = usePbFlags();
   const swimmer = data.swimmers.find((s) => s.id === id);
-  const trophies = useMemo(
-    () => (swimmer ? achievements(data.swims, swimmer, data.meets, pbFlags) : []),
-    [data.swims, swimmer, data.goals, data.meets, pbFlags],
-  );
+  const mine = swimsOf(data.swims, id);
+  const trophies = useMemo(() => (swimmer ? achievements(mine, swimmer, data.meets, pbFlags) : []), [mine, swimmer, data.meets, pbFlags]);
   const meetsById = useMemo(() => new Map(data.meets.map((m) => [m.id, m])), [data.meets]);
 
   if (!swimmer) {
@@ -35,7 +33,7 @@ export function SwimmerProfile({ id }: { id: string }) {
     );
   }
   const age = sportAge(swimmer.birthYear);
-  const count = data.swims.filter((s) => s.swimmerId === id && s.timeCs != null).length;
+  const count = mine.filter((s) => s.timeCs != null).length;
   const isSelected = data.settings.selectedSwimmerId === id;
   const unlocked = trophies.filter((t) => t.unlocked).length;
 
@@ -122,7 +120,7 @@ export function SwimmerProfile({ id }: { id: string }) {
           </div>
         </Section>
 
-        <SwimmerMedals swimmer={swimmer} swims={data.swims} meetsById={meetsById} pbFlags={pbFlags} />
+        <SwimmerMedals swimmer={swimmer} swims={mine} meetsById={meetsById} pbFlags={pbFlags} />
 
       </main>
     </>
@@ -144,10 +142,9 @@ export function SwimmerHistory({ id }: { id: string }) {
 
   const list = useMemo(
     () =>
-      data.swims
+      swimsOf(data.swims, id)
         .filter(
           (s) =>
-            s.swimmerId === id &&
             (s.timeCs != null || s.status !== 'OK') &&
             (stroke === 'ALL' || s.stroke === stroke) &&
             (course === 'ALL' || s.course === course) &&

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Meet, Swim, Swimmer } from '../store/types';
 import { Section, Segmented } from './ui';
-import { loadEventSheet } from '../lib/liveResults';
+import { isSettled, loadEventSheet } from '../lib/liveResults';
 import { overallRanking, type EventSheet, type SheetRow } from '../lib/heatSheet';
 import { normName } from '../lib/results';
 import { formatDate, todayISO } from '../lib/dates';
@@ -45,12 +45,14 @@ function useSheet(meet: Meet, swim: Swim) {
   const today = todayISO();
   const from = new Date(new Date(meet.startDate).getTime() - 86400000).toISOString().slice(0, 10);
   const live = today >= from && today <= (meet.endDate ?? meet.startDate);
+  // Finie depuis plus de 2 jours : classement définitif, gardé sur l'appareil après la première lecture
+  const settled = isSettled(meet.endDate ?? meet.startDate, today);
   const [sheet, setSheet] = useState<EventSheet | null | undefined>(undefined);
   useEffect(() => {
     if (!meet.liveId || !swim.eventNo) return;
     let alive = true;
     const load = () =>
-      loadEventSheet(meet.liveId!, swim.eventNo!, live)
+      loadEventSheet(meet.liveId!, swim.eventNo!, live, settled)
         .then((s) => alive && setSheet(s))
         .catch(() => alive && setSheet((cur) => cur ?? null));
     load();
@@ -60,7 +62,7 @@ function useSheet(meet: Meet, swim: Swim) {
       alive = false;
       if (timer) clearInterval(timer);
     };
-  }, [meet.liveId, swim.eventNo, live]);
+  }, [meet.liveId, swim.eventNo, live, settled]);
   return { sheet, live };
 }
 

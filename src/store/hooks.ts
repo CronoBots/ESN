@@ -1,9 +1,27 @@
 import { useMemo } from 'react';
 import { useData } from './store';
 import { computePbFlags, personalBests } from '../lib/stats';
-import type { AppData, Swimmer } from './types';
+import type { AppData, Swim, Swimmer } from './types';
 
 let cache: { swims: AppData['swims']; include: boolean; flags: ReturnType<typeof computePbFlags> } | null = null;
+
+let bySwimmer: { swims: Swim[]; map: Map<string, Swim[]> } | null = null;
+const NO_SWIMS: Swim[] = [];
+
+/** Courses d'un nageur : toutes les courses sont rangées par nageur une seule fois, puis chaque écran lit sa liste directement. */
+export function swimsOf(swims: Swim[], swimmerId: string | undefined): Swim[] {
+  if (!swimmerId) return NO_SWIMS;
+  if (!bySwimmer || bySwimmer.swims !== swims) {
+    const map = new Map<string, Swim[]>();
+    for (const s of swims) {
+      const list = map.get(s.swimmerId);
+      if (list) list.push(s);
+      else map.set(s.swimmerId, [s]);
+    }
+    bySwimmer = { swims, map };
+  }
+  return bySwimmer.map.get(swimmerId) ?? NO_SWIMS;
+}
 
 /** Indicateurs « record personnel » de toutes les courses (mémoïsés). */
 export function usePbFlags() {

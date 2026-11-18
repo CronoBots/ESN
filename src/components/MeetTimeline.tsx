@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Swimmer } from '../store/types';
 import { useData } from '../store/store';
-import { usePbFlags } from '../store/hooks';
+import { swimsOf, usePbFlags } from '../store/hooks';
 import { meetTimeline, pointsFor, type PbInfo, type TimelineEntry } from '../lib/stats';
 import { courseLabel, eventLabel, ROUND_LABEL, STATUS_SHORT } from '../lib/events';
 import { formatRange, fromISO } from '../lib/dates';
@@ -30,7 +30,7 @@ export function useTimeline(swimmer: Swimmer | undefined): TimelineEntry[] {
   const data = useData();
   const pbFlags = usePbFlags();
   return useMemo(
-    () => (swimmer ? meetTimeline(data.swims, data.meets, swimmer, pbFlags) : []),
+    () => (swimmer ? meetTimeline(swimsOf(data.swims, swimmer.id), data.meets, swimmer, pbFlags) : []),
     [data.swims, data.meets, swimmer, pbFlags],
   );
 }

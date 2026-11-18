@@ -55,12 +55,12 @@ describe('stockage IndexedDB', () => {
   });
 
   it('enregistre chaque modification dans IndexedDB, plus dans localStorage', async () => {
-    const { initStore, actions, getState } = await freshStore();
+    const { initStore, actions, getState, flushStore } = await freshStore();
     await initStore();
     actions.updateSettings({ defaultCourse: 'LCM' });
     actions.updateSettings({ defaultCourse: 'SCM' });
     actions.updateSettings({ defaultCourse: 'LCM' });
-    await settle();
+    await flushStore();
     expect(getState().settings.defaultCourse).toBe('LCM');
     expect((await readIdb())?.settings.defaultCourse).toBe('LCM');
     expect(localStorage.getItem(OLD_KEY)).toBeNull();

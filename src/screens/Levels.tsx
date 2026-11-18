@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../store/store';
-import { useSelectedSwimmer } from '../store/hooks';
+import { swimsOf, useSelectedSwimmer } from '../store/hooks';
 import { Empty, NavBar, Section, Segmented } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LevelChip, gapLabel, levelYear, useLevelGoals } from '../components/Levels';
@@ -60,13 +60,14 @@ export function LevelsScreen() {
   const data = useData();
   const swimmer = useSelectedSwimmer();
   const include = data.settings.includeTraining;
-  const { reached } = useLevelGoals(swimmer, data.swims, include);
+  const mine = swimsOf(data.swims, swimmer?.id);
+  const { reached } = useLevelGoals(swimmer, mine, include);
   const year = levelYear();
 
   const rowsBy = useMemo(() => {
     const out: Record<Course, Row[]> = { SCM: [], LCM: [] };
     if (!swimmer) return out;
-    const bests = personalBests(data.swims, swimmer.id, include);
+    const bests = personalBests(mine, swimmer.id, include);
     for (const c of COURSES)
       for (const st of STROKES)
         for (const d of distancesFor(st.id, c.id)) {
@@ -76,7 +77,7 @@ export function LevelsScreen() {
           if (status) out[c.id].push({ distance: d, stroke: st.id, bestCs: best.timeCs, status });
         }
     return out;
-  }, [data.swims, swimmer, include, year]);
+  }, [mine, swimmer, include, year]);
 
   const [course, setCourse] = useState<Course>(() => (rowsBy.SCM.length >= rowsBy.LCM.length ? 'SCM' : 'LCM'));
   if (!swimmer) return <Empty icon="person" title="Aucun nageur suivi" />;

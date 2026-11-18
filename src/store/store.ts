@@ -105,6 +105,8 @@ function notify() {
   listeners.forEach((l) => l());
 }
 
+let lastWrite: Promise<void> = Promise.resolve();
+
 /** Une écriture à la fois ; si l'état change pendant ce temps, on réécrit la dernière version ensuite. */
 function writeIdb() {
   if (writing) {
@@ -112,7 +114,7 @@ function writeIdb() {
     return;
   }
   writing = true;
-  idbPut(db!, DATA_KEY, state)
+  lastWrite = idbPut(db!, DATA_KEY, state)
     .then(() => {
       saveError = null;
       channel?.postMessage('saved');
@@ -130,9 +132,12 @@ function writeIdb() {
 }
 
 /**
- * IndexedDB : l'écriture copie toutes les données (plusieurs Mo avec le club) ; elle part juste après
- * l'affichage de la modification, et plusieurs modifications rapprochées n'en font qu'une.
+ * IndexedDB : l'écriture copie toutes les données (plusieurs Mo avec le club). Elle part une fois
+ * les modifications terminées (WRITE_DELAY sans nouvelle modification) : plusieurs gestes
+ * rapprochés (cœurs touchés à la suite, changement de nageur) n'en font qu'une, et l'écran reste
+ * fluide. Application fermée ou mise en arrière-plan : écriture immédiate.
  */
+const WRITE_DELAY = 400;
 let writeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function flushWrite() {
@@ -140,6 +145,13 @@ function flushWrite() {
   clearTimeout(writeTimer);
   writeTimer = null;
   writeIdb();
+}
+
+/** Enregistre tout de suite ce qui attend encore (tests, avant une opération qui relit la base). */
+export async function flushStore(): Promise<void> {
+  flushWrite();
+  await lastWrite;
+  while (writing) await lastWrite;
 }
 
 if (typeof window !== 'undefined') {
@@ -150,7 +162,8 @@ if (typeof window !== 'undefined') {
 
 function persist() {
   if (backend === 'idb' && db) {
-    if (!writeTimer) writeTimer = setTimeout(flushWrite, 0);
+    if (writeTimer) clearTimeout(writeTimer);
+    writeTimer = setTimeout(flushWrite, WRITE_DELAY);
     return;
   }
   try {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { actions, useData } from '../store/store';
-import { fullName, hasClubMembers, isFormerMember, mySwimmers, useSelectedSwimmer } from '../store/hooks';
+import { fullName, hasClubMembers, isFormerMember, mySwimmers, swimsOf, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeDot, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
@@ -43,8 +43,8 @@ export function Records() {
   const bests = useMemo(() => {
     const map = new Map<string, { best: Swim; count: number }>();
     if (!swimmer) return map;
-    for (const s of data.swims) {
-      if (s.swimmerId !== swimmer.id || s.course !== course || !countsForRecords(s, include)) continue;
+    for (const s of swimsOf(data.swims, swimmer.id)) {
+      if (s.course !== course || !countsForRecords(s, include)) continue;
       if (scope === 'season' && seasonOf(s.date) !== season) continue;
       const k = `${s.distance}-${s.stroke}`;
       const cur = map.get(k);
@@ -61,8 +61,8 @@ export function Records() {
   const courseCounts = useMemo(() => {
     const c: Record<Course, Set<string>> = { SCM: new Set(), LCM: new Set() };
     if (swimmer)
-      for (const s of data.swims)
-        if (s.swimmerId === swimmer.id && countsForRecords(s, include)) c[s.course].add(`${s.distance}-${s.stroke}`);
+      for (const s of swimsOf(data.swims, swimmer.id))
+        if (countsForRecords(s, include)) c[s.course].add(`${s.distance}-${s.stroke}`);
     return c;
   }, [data.swims, swimmer, include]);
 

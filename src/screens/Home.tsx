@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useData, actions } from '../store/store';
-import { fullName, hasClubMembers, isActiveMember, mySwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
+import { fullName, hasClubMembers, isActiveMember, mySwimmers, swimsOf, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, BrandLogo, Empty, NavBar, Section, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
@@ -107,8 +107,8 @@ export function Home() {
 function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnType<typeof usePbFlags> }) {
   const data = useData();
   const include = data.settings.includeTraining;
-  const summary = useMemo(() => swimmerSummary(data.swims, swimmer, include, pbFlags), [data.swims, swimmer, include, pbFlags]);
-  const mine = useMemo(() => data.swims.filter((s) => s.swimmerId === swimmer.id), [data.swims, swimmer.id]);
+  const mine = swimsOf(data.swims, swimmer.id);
+  const summary = useMemo(() => swimmerSummary(mine, swimmer, include, pbFlags), [mine, swimmer, include, pbFlags]);
   const today = todayISO();
   const age = sportAge(swimmer.birthYear);
 
@@ -347,11 +347,11 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
         </div>
 
         <div className="col">
-          <LevelGoals swimmer={swimmer} swims={data.swims} includeTraining={include} />
+          <LevelGoals swimmer={swimmer} swims={mine} includeTraining={include} />
 
-          <QualifyingGoals swimmer={swimmer} swims={data.swims} />
+          <QualifyingGoals swimmer={swimmer} swims={mine} />
 
-          <AllroundCard swimmer={swimmer} swims={data.swims} />
+          <AllroundCard swimmer={swimmer} swims={mine} />
 
           <ClubWeekendCard />
 

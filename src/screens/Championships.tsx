@@ -1,5 +1,5 @@
 import { useData } from '../store/store';
-import { useSelectedSwimmer } from '../store/hooks';
+import { swimsOf, useSelectedSwimmer } from '../store/hooks';
 import { Empty, NavBar } from '../components/ui';
 import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
 import { SwimmerChips } from './Records';
@@ -14,8 +14,8 @@ export function ChampionshipsScreen() {
       <NavBar title="Championnats" subtitle={`Temps limites ${swimmer.firstName ? `de ${swimmer.firstName}` : ''}`.trim()} back="/records" />
       <main className="page">
         <SwimmerChips swimmer={swimmer} />
-        <QualifyingGoals swimmer={swimmer} swims={data.swims} all />
-        <AllroundCard swimmer={swimmer} swims={data.swims} />
+        <QualifyingGoals swimmer={swimmer} swims={swimsOf(data.swims, swimmer.id)} all />
+        <AllroundCard swimmer={swimmer} swims={swimsOf(data.swims, swimmer.id)} />
         <div className="section-foot">
           Les temps limites de chaque épreuve sont aussi sur sa fiche (onglet Records, touchez une épreuve).
         </div>

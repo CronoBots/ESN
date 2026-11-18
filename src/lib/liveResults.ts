@@ -124,19 +124,79 @@ export async function listLiveMeets(nation = CLUB.liveNation): Promise<LiveMeet[
   return parseMeetList(await res.text());
 }
 
+/* ------------------------------------------------------------------------ */
+/* Compétitions terminées : documents gardés sur l'appareil                  */
+/* ------------------------------------------------------------------------ */
+
+/*
+ * Les résultats d'une compétition terminée depuis plus de 2 jours sont validés et ne changent plus :
+ * le fichier de résultats, les feuilles PDF et le classement de chaque épreuve sont gardés sur
+ * l'appareil (Cache Storage) et ne sont plus jamais retéléchargés. Les compétitions en cours, à venir
+ * ou terminées depuis moins de 2 jours (corrections possibles) sont toujours relues sur internet.
+ */
+const FINAL_CACHE = 'esn-resultats-v1';
+/** Au-delà, les documents gardés depuis le plus longtemps sont effacés. */
+const FINAL_MAX = 400;
+
+/** Compétition finie depuis plus de 2 jours (date de fin) : résultats définitifs. */
+export function isSettled(endDate: string | undefined, today = todayISO()): boolean {
+  if (!endDate) return false;
+  return endDate < new Date(Date.parse(today) - 2 * 86400000).toISOString().slice(0, 10);
+}
+
+const settledMeet = (m: LiveMeet) => m.status === 'finished' && isSettled(m.endDate ?? m.startDate);
+
+async function finalCache(): Promise<Cache | null> {
+  try {
+    return typeof caches === 'undefined' ? null : await caches.open(FINAL_CACHE);
+  } catch {
+    return null;
+  }
+}
+
+/** Document définitif déjà sur l'appareil. */
+export async function readFinal(key: string): Promise<Response | null> {
+  try {
+    return (await (await finalCache())?.match(key)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Garde un document définitif sur l'appareil (en arrière-plan, sans jamais bloquer ni échouer). */
+export function keepFinal(key: string, body: BodyInit): Promise<void> {
+  return (async () => {
+    const cache = await finalCache();
+    if (!cache) return;
+    await cache.put(key, new Response(body));
+    const keys = await cache.keys();
+    for (const k of keys.slice(0, Math.max(0, keys.length - FINAL_MAX))) await cache.delete(k);
+  })().catch(() => {});
+}
+
 const lenexCache = new Map<string, Promise<LenexMeet | null>>();
 
-/** Résultats LENEX d'une compétition (null s'ils ne sont pas encore publiés). */
-export function fetchLiveResults(id: string, live = false): Promise<LenexMeet | null> {
+/**
+ * Résultats LENEX d'une compétition (null s'ils ne sont pas encore publiés).
+ * `settled` : compétition aux résultats définitifs, lus une seule fois puis gardés sur l'appareil.
+ */
+export function fetchLiveResults(id: string, live = false, settled = false): Promise<LenexMeet | null> {
   const key = `${id}${live ? `@${Math.floor(Date.now() / 300000)}` : ''}`;
   let p = lenexCache.get(key);
   if (!p) {
     p = (async () => {
-      const res = await fetch(`${LIVE_BASE}/${id}/results.lxf`, { cache: live ? 'no-cache' : 'default' });
-      if (!res.ok) return null;
-      const buf = await res.arrayBuffer();
+      const url = `${LIVE_BASE}/${id}/results.lxf`;
+      const kept = settled ? await readFinal(url) : null;
+      let buf: ArrayBuffer;
+      if (kept) buf = await kept.arrayBuffer();
+      else {
+        const res = await fetch(url, { cache: live ? 'no-cache' : 'default' });
+        if (!res.ok) return null;
+        buf = await res.arrayBuffer();
+      }
       const b = new Uint8Array(buf);
       if (b.length < 4 || b[0] !== 0x50 || b[1] !== 0x4b) return null; // pas une archive : pas encore publié
+      if (settled && !kept) void keepFinal(url, buf.slice(0));
       return parseLenex(await unzipFirst(buf));
     })();
     p.catch(() => lenexCache.delete(key));
@@ -167,11 +227,17 @@ export function parseMeetDocs(html: string): MeetDocs {
   return docs;
 }
 
-export async function pdfText(url: string, fresh: boolean): Promise<string> {
+/** Texte d'une feuille PDF. `keep` : feuille définitive, lue une seule fois puis gardée sur l'appareil (le texte, pas le PDF). */
+export async function pdfText(url: string, fresh: boolean, keep = false): Promise<string> {
+  const key = `${url}?texte`;
+  const kept = keep ? await readFinal(key) : null;
+  if (kept) return kept.text();
   const res = await fetch(url, { cache: fresh ? 'no-cache' : 'default' });
   if (!res.ok) return '';
   const { pdfLines } = await import('./pdfText');
-  return (await pdfLines(await res.arrayBuffer())).join('\n');
+  const text = (await pdfLines(await res.arrayBuffer())).join('\n');
+  if (keep && text) void keepFinal(key, text);
+  return text;
 }
 
 type PdfSwim = ImportReport['swims'][number];
@@ -188,6 +254,7 @@ export async function readMeetPdfs(
   members?: RegExp,
 ): Promise<{ found: Map<string, PdfSwim[]>; complete: boolean; candidates: ClubCandidate[] } | null> {
   const fresh = m.status !== 'finished';
+  const keep = settledMeet(m);
   const res = await fetch(`${LIVE_BASE}/${m.id}/`, { cache: fresh ? 'no-cache' : 'default' });
   if (!res.ok) return null;
   const docs = parseMeetDocs(await res.text());
@@ -198,13 +265,13 @@ export async function readMeetPdfs(
   const found = new Map<string, PdfSwim[]>();
   const candidates: ClubCandidate[] = [];
   // Aucun nageur du club inscrit : rien à lire
-  if (club && docs.stats && !club.test(await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh)))
+  if (club && docs.stats && !club.test(await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh, keep)))
     return { found, complete: m.status === 'finished', candidates };
   const events = [...new Set([...docs.results.keys(), ...docs.starts.keys()])].sort((a, b) => a - b);
   const course = m.course ?? 'SCM';
   await mapLimit(events, 4, async (no) => {
     const isResult = docs.results.has(no);
-    const text = await pdfText(`${LIVE_BASE}/${m.id}/${(isResult ? docs.results : docs.starts).get(no)}`, fresh && !isResult);
+    const text = await pdfText(`${LIVE_BASE}/${m.id}/${(isResult ? docs.results : docs.starts).get(no)}`, fresh && !isResult, keep);
     if (!text) return;
     const flat = normName(text);
     const header = parseSheetHeader([text]);
@@ -287,34 +354,45 @@ export function sheetFromLenex(l: LenexMeet, eventNo: number): EventSheet | null
  * Séries (tous les nageurs, ligne, club, engagement, heure estimée) et
  * classement d'une épreuve : fichier LENEX s'il est publié, sinon feuilles PDF.
  * `live` : compétition en cours, relue toutes les 2 minutes au plus.
+ * `settled` : résultats définitifs ; le classement est gardé sur l'appareil après la première lecture.
  */
-export function loadEventSheet(liveId: string, eventNo: number, live: boolean): Promise<EventSheet | null> {
+export function loadEventSheet(liveId: string, eventNo: number, live: boolean, settled = false): Promise<EventSheet | null> {
   const key = `${liveId}/${eventNo}`;
   const cached = sheetCache.get(key);
   if (cached && (!live || Date.now() - cached.at < 120000)) return cached.p;
+  const kept = `${LIVE_BASE}/${liveId}/epreuve-${eventNo}.json`;
   const p = (async () => {
-    const l = await fetchLiveResults(liveId, live).catch(() => null);
-    const fromLenex = l ? sheetFromLenex(l, eventNo) : null;
-    if (fromLenex) return fromLenex;
-    const res = await fetch(`${LIVE_BASE}/${liveId}/`, { cache: live ? 'no-cache' : 'default' });
-    if (!res.ok) return null;
-    const docs = parseMeetDocs(await res.text());
-    const startFile = docs.starts.get(eventNo);
-    const resultFile = docs.results.get(eventNo);
-    const [st, rs] = await Promise.all([
-      startFile ? pdfText(`${LIVE_BASE}/${liveId}/${startFile}`, live) : Promise.resolve(''),
-      resultFile ? pdfText(`${LIVE_BASE}/${liveId}/${resultFile}`, live) : Promise.resolve(''),
-    ]);
-    if (!st && !rs) return null;
-    const start = st ? parseStartSheet(st) : null;
-    const result = rs ? parseResultSheet(rs) : null;
-    const header = start?.header ?? result!.header;
-    const sheet: EventSheet = { header, title: start?.title ?? result?.title, heats: start?.heats ?? [], results: result?.results ?? [] };
-    return header.distance ? estimateHeatStarts(sheet, header.distance) : sheet;
+    const saved = settled ? await readFinal(kept) : null;
+    if (saved) return (await saved.json()) as EventSheet;
+    const sheet = await readEventSheet(liveId, eventNo, live, settled);
+    // Classement publié d'une compétition terminée : plus besoin de relire le fichier ni les feuilles
+    if (settled && sheet?.results.length) void keepFinal(kept, JSON.stringify(sheet));
+    return sheet;
   })();
   sheetCache.set(key, { at: Date.now(), p });
   p.catch(() => sheetCache.delete(key));
   return p;
+}
+
+async function readEventSheet(liveId: string, eventNo: number, live: boolean, settled: boolean): Promise<EventSheet | null> {
+  const l = await fetchLiveResults(liveId, live, settled).catch(() => null);
+  const fromLenex = l ? sheetFromLenex(l, eventNo) : null;
+  if (fromLenex) return fromLenex;
+  const res = await fetch(`${LIVE_BASE}/${liveId}/`, { cache: live ? 'no-cache' : 'default' });
+  if (!res.ok) return null;
+  const docs = parseMeetDocs(await res.text());
+  const startFile = docs.starts.get(eventNo);
+  const resultFile = docs.results.get(eventNo);
+  const [st, rs] = await Promise.all([
+    startFile ? pdfText(`${LIVE_BASE}/${liveId}/${startFile}`, live, settled) : Promise.resolve(''),
+    resultFile ? pdfText(`${LIVE_BASE}/${liveId}/${resultFile}`, live, settled) : Promise.resolve(''),
+  ]);
+  if (!st && !rs) return null;
+  const start = st ? parseStartSheet(st) : null;
+  const result = rs ? parseResultSheet(rs) : null;
+  const header = start?.header ?? result!.header;
+  const sheet: EventSheet = { header, title: start?.title ?? result?.title, heats: start?.heats ?? [], results: result?.results ?? [] };
+  return header.distance ? estimateHeatStarts(sheet, header.distance) : sheet;
 }
 
 function liveMeetReport(m: LiveMeet): ReportMeet | null {
@@ -434,7 +512,7 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
     3,
     async (m) => {
       const pending = m.status === 'finished' ? swimmers.filter((s) => !processed[m.id]?.includes(s.id)) : swimmers;
-      const l = m.status === 'upcoming' ? null : await fetchLiveResults(m.id, m.status === 'live');
+      const l = m.status === 'upcoming' ? null : await fetchLiveResults(m.id, m.status === 'live', settledMeet(m));
       if (!l) {
         // Pas de fichier LENEX : feuilles PDF (nageurs du club, compétitions récentes ou à venir)
         const report = liveMeetReport(m);

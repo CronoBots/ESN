@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../store/store';
-import { fullName, hasClubMembers, sortSwimmers, usePbFlags } from '../store/hooks';
+import { fullName, hasClubMembers, sortSwimmers, swimsOf, usePbFlags } from '../store/hooks';
 import { ageAt, bandForAge, clubRecords, recordComplete, recordKey, type ClubRecord } from '../lib/clubRecords';
 import { Avatar, Empty, NavBar, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -28,7 +28,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const meetsById = useMemo(() => new Map(data.meets.map((m) => [m.id, m])), [data.meets]);
 
-  const history = useMemo(() => eventHistory(data.swims, swimmerId, course, distance, stroke), [data.swims, swimmerId, course, distance, stroke]);
+  const history = useMemo(() => eventHistory(swimsOf(data.swims, swimmerId), swimmerId, course, distance, stroke), [data.swims, swimmerId, course, distance, stroke]);
   const stats = useMemo(() => eventStats(history, include), [history, include]);
   // Nageurs ayant nagé cette épreuve, avec leur meilleur temps (un seul passage sur les courses)
   const candidates = useMemo<CompareCandidate[]>(() => {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../store/store';
-import { usePbFlags, useSelectedSwimmer } from '../store/hooks';
+import { swimsOf, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Empty, NavBar, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
@@ -55,29 +55,34 @@ export function Progression() {
   const include = data.settings.includeTraining;
   const timeline = useTimeline(swimmer);
   const today = todayISO();
-  const summary = useMemo(
-    () => (swimmer ? swimmerSummary(data.swims, swimmer, include, pbFlags) : null),
-    [data.swims, swimmer, include, pbFlags],
-  );
+  // Seulement les courses de ce nageur (au lieu de parcourir celles de tout le club à chaque calcul)
+  const mine = swimsOf(data.swims, swimmer?.id);
+  const summary = useMemo(() => (swimmer ? swimmerSummary(mine, swimmer, include, pbFlags) : null), [mine, swimmer, include, pbFlags]);
   const maxPts = Math.max(400, ...(summary?.strokePoints ?? []).map((s) => s.points ?? 0));
 
   const events = useMemo(() => {
     if (!swimmer) return [];
     const out: { distance: number; stroke: (typeof STROKES)[number]['id']; swims: Swim[]; stats: ReturnType<typeof eventStats> }[] = [];
+    const byEvent = new Map<string, Swim[]>();
+    for (const s of mine) {
+      if (s.course !== course || !countsForRecords(s, include)) continue;
+      const k = `${s.distance}-${s.stroke}`;
+      const list = byEvent.get(k);
+      if (list) list.push(s);
+      else byEvent.set(k, [s]);
+    }
     for (const st of STROKES) {
       for (const d of distancesFor(st.id, course)) {
-        const swims = data.swims
-          .filter((s) => s.swimmerId === swimmer.id && s.course === course && s.distance === d && s.stroke === st.id && countsForRecords(s, include))
-          .sort(chronoCompare);
-        if (swims.length) out.push({ distance: d, stroke: st.id, swims, stats: eventStats(swims, include) });
+        const swims = byEvent.get(`${d}-${st.id}`)?.sort(chronoCompare);
+        if (swims?.length) out.push({ distance: d, stroke: st.id, swims, stats: eventStats(swims, include) });
       }
     }
     return out;
-  }, [data.swims, swimmer, course, include]);
+  }, [mine, swimmer, course, include]);
 
   const trophies = useMemo(
-    () => (swimmer ? achievements(data.swims, swimmer, data.meets, pbFlags) : []),
-    [data.swims, swimmer, data.goals, data.meets, pbFlags],
+    () => (swimmer ? achievements(mine, swimmer, data.meets, pbFlags) : []),
+    [mine, swimmer, data.meets, pbFlags],
   );
 
   // Meilleurs temps par saison (3 dernières saisons)

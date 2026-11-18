@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useData } from '../store/store';
-import { fullName, usePbFlags } from '../store/hooks';
+import { fullName, swimsOf, usePbFlags } from '../store/hooks';
 import { Empty, NavBar, Row, Section, StrokeTag, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { SwimBadges } from '../components/SwimRow';
@@ -17,7 +17,7 @@ export function SwimDetail({ id }: { id: string }) {
   const pbFlags = usePbFlags();
   const swim = data.swims.find((s) => s.id === id);
   const bests = useMemo(
-    () => (swim ? personalBests(data.swims, swim.swimmerId, data.settings.includeTraining) : new Map()),
+    () => (swim ? personalBests(swimsOf(data.swims, swim.swimmerId), swim.swimmerId, data.settings.includeTraining) : new Map()),
     [data.swims, swim, data.settings.includeTraining],
   );
   if (!swim) {

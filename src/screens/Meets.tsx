@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useData } from '../store/store';
-import { fullName, sortSwimmers, usePbFlags, useSelectedSwimmer } from '../store/hooks';
+import { fullName, sortSwimmers, swimsOf, usePbFlags, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
@@ -46,7 +46,7 @@ export function Meets() {
   const entriesByMeet = useMemo(() => {
     const map = new Map<string, number>();
     if (swimmer)
-      for (const s of data.swims) if (s.meetId && s.swimmerId === swimmer.id) map.set(s.meetId, (map.get(s.meetId) ?? 0) + 1);
+      for (const s of swimsOf(data.swims, swimmer.id)) if (s.meetId) map.set(s.meetId, (map.get(s.meetId) ?? 0) + 1);
     return map;
   }, [data.swims, swimmer]);
 

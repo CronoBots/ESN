@@ -4174,3 +4174,9 @@ button.meet-nav-btn:active {
     display: none;
   }
 }
+
+/* Fenêtre ouverte : glisser sur le fond ou l'en-tête ne fait rien défiler (voir UiHost) */
+.sheet-backdrop,
+.sheet-head {
+  touch-action: none;
+}

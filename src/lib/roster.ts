@@ -5,8 +5,14 @@
  * clair. Elle est chiffrée (AES-GCM 256 bits, clé dérivée du code du club par
  * PBKDF2-SHA-256) et ne se lit qu'avec le code que le club donne aux membres.
  *
- * Module autonome (aucun import) : il sert aussi au script scripts/roster.mjs.
+ * Module sans dépendance à l'application (seulement fflate, compression) : il
+ * sert aussi au script scripts/roster.mjs.
+ *
+ * Les données sont compressées (gzip) avant d'être chiffrées : l'historique du
+ * club est ainsi environ 6 fois plus léger à télécharger. Les fichiers publiés
+ * avant la compression restent lisibles.
  */
+import { gunzipSync, gzipSync } from 'fflate';
 
 export interface RosterGroup {
   id: string;
@@ -58,6 +64,8 @@ export interface EncryptedRoster {
   salt: string;
   iv: string;
   data: string;
+  /** Contenu compressé (gzip) avant chiffrement ; absent : texte JSON tel quel (anciens fichiers). */
+  zip?: 'gzip';
 }
 
 export const ROSTER_ITERATIONS = 310_000;
@@ -112,10 +120,9 @@ async function encryptJson(value: unknown, code: string, format: EncryptedRoster
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(code, salt, iterations);
-  const data = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, new TextEncoder().encode(JSON.stringify(value))),
-  );
-  return { format, v: 1, kdf: 'PBKDF2-SHA-256', iterations, salt: toB64(salt), iv: toB64(iv), data: toB64(data) };
+  const plain = gzipSync(new TextEncoder().encode(JSON.stringify(value)), { level: 9, mtime: 0 });
+  const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, plain as BufferSource));
+  return { format, v: 1, kdf: 'PBKDF2-SHA-256', iterations, salt: toB64(salt), iv: toB64(iv), data: toB64(data), zip: 'gzip' };
 }
 
 async function decryptJson(enc: EncryptedRoster, code: string): Promise<unknown> {
@@ -126,7 +133,8 @@ async function decryptJson(enc: EncryptedRoster, code: string): Promise<unknown>
   } catch {
     throw new WrongCodeError();
   }
-  return JSON.parse(new TextDecoder().decode(plain));
+  const bytes = new Uint8Array(plain);
+  return JSON.parse(new TextDecoder().decode(enc.zip === 'gzip' ? gunzipSync(bytes) : bytes));
 }
 
 export function encryptRoster(roster: Roster, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
