@@ -12,7 +12,7 @@ import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
 import { rankCategory, rankLabel } from '../lib/rankings';
 import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, topRanks } from '../lib/profile';
-import { upcomingClubEvents } from '../lib/clubCalendar';
+import { groupsLabel, publishedMeet, upcomingClubEvents } from '../lib/clubCalendar';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { capitalize, deName } from '../lib/text';
 import { LevelGoals, useLevelGoals } from './Levels';
@@ -59,6 +59,23 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
     () => (upcoming || swimmer.former ? undefined : upcomingClubEvents(cal, data.meets, today)[0]),
     [upcoming, swimmer.former, cal, data.meets, today],
   );
+  // Compétition du club déjà publiée (programme en ligne) où ce nageur n'est pas engagé : montrée à tous
+  // comme l'annonce du calendrier qu'elle remplace, avec les nageurs de l'ESN engagés
+  const clubMeet = useMemo(() => {
+    if (upcoming || swimmer.former) return undefined;
+    const meet = data.meets
+      .filter((m) => (m.endDate ?? m.startDate) >= today && (!clubNext || m.startDate <= clubNext.start))
+      .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))
+      .find((m) => data.swims.some((s) => s.meetId === m.id));
+    if (!meet) return undefined;
+    const ids = new Set(data.swims.filter((s) => s.meetId === meet.id).map((s) => s.swimmerId));
+    const names = data.swimmers
+      .filter((x) => ids.has(x.id))
+      .map((x) => x.firstName)
+      .sort((a, b) => a.localeCompare(b, 'fr'));
+    const ev = cal?.events.find((e) => publishedMeet(e, [meet]));
+    return { meet, names, groups: ev && cal ? groupsLabel(ev.groups, cal.groupNames) : '' };
+  }, [upcoming, swimmer.former, data.meets, data.swims, data.swimmers, clubNext, cal, today]);
   const recentPBs = useMemo(
     () =>
       mine
@@ -280,7 +297,41 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
             </Section>
           )}
 
-          {!upcoming && clubNext && cal && (
+          {clubMeet && (
+            <Section
+              title={clubMeet.meet.startDate <= today ? 'Compétition en cours' : 'Prochaine compétition'}
+              action={
+                <button className="section-link" onClick={() => navigate(`/meet/${clubMeet.meet.id}`)}>
+                  Programme
+                </button>
+              }
+            >
+              <button className="card club-event-card" onClick={() => navigate(`/meet/${clubMeet.meet.id}`)}>
+                <div className="hstack between">
+                  <div className="grow">
+                    <div style={{ fontWeight: 700, fontSize: 18 }}>{clubMeet.meet.name}</div>
+                    <div className="muted small" style={{ marginTop: 2 }}>
+                      {[formatRange(clubMeet.meet.startDate, clubMeet.meet.endDate), clubMeet.meet.city, courseLabel(clubMeet.meet.course)]
+                        .filter(Boolean)
+                        .join('\u00a0· ')}
+                    </div>
+                  </div>
+                  <span className="badge first" style={{ height: 24, fontSize: 12 }}>
+                    {clubMeet.meet.startDate <= today ? 'En cours' : capitalize(relativeDay(clubMeet.meet.startDate))}
+                  </span>
+                </div>
+                <div className="club-event-meta">
+                  {clubMeet.groups && <span>{clubMeet.groups}</span>}
+                  <span>
+                    {clubMeet.names.length} nageur{clubMeet.names.length > 1 ? 's' : ''} de l’ESN engagé{clubMeet.names.length > 1 ? 's' : ''} :{' '}
+                    {clubMeet.names.length > 1 ? `${clubMeet.names.slice(0, -1).join(', ')} et ${clubMeet.names[clubMeet.names.length - 1]}` : clubMeet.names[0]}
+                  </span>
+                </div>
+              </button>
+            </Section>
+          )}
+
+          {!upcoming && !clubMeet && clubNext && cal && (
             <Section
               title={clubNext.start <= today ? 'Compétition en cours' : 'Prochaine compétition'}
               action={
