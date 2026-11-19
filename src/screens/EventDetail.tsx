@@ -113,6 +113,11 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
         title={eventLabel(distance, stroke)}
         subtitle={`${fullName(swimmer)} · bassin de ${courseLabel(course)}`}
         back="/records"
+        right={
+          <button className="icon-btn" onClick={() => navigate(`/swimmer/${swimmer.id}`)} aria-label={`Fiche de ${fullName(swimmer)}`} title="Fiche du nageur">
+            <Icon name="person" />
+          </button>
+        }
       />
       <main className="page">
         <div className="stack" style={{ gap: 8 }}>

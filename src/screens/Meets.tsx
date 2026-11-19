@@ -304,6 +304,11 @@ export function MeetDetail({ id }: { id: string }) {
                   : 'Programme'}
             </span>
           }
+          action={
+            <button className="section-link" onClick={() => navigate(`/swimmer/${swimmer.id}`)} aria-label={`Fiche de ${fullName(swimmer)}`}>
+              Fiche
+            </button>
+          }
         >
           <div className="list">
             {[...days.entries()].map(([day, ds]) => (
