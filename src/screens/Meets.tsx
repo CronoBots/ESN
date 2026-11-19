@@ -16,6 +16,7 @@ import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
 import { capitalize, deName, placeLabel } from '../lib/text';
 import { ClubEventRow, GroupsBadge, useClubCalendar } from '../components/ClubCalendar';
+import { MeetOverviewSections } from '../components/MeetOverview';
 import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
 
 
@@ -534,6 +535,9 @@ export function MeetDetail({ id }: { id: string }) {
           </>
         )}
 
+
+        {/* Vue d'ensemble publiée en direct : chiffres, médailles par club, programme */}
+        <MeetOverviewSections meet={meet} />
 
         <Section title="Infos">
           <div className="list">

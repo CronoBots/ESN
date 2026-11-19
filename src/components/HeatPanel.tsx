@@ -9,12 +9,12 @@ import { formatTime } from '../lib/time';
 import { placeLabel } from '../lib/text';
 
 /** « DUPONT, Hugo » → « Hugo DUPONT » (les feuilles de résultats écrivent « DUPONT Hugo »). */
-function displayName(name: string): string {
+export function displayName(name: string): string {
   const m = /^([^,]+),\s*(.+)$/.exec(name);
   return m ? `${m[2]} ${m[1]}` : name;
 }
 
-const fullYear = (yy?: string) => (yy ? (Number(yy) < 40 ? `20${yy}` : `19${yy}`) : undefined);
+export const fullYear = (yy?: string) => (yy ? (Number(yy) < 40 ? `20${yy}` : `19${yy}`) : undefined);
 
 /** La ligne du nageur suivi : nom, prénom et année de naissance. */
 function isSwimmer(row: SheetRow, sw: Swimmer): boolean {
@@ -39,7 +39,7 @@ function HeatRow({ row, mine, lead, time, sub, pts }: { row: SheetRow; mine: boo
   );
 }
 
-const statusLabel = (r: SheetRow) => (r.status === 'DSQ' ? 'Disq.' : r.status === 'DNS' ? 'Forfait' : r.status === 'DNF' ? 'Abandon' : '—');
+export const statusLabel = (r: SheetRow) => (r.status === 'DSQ' ? 'Disq.' : r.status === 'DNS' ? 'Forfait' : r.status === 'DNF' ? 'Abandon' : '—');
 
 function useSheet(meet: Meet, swim: Swim) {
   const today = todayISO();

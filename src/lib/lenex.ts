@@ -103,9 +103,41 @@ export interface LenexAthlete {
   swims: LenexSwim[];
 }
 
+/** Une épreuve au programme (relais et épreuves de 25 m compris), pour l'horaire d'une compétition. */
+export interface MeetEvent {
+  no?: number;
+  gender?: 'F' | 'M' | 'X';
+  distance: number;
+  stroke?: Stroke;
+  /** Nombre de nageurs par équipe (1 : épreuve individuelle). */
+  relay: number;
+  round: Round;
+  date?: string;
+  time?: string;
+  /** Séance (réunion) : numéro et heure de début. */
+  session?: number;
+  sessionTime?: string;
+}
+
+/**
+ * Vue d'ensemble d'une compétition, comptée comme les statistiques de Splash (SplashMe) : tous les
+ * nageurs, clubs et courses du fichier, et une médaille pour chaque place 1 à 3 de chaque classement
+ * par catégorie d'âge.
+ */
+export interface MeetOverview {
+  organizer?: string;
+  athletes: number;
+  clubs: number;
+  entries: number;
+  relayEntries: number;
+  events: MeetEvent[];
+  medals: { club: string; code?: string; gender?: Gender; place: 1 | 2 | 3 }[];
+}
+
 export interface LenexMeet {
   meet: ReportMeet & { nation?: string; resultUrl?: string };
   athletes: LenexAthlete[];
+  overview?: MeetOverview;
 }
 
 export function parseLenex(xml: string): LenexMeet | null {
@@ -129,12 +161,34 @@ export function parseLenex(xml: string): LenexMeet | null {
   const heats = new Map<string, number>();
   const places = new Map<string, { place: number; width: number }>();
   const dates: string[] = [];
+  const allEvents: MeetEvent[] = [];
+  const podium: { resultid: string; place: 1 | 2 | 3 }[] = [];
   for (const session of walk(meetNode, 'SESSION')) {
     const date = session.attrs.date;
     if (date) dates.push(date);
     for (const ev of walk(session, 'EVENT')) {
       const style = first(ev, 'SWIMSTYLE');
       if (!style) continue;
+      // Programme complet et médailles (toutes épreuves, relais et 25 m compris ; pas les barrages)
+      const g = ev.attrs.gender;
+      allEvents.push({
+        no: ev.attrs.number ? +ev.attrs.number : undefined,
+        gender: g === 'F' || g === 'M' || g === 'X' ? g : undefined,
+        distance: +style.attrs.distance || 0,
+        stroke: STROKE[style.attrs.stroke],
+        relay: +(style.attrs.relaycount ?? 1) || 1,
+        round: ROUND[ev.attrs.round] ?? 'TIM',
+        date,
+        time: ev.attrs.daytime || session.attrs.daytime,
+        session: session.attrs.number ? +session.attrs.number : undefined,
+        sessionTime: session.attrs.daytime,
+      });
+      if (!/^SO[PSQ]$/.test(ev.attrs.round ?? ''))
+        for (const ag of walk(ev, 'AGEGROUP'))
+          for (const r of walk(ag, 'RANKING')) {
+            const place = +(r.attrs.place ?? 0);
+            if (r.attrs.resultid && place >= 1 && place <= 3) podium.push({ resultid: r.attrs.resultid, place: place as 1 | 2 | 3 });
+          }
       const stroke = STROKE[style.attrs.stroke];
       const distance = +style.attrs.distance;
       // Relais et épreuves spéciales (technique : jambes, bras, départ, virage…) ignorés
@@ -165,9 +219,30 @@ export function parseLenex(xml: string): LenexMeet | null {
   dates.sort();
 
   const athletes: LenexAthlete[] = [];
+  // Chaque résultat (individuel ou relais) → son club et le sexe, pour les médailles par club
+  const owner = new Map<string, { club: string; code?: string; gender?: Gender }>();
+  let athleteCount = 0;
+  let clubCount = 0;
+  let entries = 0;
+  let relayEntries = 0;
   for (const club of walk(meetNode, 'CLUB')) {
     const clubName = club.attrs.name || club.attrs.shortname;
+    let used = false;
+    for (const rel of walk(club, 'RELAY'))
+      for (const r of kids(first(rel, 'RESULTS'), 'RESULT')) {
+        used = true;
+        relayEntries++;
+        const g = rel.attrs.gender;
+        if (r.attrs.resultid) owner.set(r.attrs.resultid, { club: clubName ?? '?', code: club.attrs.code, gender: g === 'F' || g === 'M' ? g : undefined });
+      }
     for (const a of walk(club, 'ATHLETE')) {
+      athleteCount++;
+      used = true;
+      for (const r of kids(first(a, 'RESULTS'), 'RESULT')) {
+        entries++;
+        const g = a.attrs.gender;
+        if (r.attrs.resultid) owner.set(r.attrs.resultid, { club: clubName ?? '?', code: club.attrs.code, gender: g === 'F' || g === 'M' ? g : undefined });
+      }
       const swims: LenexSwim[] = [];
       for (const r of kids(first(a, 'RESULTS'), 'RESULT')) {
         const ev = events.get(r.attrs.eventid);
@@ -217,7 +292,13 @@ export function parseLenex(xml: string): LenexMeet | null {
         swims,
       });
     }
+    // Comme SplashMe : tous les clubs du fichier, même inscrits sans nageur
+    if (used || club.attrs.name || club.attrs.code) clubCount++;
   }
+  const medals = podium.flatMap(({ resultid, place }) => {
+    const o = owner.get(resultid);
+    return o ? [{ ...o, place }] : [];
+  });
 
   return {
     meet: {
@@ -229,6 +310,15 @@ export function parseLenex(xml: string): LenexMeet | null {
       startDate: dates[0] ?? '',
       endDate: dates.length > 1 && dates[dates.length - 1] !== dates[0] ? dates[dates.length - 1] : undefined,
       resultUrl: meetNode.attrs['result.url'],
+    },
+    overview: {
+      organizer: meetNode.attrs.organizer,
+      athletes: athleteCount,
+      clubs: clubCount,
+      entries,
+      relayEntries,
+      events: allEvents,
+      medals,
     },
     athletes,
   };
