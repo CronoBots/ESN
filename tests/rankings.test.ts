@@ -36,7 +36,7 @@ describe('classements nationaux', () => {
     const list: NationalRank[] = parseRankingsText(TEXT).map((r) => ({ swimmerId: 's1', ...r }));
     const free = ranksFor(list, 's1', 'SCM', 100, 'FREE');
     expect(free.map((r) => r.season)).toEqual(['2026-2027', '2025-2026']);
-    expect(latestRankText(free)).toBe('12e en Belgique (2026-2027)');
+    expect(latestRankText(free)).toBe('12e en Belgique (filles nées en 2015, 2026-2027)');
     expect(ranksFor(list, 's2', 'SCM', 100, 'FREE')).toEqual([]);
     expect(latestRankText([])).toBeNull();
   });

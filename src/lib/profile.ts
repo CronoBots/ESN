@@ -100,10 +100,13 @@ export function seasonsSummary(mine: Swim[], swimmer: Swimmer, pbFlags: Map<stri
 export function topRanks(rankings: NationalRank[] | undefined, swimmerId: string, limit = 5): NationalRank[] {
   const mine = sortRanks((rankings ?? []).filter((r) => r.swimmerId === swimmerId));
   if (!mine.length) return [];
-  const season = mine[0].season;
+  // Dernière saison classée de CHAQUE bassin : en 25 m « 2026-2027 », en 50 m l'année civile « 2026 »
+  // (sinon les rangs en grand bassin ne seraient jamais montrés)
+  const latest = new Map<Course, string>();
+  for (const r of mine) if (!latest.has(r.course) || r.season > latest.get(r.course)!) latest.set(r.course, r.season);
   const best = new Map<string, NationalRank>();
   for (const r of mine) {
-    if (r.season !== season) continue;
+    if (r.season !== latest.get(r.course)) continue;
     const k = `${r.course}-${r.distance}-${r.stroke}`;
     const b = best.get(k);
     if (!b || r.rank < b.rank) best.set(k, r);

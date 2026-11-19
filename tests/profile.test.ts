@@ -69,5 +69,11 @@ describe('fiche d’un nageur', () => {
     const top = topRanks([r({ rank: 12 }), r({ rank: 8, label: 'Belgique · 14 ans' }), r({ distance: 50, stroke: 'BACK', rank: 3 }), r({ season: '2025-2026', rank: 1 })], 'e');
     expect(top.map((x) => `${x.distance}-${x.rank}`)).toEqual(['50-3', '100-8']);
     expect(topRanks([], 'e')).toEqual([]);
+    // 25 m : saison « 2026-2027 » ; 50 m : année civile « 2026 » (comme sur swimrankings) : les deux bassins sont montrés
+    const both = topRanks(
+      [r({ season: '2026-2027', rank: 20 }), r({ season: '2025-2026', rank: 2 }), r({ course: 'LCM', season: '2026', rank: 5 }), r({ course: 'LCM', season: '2025', rank: 1 })],
+      'e',
+    );
+    expect(both.map((x) => `${x.course} ${x.season} ${x.rank}`)).toEqual(['LCM 2026 5', 'SCM 2026-2027 20']);
   });
 });

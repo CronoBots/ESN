@@ -71,5 +71,11 @@ export function ranksFor(rankings: NationalRank[] | undefined, swimmerId: string
 export function latestRankText(list: NationalRank[]): string | null {
   const r = list[0];
   if (!r) return null;
-  return `${rankLabel(r.rank)} ${/belg/i.test(r.label) ? 'en Belgique' : 'au classement'} (${r.season})`;
+  return `${rankLabel(r.rank)} ${/belg/i.test(r.label) ? 'en Belgique' : 'au classement'} (${rankCategory(r.label)}, ${r.season})`;
+}
+
+/** Catégorie d'un classement, sans le pays : « 12 ans », « Cat. générale », « 19 ans et plus ». */
+export function rankCategory(label: string): string {
+  const i = label.indexOf('·');
+  return (i >= 0 ? label.slice(i + 1) : label).trim();
 }

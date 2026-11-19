@@ -10,7 +10,7 @@ import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, sea
 import { courseLabel, eventLabel, STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
-import { rankLabel } from '../lib/rankings';
+import { rankCategory, rankLabel } from '../lib/rankings';
 import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, topRanks } from '../lib/profile';
 import { upcomingClubEvents } from '../lib/clubCalendar';
 import { swimrankingsUrl } from '../lib/swimrankings';
@@ -142,7 +142,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
             )}
             {ranks[0] && (
               <span>
-                <Icon name="ranking" /> {rankLabel(ranks[0].rank)} en Belgique
+                <Icon name="ranking" /> {rankLabel(ranks[0].rank)} en Belgique · {rankCategory(ranks[0].label)}
               </span>
             )}
           </div>
@@ -416,7 +416,10 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
           <SwimmerMedals swimmer={swimmer} swims={mine} meetsById={meetsById} pbFlags={pbFlags} />
 
           {ranks.length > 0 && (
-            <Section title="Classements nationaux" footer={`Meilleurs rangs de la saison ${ranks[0].season}, publiés sur swimrankings.net.`}>
+            <Section
+              title="Classements nationaux"
+              footer="Meilleurs rangs de la dernière saison de chaque bassin (25 m et 50 m), dans la catégorie d’âge ou au classement général, publiés sur swimrankings.net."
+            >
               <div className="list">
                 {ranks.map((r) => (
                   <button key={`${r.course}-${r.distance}-${r.stroke}`} className="row" onClick={() => navigate(`/event/${id}/${r.course}/${r.distance}/${r.stroke}`)}>
@@ -425,7 +428,9 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                       <div className="row-title">
                         {eventLabel(r.distance, r.stroke)} · {courseLabel(r.course)}
                       </div>
-                      <div className="row-sub">{r.label}</div>
+                      <div className="row-sub">
+                      {r.label} · {r.season}
+                    </div>
                     </div>
                     <div className="row-end">
                       <div style={{ textAlign: 'right' }}>
