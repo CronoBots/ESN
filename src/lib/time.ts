@@ -27,6 +27,17 @@ export function formatDelta(cs: number): string {
 }
 
 /**
+ * Progression en pour cent : « −3,0 % » (temps gagné), « +1,2 % ». Rapportée au temps réalisé, comme
+ * SplashMe (1:24.62 → 1:22.17 : −2.45, soit −3,0 %), pour que les parents lisent le même chiffre.
+ */
+export function formatDeltaPct(deltaCs: number, timeCs: number): string {
+  if (!(timeCs > 0)) return '';
+  const pct = (deltaCs / timeCs) * 100;
+  const sign = pct < 0 ? '−' : pct > 0 ? '+' : '±';
+  return `${sign}${Math.abs(pct).toLocaleString('fr-BE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\u00a0%`;
+}
+
+/**
  * Interprète un temps saisi librement. Accepte :
  * "1:24.62", "1.24.62", "1'24\"62", "84.62", "84,62", "38.4" (→ 38.40),
  * "12462" (chiffres seuls, lus de droite à gauche → 1:24.62).

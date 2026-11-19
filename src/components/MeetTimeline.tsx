@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import type { Swimmer } from '../store/types';
 import { useData } from '../store/store';
 import { swimsOf, usePbFlags } from '../store/hooks';
@@ -7,10 +7,10 @@ import { courseLabel, eventLabel, ROUND_LABEL, STATUS_SHORT } from '../lib/event
 import { formatRange, fromISO } from '../lib/dates';
 import { formatDelta, formatTime } from '../lib/time';
 import { navigate } from '../router';
-import { StrokeTag } from './ui';
+import { PbDelta, PlaceLabel, StrokeTag } from './ui';
 import { Icon } from './Icon';
 import { ColumnChart } from './Chart';
-import { deName, placeLabel } from '../lib/text';
+import { deName } from '../lib/text';
 
 const MONTHS = ['JANV', 'FÉVR', 'MARS', 'AVR', 'MAI', 'JUIN', 'JUIL', 'AOÛT', 'SEPT', 'OCT', 'NOV', 'DÉC'];
 
@@ -83,7 +83,7 @@ export function TimelineMeetCard({
           const pts = pointsFor(s, swimmer);
           const sub = [
             s.round !== 'TIM' ? ROUND_LABEL[s.round] : null,
-            s.place ? placeLabel(s.place) : null,
+            s.place ? <PlaceLabel key="p" place={s.place} round={s.round} /> : null,
             pts != null ? `${pts} pts` : null,
           ].filter(Boolean);
           return (
@@ -91,7 +91,16 @@ export function TimelineMeetCard({
               <StrokeTag stroke={s.stroke} distance={s.distance} size={30} />
               <div className="row-body">
                 <div className="tl-event">{eventLabel(s.distance, s.stroke)}</div>
-                {sub.length > 0 && <div className="tl-sub">{sub.join('\u00a0· ')}</div>}
+                {sub.length > 0 && (
+                  <div className="tl-sub">
+                    {sub.map((x, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && '\u00a0· '}
+                        {x}
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="tl-time">
                 <span className="time-big">{s.status === 'OK' || s.status === 'DSQ' ? formatTime(s.timeCs) : ''}</span>
@@ -101,9 +110,7 @@ export function TimelineMeetCard({
                   ) : pb?.isPB ? (
                     <>
                       <span className="badge pb">PB</span>
-                      <span className="small good tnum" style={{ fontWeight: 600 }}>
-                        {formatDelta(pb.deltaCs!)}
-                      </span>
+                      <PbDelta deltaCs={pb.deltaCs!} timeCs={s.timeCs} />
                     </>
                   ) : pb?.isFirst ? (
                     <span className="badge first">1er temps</span>

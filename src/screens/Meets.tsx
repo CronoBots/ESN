@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useData } from '../store/store';
 import { fullName, sortSwimmers, swimsOf, usePbFlags, useSelectedSwimmer } from '../store/hooks';
-import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeTag } from '../components/ui';
+import { PbDelta, PlaceLabel, Avatar, Empty, NavBar, Row, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { formatDate, formatLongDay, formatRange, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
@@ -14,7 +14,7 @@ import { overlay } from '../components/ui';
 import { DateBlock, TimelineMeetCard, useTimeline } from '../components/MeetTimeline';
 import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
-import { capitalize, deName, placeLabel } from '../lib/text';
+import { capitalize, deName } from '../lib/text';
 import { ClubEventRow, GroupsBadge, useClubCalendar } from '../components/ClubCalendar';
 import { MeetOverviewSections } from '../components/MeetOverview';
 import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
@@ -325,7 +325,7 @@ export function MeetDetail({ id }: { id: string }) {
                     s.lane != null ? `Ligne\u00a0${s.lane}` : null,
                     s.round !== 'TIM' ? ROUND_LABEL[s.round] : null,
                   ].filter(Boolean);
-                  const rank = s.place ? placeLabel(s.place) : null;
+                  const rank = s.place ? <PlaceLabel place={s.place} round={s.round} /> : null;
                   return (
                     <button
                       key={s.id}
@@ -361,9 +361,7 @@ export function MeetDetail({ id }: { id: string }) {
                                 ) : pb?.isPB ? (
                                   <>
                                     <span className="badge pb">PB</span>
-                                    <span className="small good tnum" style={{ fontWeight: 600 }}>
-                                      {formatDelta(pb.deltaCs!)}
-                                    </span>
+                                    <PbDelta deltaCs={pb.deltaCs!} timeCs={s.timeCs} />
                                   </>
                                 ) : pb?.isFirst ? (
                                   <span className="badge first">1er temps</span>

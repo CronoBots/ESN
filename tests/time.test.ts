@@ -43,3 +43,13 @@ describe('points', () => {
     expect(computePoints(t, 'SCM', 'F', 100, 'FREE')).toBeGreaterThanOrEqual(204);
   });
 });
+
+describe('progression en pour cent', () => {
+  it('comme SplashMe : 1:24.62 → 1:22.17, soit −2.45 (−3,0 %)', async () => {
+    const { formatDeltaPct } = await import('../src/lib/time');
+    // Rapporté au temps réalisé : 245 / 8217 = 2,98 %
+    expect(formatDeltaPct(-245, 8217)).toBe('−3,0\u00a0%');
+    expect(formatDeltaPct(120, 5000)).toBe('+2,4\u00a0%');
+    expect(formatDeltaPct(0, 5000)).toBe('±0,0\u00a0%');
+  });
+});

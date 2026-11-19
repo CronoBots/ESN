@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSPrope
 import { Icon, type IconName } from './Icon';
 import { bindLayers, goBack, isLayerAbove, popLayer, pushLayer } from '../router';
 import { STROKE_BY_ID } from '../lib/events';
+import { formatDelta, formatDeltaPct } from '../lib/time';
 import { getState } from '../store/store';
-import type { Stroke, Swimmer } from '../store/types';
+import type { Round, Stroke, Swimmer } from '../store/types';
 
 /* ------------------------------------------------------------------------ */
 /* Hôte global : feuilles modales, confirmations, toasts, confettis          */
@@ -705,6 +706,27 @@ export function BrandLogo({
   return (
     <span className={`brand-logo ${className}`} style={{ height }} role="img" aria-label={variant === 'full' ? 'ESN Compétition' : 'ESN Seraing'}>
       <img src={`./brand/${base}.png`} alt="" height={height} />
+    </span>
+  );
+}
+
+/**
+ * Place dans une épreuve : sur le podium d'une finale (ou d'une finale directe), aux couleurs de la
+ * médaille ; sinon en texte simple. Les séries ne donnent pas de médaille.
+ */
+export function PlaceLabel({ place, round }: { place: number; round?: Round }) {
+  const label = `${place}${place === 1 ? 're' : 'e'}\u00a0place`;
+  if (place > 3 || (round && round !== 'TIM' && round !== 'FINAL')) return <>{label}</>;
+  return <span className={`place-pill place-${place}`}>{label}</span>;
+}
+
+/** Gain sur le record personnel : « −2.45 (−3,0 %) » ; sur un petit écran, le pourcentage passe à la ligne. */
+export function PbDelta({ deltaCs, timeCs }: { deltaCs: number; timeCs?: number | null }) {
+  const pct = timeCs != null ? formatDeltaPct(deltaCs, timeCs) : '';
+  return (
+    <span className="small good tnum pb-delta">
+      {formatDelta(deltaCs)}
+      {pct && <span className="pb-pct"> ({pct})</span>}
     </span>
   );
 }

@@ -4598,3 +4598,43 @@ button.meet-nav-btn:active {
 .program-row:disabled .chev {
   visibility: hidden;
 }
+
+/* Place sur le podium (finale ou finale directe), aux couleurs de la médaille */
+.place-pill {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.place-pill.place-1 {
+  background: #f6e3a1;
+  color: #6b4d00;
+}
+
+.place-pill.place-2 {
+  background: #e3e6eb;
+  color: #3f4652;
+}
+
+.place-pill.place-3 {
+  background: #f1d6bf;
+  color: #6a3a12;
+}
+
+/* Gain sur le record personnel, avec le pourcentage (comme SplashMe) */
+.pb-delta {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .pb-delta {
+    text-align: right;
+  }
+  .pb-pct {
+    display: block;
+  }
+}
