@@ -131,6 +131,13 @@ describe('recherche automatique : les anciens membres ne la relancent pas (store
       }),
     );
     expect(app.shouldAutoSyncLive()).toBe(false);
+    // Jour de compétition au calendrier du club : après 15 minutes, même si elle n'est pas encore publiée
+    expect(app.shouldAutoSyncLive(true)).toBe(false);
+    app.actions.replaceAll(
+      data([swimmer('a1', 'Alice', 'FICTIF')], { enabled: true, processed: { '9001': ['a1'] }, lastCheck: Date.now() - 16 * 60 * 1000, engine: app.SYNC_ENGINE }),
+    );
+    expect(app.shouldAutoSyncLive()).toBe(false);
+    expect(app.shouldAutoSyncLive(true)).toBe(true);
     // Un nouveau nageur actif : recherche tout de suite
     app.actions.addSwimmer({ firstName: 'Chloé', lastName: 'EXEMPLE', gender: 'F', birthYear: 2015, relation: 'followed' });
     expect(app.shouldAutoSyncLive()).toBe(true);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { eventAsMeet, groupsLabel, groupsShort, parseClubCalendar, publishedMeet, upcomingClubEvents } from '../src/lib/clubCalendar';
+import { eventAsMeet, groupsLabel, groupsShort, isClubCompetitionDay, parseClubCalendar, publishedMeet, upcomingClubEvents } from '../src/lib/clubCalendar';
 import { buildMeetCalendar } from '../src/lib/ics';
 import type { Meet } from '../src/store/types';
 
@@ -19,6 +19,13 @@ describe('calendrier du club', () => {
   it('après Crisnée, la prochaine compétition est à Bastogne (championnats de Belgique 11-16 ans)', () => {
     const next = upcomingClubEvents(cal, [], '2026-11-18').slice(0, 4);
     expect(next.map((e) => `${e.start} ${e.city}`)).toEqual(['2026-11-20 Bastogne', '2026-11-28 Bastogne', '2026-12-05 Bastogne', '2026-12-12 Waremme']);
+  });
+
+  it('jours de compétition du club (veille comprise) : recherche plus fréquente', () => {
+    // Bastogne, 20-22 novembre
+    expect(['2026-11-19', '2026-11-20', '2026-11-22'].map((d) => isClubCompetitionDay(cal, d))).toEqual([true, true, true]);
+    expect(['2026-11-18', '2026-11-23'].map((d) => isClubCompetitionDay(cal, d))).toEqual([false, false]);
+    expect(isClubCompetitionDay(null, '2026-11-20')).toBe(false);
   });
 
   it('une compétition publiée remplace son annonce (mêmes dates, même ville ou même nom)', () => {

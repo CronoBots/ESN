@@ -12,7 +12,7 @@ const CALENDAR_URL = './data/club-calendar.json';
 let loading: Promise<ClubCalendar | null> | null = null;
 
 /** Calendrier du club : réseau d'abord, dernière copie hors connexion (service worker). */
-function loadClubCalendar(): Promise<ClubCalendar | null> {
+export function loadClubCalendar(): Promise<ClubCalendar | null> {
   loading ??= fetch(CALENDAR_URL, { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : null))
     .then(parseClubCalendar)

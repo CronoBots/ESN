@@ -1,5 +1,5 @@
 import type { Course, Meet } from '../store/types';
-import { daysBetween } from './dates';
+import { addDays, daysBetween } from './dates';
 
 /**
  * Calendrier des compétitions du club (public/data/club-calendar.json), tel que les entraîneurs le
@@ -89,6 +89,14 @@ export function publishedMeet(ev: ClubEvent, meets: Meet[]): Meet | undefined {
     const mStems = nameStems(m.name);
     return [...city].some((w) => mCity.has(w) || mName.has(w)) || [...name].filter((w) => mStems.has(w)).length >= 2;
   });
+}
+
+/**
+ * Jour de compétition du club (la veille comprise, quand les listes de départ sont publiées) :
+ * l'application cherche alors les résultats plus souvent, même avant que la compétition soit en ligne.
+ */
+export function isClubCompetitionDay(cal: ClubCalendar | null, today: string): boolean {
+  return !!cal?.events.some((e) => addDays(e.start, -1) <= today && (e.end ?? e.start) >= today);
 }
 
 /** Compétitions du calendrier pas encore terminées et pas encore publiées, dans l'ordre. */

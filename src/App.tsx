@@ -19,6 +19,9 @@ import { LevelsScreen } from './screens/Levels';
 import { ChampionshipsScreen } from './screens/Championships';
 import { ClubScreen, ensureClub, refreshClubRoster } from './screens/Club';
 import { resultsMessage } from './screens/autoResults';
+import { loadClubCalendar } from './components/ClubCalendar';
+import { isClubCompetitionDay } from './lib/clubCalendar';
+import { todayISO } from './lib/dates';
 import type { Course, Stroke } from './store/types';
 
 const TABS: { id: string; path: string; label: string; icon: IconName }[] = [
@@ -106,7 +109,12 @@ export function App() {
     };
     const run = () => {
       // hors-ligne ou site indisponible : nouvel essai à la prochaine ouverture
-      if (!isSyncing() && shouldAutoSyncLive()) syncLive().then(notify).catch(() => {});
+      // Jour de compétition au calendrier du club : toutes les 15 minutes, pour la trouver dès sa publication
+      loadClubCalendar()
+        .then((cal) => {
+          if (!isSyncing() && shouldAutoSyncLive(isClubCompetitionDay(cal, todayISO()))) return syncLive().then(notify);
+        })
+        .catch(() => {});
     };
     const t = setTimeout(run, 1500);
     // Pendant une compétition, vérification régulière tant que l'app est ouverte

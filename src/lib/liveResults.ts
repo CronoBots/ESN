@@ -616,7 +616,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   return result;
 }
 
-export function shouldAutoSyncLive(): boolean {
+/** `clubDay` : jour de compétition au calendrier du club (vérification plus fréquente, même avant la publication). */
+export function shouldAutoSyncLive(clubDay = false): boolean {
   const s = getState();
   const cfg = s.settings.liveSync;
   if (!cfg.enabled || !s.swimmers.length) return false;
@@ -627,6 +628,6 @@ export function shouldAutoSyncLive(): boolean {
   const known = new Set(Object.values(cfg.processed).flat());
   if (searchedSwimmers(s).some((sw) => !known.has(sw.id))) return true;
   // Pendant un week-end de compétition, on vérifie plus souvent
-  const ongoing = s.meets.some((m) => m.startDate <= todayISO() && (m.endDate ?? m.startDate) >= todayISO());
+  const ongoing = clubDay || s.meets.some((m) => m.startDate <= todayISO() && (m.endDate ?? m.startDate) >= todayISO());
   return Date.now() - (cfg.lastCheck ?? 0) > (ongoing ? 15 * 60 * 1000 : 3 * 3600 * 1000);
 }
