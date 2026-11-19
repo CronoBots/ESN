@@ -4,7 +4,7 @@
  * resultats.glprod.be, pour les championnats de Belgique) : ces sites n'autorisent pas la lecture
  * depuis une autre application web (pas d'en-têtes CORS), le téléphone ne peut donc pas les lire.
  *
- * Au déploiement (GitHub Actions, toutes les 10 minutes les jours de compétition), ce script copie
+ * Au déploiement (GitHub Actions, toutes les 5 minutes les jours de compétition), ce script copie
  * dans le site, sous live/<id>/, la page et les feuilles PDF des compétitions du calendrier du club
  * qui ont un livetiming (champ « live » de public/data/club-calendar.json). L'application les lit
  * ensuite comme une compétition de live.swimrankings.net (liste dans live/meets.json).
@@ -15,7 +15,8 @@
  *                                                  passage précédent (requêtes conditionnelles :
  *                                                  seuls les fichiers modifiés sont retéléchargés)
  */
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CALENDAR = new URL('../public/data/club-calendar.json', import.meta.url);
@@ -71,7 +72,7 @@ async function get(url, cached) {
   }
 }
 
-async function mirrorMeet(ev, dist, cacheDir, manifest) {
+export async function mirrorMeet(ev, dist, cacheDir, manifest) {
   const id = mirrorId(ev.live);
   const base = ev.live.endsWith('/') ? ev.live : `${ev.live}/`;
   const out = join(dist, 'live', id);
@@ -81,6 +82,16 @@ async function mirrorMeet(ev, dist, cacheDir, manifest) {
   let fetched = 0;
   let reused = 0;
 
+  /**
+   * Date du fichier publiée par le site (Last-Modified) : GitHub Pages identifie un fichier par sa date et sa
+   * taille (ETag). Une feuille inchangée garde sa date d'un passage à l'autre : les téléphones ne la
+   * retéléchargent pas (réponse 304), même si le site est republié toutes les 5 minutes.
+   */
+  const stamp = (file, time) => {
+    const t = new Date(time);
+    for (const dir of keep ? [out, keep] : [out]) if (existsSync(join(dir, file))) utimesSync(join(dir, file), t, t);
+  };
+
   /** Télécharge un fichier (ou reprend la copie précédente s'il n'a pas changé). */
   const one = async (file, saveAs = file) => {
     const url = base + file;
@@ -88,32 +99,34 @@ async function mirrorMeet(ev, dist, cacheDir, manifest) {
     const r = await get(url, prev);
     if (r.status === 304 && prev) {
       copyFileSync(join(keep, saveAs), join(out, saveAs));
+      stamp(saveAs, prev.time ?? Date.now());
       reused++;
       return true;
     }
     if (r.status !== 200) return false;
     writeFileSync(join(out, saveAs), r.body);
+    const sha = createHash('sha1').update(r.body).digest('hex');
+    // Même contenu qu'au passage précédent : même date ; sinon la date du site, à défaut maintenant
+    const time = prev?.sha === sha && prev.time ? prev.time : Date.parse(r.lastModified ?? '') || Date.now();
     if (keep) {
       writeFileSync(join(keep, saveAs), r.body);
-      manifest[url] = { etag: r.etag ?? undefined, lastModified: r.lastModified ?? undefined };
+      manifest[url] = { etag: r.etag ?? undefined, lastModified: r.lastModified ?? undefined, sha, time };
     }
+    stamp(saveAs, time);
     fetched++;
     return true;
   };
 
-  const page = await get(base).catch((e) => ({ status: e.message }));
   let html;
-  if (page.status === 200) {
-    html = page.body.toString('utf8');
-    if (keep) writeFileSync(join(keep, 'index.html'), html);
+  if (await one('', 'index.html').catch(() => false)) {
+    html = readFileSync(join(out, 'index.html'), 'utf8');
   } else if (keep && existsSync(join(keep, 'index.html'))) {
     // Site momentanément indisponible : la copie précédente reste publiée
-    console.warn(`${base} : ${page.status}, copie précédente reprise`);
-    cpSync(keep, out, { recursive: true });
+    console.warn(`${base} indisponible, copie précédente reprise`);
+    cpSync(keep, out, { recursive: true, preserveTimestamps: true });
     html = readFileSync(join(keep, 'index.html'), 'utf8');
     return meetInfo(ev, id, base, html);
-  } else throw new Error(`${base} : ${page.status}`);
-  writeFileSync(join(out, 'index.html'), html);
+  } else throw new Error(`${base} indisponible`);
   const files = meetFiles(html);
   // Fichier LENEX éventuel : aussi sous le nom lu par l'application (results.lxf)
   const lenex = files.find((f) => /\.lxf$/i.test(f));
@@ -127,7 +140,11 @@ async function mirrorMeet(ev, dist, cacheDir, manifest) {
       }
     }),
   );
-  if (lenex && lenex !== 'results.lxf' && existsSync(join(out, lenex))) copyFileSync(join(out, lenex), join(out, 'results.lxf'));
+  if (lenex && lenex !== 'results.lxf' && existsSync(join(out, lenex))) {
+    copyFileSync(join(out, lenex), join(out, 'results.lxf'));
+    const t = statSync(join(out, lenex)).mtime;
+    utimesSync(join(out, 'results.lxf'), t, t);
+  }
   console.log(`${id} : ${files.length} feuilles (${fetched} téléchargées, ${reused} inchangées, ${failed} en échec)`);
   return meetInfo(ev, id, base, html);
 }

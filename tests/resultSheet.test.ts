@@ -129,6 +129,28 @@ Série 1 de 4
     expect(parseSheetHeader([fed.replace('Liste des séries', 'Liste des résultats Finale directe')]).round).toBe('TIM');
   });
 
+  it('plusieurs classements sur la feuille (par catégorie, puis par âge) et prénom réduit à l’initiale', () => {
+    const sheet = `Championnat de district Test
+Bastogne, 17 - 18/10/2026
+Epreuve 9   Dames, 200m Brasse   11 ans et plus
+17/10/2026 - 11:15   Liste résultats
+Rang   AN   Temps   Pts   50m   100m   150m   200m
+Benjamin classement district
+1. MARTIN, Léa   14   Club Exemple   3:09.50 341   43.91   47.37   50.20   48.02
+2. DUPONT-LAMBERT, E.   15   Esn   3:20.93 286   45.16   50.46   53.80   51.51
+Benjamin 11
+1. DUPONT-LAMBERT, E.   15   Esn   3:20.93 286   45.16   50.46   53.80   51.51
+Benjamin 12
+1. MARTIN, Léa   14   Club Exemple   3:09.50 341   43.91   47.37   50.20   48.02`;
+    const h = parseSheetHeader([sheet]);
+    expect(h).toMatchObject({ eventNo: 9, distance: 200, stroke: 'BREAST', gender: 'F', date: '2026-10-17', startTime: '11:15' });
+    // Classement par âge (le dernier), comme le fichier officiel ; prénom « E. » : nom complet et année vérifiés
+    expect(findSwimmerResult([sheet], { firstName: 'Emma', lastName: 'Dupont-Lambert', birthYear: 2015, gender: 'F' }, h)).toMatchObject({ timeCs: 20093, place: 1 });
+    expect(findSwimmerResult([sheet], { firstName: 'Léa', lastName: 'Martin', birthYear: 2014, gender: 'F' }, h)).toMatchObject({ timeCs: 18950, place: 1 });
+    // Même initiale mais autre année : pas elle
+    expect(findSwimmerResult([sheet], { firstName: 'Eva', lastName: 'Dupont-Lambert', birthYear: 2013, gender: 'F' }, h)).toBeNull();
+  });
+
   it('liste les feuilles publiées sur la page de la compétition', () => {
     const docs = parseMeetDocs(
       '<a href="StartList_1.pdf">x</a><a href="StartList_2.pdf">x</a><a href="ResultList_1.pdf">x</a><a href="EntryStatistics.pdf">x</a>',

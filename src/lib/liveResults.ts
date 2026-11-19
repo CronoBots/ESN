@@ -27,7 +27,8 @@ function clubRows(text: string, isResult: boolean, gender: Swimmer['gender'] | u
   for (const r of rows) {
     if (!club.test((r.club ?? '').trim())) continue;
     const n = splitName(r.name);
-    if (n) out.push({ ...n, birthYear: yearOf(r.yy), gender });
+    // Prénom réduit à l'initiale (nom long coupé sur la feuille : « DUPONT-LAMBERT, E. ») : pas une nouvelle fiche
+    if (n && n.firstName.replace(/[.\s]/g, '').length > 1) out.push({ ...n, birthYear: yearOf(r.yy), gender });
   }
   return out;
 }
@@ -52,7 +53,7 @@ export const LIVE_BASE = 'https://live.swimrankings.net';
 /**
  * Livetiming publié ailleurs (p. ex. celui de la fédération, resultats.glprod.be) : ces sites ne
  * permettent pas la lecture depuis l'application. Le déploiement en publie une copie avec le site,
- * sous live/<id>/ (scripts/mirror-live.mjs), toutes les 10 minutes les jours de compétition du club.
+ * sous live/<id>/ (scripts/mirror-live.mjs), toutes les 5 minutes les jours de compétition du club.
  */
 export const isMirrored = (id: string) => id.startsWith('ext-');
 
@@ -265,6 +266,9 @@ export function parseMeetDocs(html: string): MeetDocs {
   return docs;
 }
 
+/** Texte des feuilles déjà lues : une feuille inchangée (même version publiée) n'est pas relue. */
+const pdfMemo = new Map<string, { tag: string; text: string }>();
+
 /** Texte d'une feuille PDF. `keep` : feuille définitive, lue une seule fois puis gardée sur l'appareil (le texte, pas le PDF). */
 export async function pdfText(url: string, fresh: boolean, keep = false): Promise<string> {
   const key = `${url}?texte`;
@@ -272,9 +276,21 @@ export async function pdfText(url: string, fresh: boolean, keep = false): Promis
   if (kept) return kept.text();
   const res = await fetch(url, { cache: fresh ? 'no-cache' : 'default' });
   if (!res.ok) return '';
+  // Version de la feuille : pendant une compétition, seules les feuilles modifiées sont relues
+  const tag = [res.headers.get('etag'), res.headers.get('last-modified'), res.headers.get('content-length')].filter(Boolean).join(' ');
+  const memo = pdfMemo.get(url);
+  if (tag && memo?.tag === tag) {
+    void res.body?.cancel().catch(() => {});
+    return memo.text;
+  }
   const { pdfLines } = await import('./pdfText');
   const text = (await pdfLines(await res.arrayBuffer())).join('\n');
   if (keep && text) void keepFinal(key, text);
+  if (tag && text) {
+    pdfMemo.delete(url);
+    pdfMemo.set(url, { tag, text });
+    if (pdfMemo.size > 300) pdfMemo.delete(pdfMemo.keys().next().value!);
+  }
   return text;
 }
 
@@ -655,7 +671,7 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   return result;
 }
 
-/** `clubDay` : jour de compétition au calendrier du club (vérification plus fréquente, même avant la publication). */
+/** `clubDay` : jour de compétition au calendrier du club (vérification toutes les 5 minutes, même avant la publication). */
 export function shouldAutoSyncLive(clubDay = false): boolean {
   const s = getState();
   const cfg = s.settings.liveSync;
@@ -666,7 +682,7 @@ export function shouldAutoSyncLive(clubDay = false): boolean {
   // Nageur ajouté (ou renommé) depuis la dernière recherche : tout de suite (seulement ceux que la recherche traite : pas les anciens membres)
   const known = new Set(Object.values(cfg.processed).flat());
   if (searchedSwimmers(s).some((sw) => !known.has(sw.id))) return true;
-  // Pendant un week-end de compétition, on vérifie plus souvent
+  // Pendant un week-end de compétition, on vérifie à chaque passage (toutes les 5 minutes, application ouverte)
   const ongoing = clubDay || s.meets.some((m) => m.startDate <= todayISO() && (m.endDate ?? m.startDate) >= todayISO());
-  return Date.now() - (cfg.lastCheck ?? 0) > (ongoing ? 15 * 60 * 1000 : 3 * 3600 * 1000);
+  return Date.now() - (cfg.lastCheck ?? 0) > (ongoing ? 4 * 60 * 1000 : 3 * 3600 * 1000);
 }

@@ -489,7 +489,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
 
           <div className="section-foot profile-updated">
             <Icon name="sparkles" /> Fiche mise à jour automatiquement : résultats des compétitions
-            {lastCheck ? ` vérifiés ${sinceLabel(lastCheck)}` : ' vérifiés à chaque ouverture'} (toutes les 3 h, toutes les 15 min pendant un week-end de
+            {lastCheck ? ` vérifiés ${sinceLabel(lastCheck)}` : ' vérifiés à chaque ouverture'} (toutes les 3 h, toutes les 5 min pendant un week-end de
             compétition) ; historique et classements nationaux dès leur publication par le club.
           </div>
 

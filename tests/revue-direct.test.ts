@@ -131,10 +131,10 @@ describe('recherche automatique : les anciens membres ne la relancent pas (store
       }),
     );
     expect(app.shouldAutoSyncLive()).toBe(false);
-    // Jour de compétition au calendrier du club : après 15 minutes, même si elle n'est pas encore publiée
+    // Jour de compétition au calendrier du club : à chaque passage (5 minutes), même si elle n'est pas encore publiée
     expect(app.shouldAutoSyncLive(true)).toBe(false);
     app.actions.replaceAll(
-      data([swimmer('a1', 'Alice', 'FICTIF')], { enabled: true, processed: { '9001': ['a1'] }, lastCheck: Date.now() - 16 * 60 * 1000, engine: app.SYNC_ENGINE }),
+      data([swimmer('a1', 'Alice', 'FICTIF')], { enabled: true, processed: { '9001': ['a1'] }, lastCheck: Date.now() - 5 * 60 * 1000, engine: app.SYNC_ENGINE }),
     );
     expect(app.shouldAutoSyncLive()).toBe(false);
     expect(app.shouldAutoSyncLive(true)).toBe(true);

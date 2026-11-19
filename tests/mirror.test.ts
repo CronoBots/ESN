@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 // @ts-expect-error script Node sans types
 import { activeEvents, meetFiles, mirrorId } from '../scripts/mirror-live.mjs';
-import { isMirrored, liveUrl, listMirroredMeets, mergeMeetLists, type LiveMeet } from '../src/lib/liveResults';
+import { isMirrored, liveUrl, listMirroredMeets, mergeMeetLists, pdfText, type LiveMeet } from '../src/lib/liveResults';
+import { pdfLines } from '../src/lib/pdfText';
+
+// Lecteur PDF remplacé : on compte les lectures
+vi.mock('../src/lib/pdfText', () => ({ pdfLines: vi.fn(async () => ['Epreuve 1']) }));
 
 const cal = {
   events: [
@@ -48,5 +52,18 @@ describe('livetiming copié avec le site (hors live.swimrankings.net)', () => {
     const live: LiveMeet = { ...m, id: '12000', name: 'CHAMPIONNATS TEST 2026' };
     expect(mergeMeetLists([live], [m]).map((x) => x.id)).toEqual(['12000']);
     expect(mergeMeetLists([{ ...live, startDate: '2026-11-21' }], [m]).map((x) => x.id)).toEqual(['12000', 'ext-CB-test26']);
+  });
+
+  it('pendant la compétition, une feuille inchangée n’est pas relue', async () => {
+    let etag = '"a-1"';
+    vi.stubGlobal('fetch', async () => new Response(new Uint8Array([37, 80, 68, 70]), { headers: { etag } }));
+    const url = liveUrl('ext-CB-test26', 'StartList_1.pdf');
+    expect(await pdfText(url, true)).toBe('Epreuve 1');
+    expect(await pdfText(url, true)).toBe('Epreuve 1');
+    expect(pdfLines).toHaveBeenCalledTimes(1);
+    etag = '"b-1"'; // feuille republiée (résultats)
+    await pdfText(url, true);
+    expect(pdfLines).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
   });
 });

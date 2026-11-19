@@ -187,6 +187,16 @@ function nameOnLine(line: string, sw: SheetSwimmer): number {
   if (!first || !last) return -1;
   const fp = first.slice(0, Math.min(5, first.length));
   for (let k = 1; k < norm.length; k++) {
+    // Prénom réduit à l'initiale (nom long coupé : « DUPONT-LAMBERT, E. ») : nom complet et année de naissance exigés
+    if (norm[k].length === 1 && first.length > 1) {
+      if (norm[k] !== first[0] || !sw.birthYear) continue;
+      const yy = String(sw.birthYear % 100).padStart(2, '0');
+      if (!tokens.slice(k + 1, k + 4).some((t) => t.replace(/\D/g, '') === yy)) continue;
+      const before: string[] = [];
+      for (let j = k - 1; j >= 0 && before.length < 3; j--) if (norm[j]) before.unshift(norm[j]);
+      if ([1, 2, 3].some((n) => n <= before.length && before.slice(before.length - n).join('') === last)) return k;
+      continue;
+    }
     // Prénom plus long d'au moins deux lettres : un autre prénom (« Léane » n'est pas « Léa »)
     if (norm[k].length > first.length + 1) continue;
     if (!norm[k].startsWith(fp) && editDistance(norm[k].slice(0, first.length), first) > (first.length > 5 ? 1 : 0)) continue;
@@ -325,7 +335,10 @@ export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = pa
       const r = readLine(line, sw, header);
       // Homonyme d'une autre année : on écarte, même avec un temps (comme findSwimmerEntry)
       if (!r || otherYear(r.line, yy)) continue;
-      if (score(r) > score(best)) {
+      // Plusieurs classements sur la même feuille (« classement LNL » par catégorie, puis par âge) : la
+      // dernière ligne, celle du classement le plus précis, comme le fichier officiel (LENEX)
+      const sameSheet = (bestAt as { lines: string[] } | null)?.lines === lines;
+      if (score(r) > score(best) || (score(r) === score(best) && sameSheet)) {
         best = r;
         bestAt = { lines, idx };
       }

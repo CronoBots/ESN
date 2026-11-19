@@ -109,7 +109,7 @@ export function App() {
     };
     const run = () => {
       // hors-ligne ou site indisponible : nouvel essai à la prochaine ouverture
-      // Jour de compétition au calendrier du club : toutes les 15 minutes, pour la trouver dès sa publication
+      // Jour de compétition au calendrier du club : toutes les 5 minutes, pour la trouver et suivre les résultats
       loadClubCalendar()
         .then((cal) => {
           if (!isSyncing() && shouldAutoSyncLive(isClubCompetitionDay(cal, todayISO()))) return syncLive().then(notify);
