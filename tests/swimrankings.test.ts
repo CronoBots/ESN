@@ -178,3 +178,45 @@ describe('format d’import en colonnes', () => {
     expect(r.swims[0]).toMatchObject({ date: '2009-08-04', timeCs: 7647, meet: 'Meeting d’été' });
   });
 });
+
+describe('temps de passage officiels (400 m d’un 800 m…) : pas des courses', () => {
+  // Historique fictif, en colonnes : épreuve, bassin, temps, points, date, ville, compétition, club, place, tour, passages
+  const row = (ev: string, time: string, date: string, place = '', round = '', splits = '') =>
+    [ev, '25m', time, '300', date, 'Ville', 'Meeting fictif', 'Ecole Seraing Natation', place, round, splits].join('\t');
+  const parse = (...rows: string[]) =>
+    parseSwimrankings(rows.join('\n')).swims.map((s) => `${s.distance} ${s.stroke} ${s.timeCs}`);
+
+  it('retire le passage aux 400 m d’un 800 m (sans place, même jour, à l’allure de la course)', () => {
+    const swims = parse(
+      row('800m Libre', '10:58.94', '14 nov 2026', '4', 'Finale directe'),
+      row('400m Libre', '5:23.71', '14 nov 2026'),
+      row('400m Libre', '5:24.91', '15 nov 2026', '2', 'Finale directe'),
+    );
+    expect(swims).toEqual(['800 FREE 65894', '400 FREE 32491']);
+  });
+
+  it('retire aussi le passage aux 800 m d’un 1500 m, et tout temps identique à un passage relevé', () => {
+    expect(parse(row('1500m Libre', '18:32.79', '15 nov 2026', '1', 'Finale directe'), row('800m Libre', '9:49.66', '15 nov 2026'))).toEqual([
+      '1500 FREE 111279',
+    ]);
+    expect(parse(row('200m Dos', '2:53.35', '14 nov 2026', '3', 'Finale directe', '40.40 1:24.35 2:09.54'), row('100m Dos', '1:24.35', '14 nov 2026'))).toEqual([
+      '200 BACK 17335',
+    ]);
+  });
+
+  it('garde les vraies courses du même jour', () => {
+    // 50 m et 100 m le même jour (meeting, masters) : deux courses
+    expect(parse(row('100m Libre', '58.82', '23 nov 2025', '3', 'Finale directe'), row('50m Libre', '26.15', '23 nov 2025'))).toHaveLength(2);
+    // 400 m nettement plus rapide que l'allure du 800 m : une autre course
+    expect(parse(row('800m Libre', '12:30.00', '14 nov 2026', '4', 'Finale directe'), row('400m Libre', '5:20.00', '14 nov 2026'))).toHaveLength(2);
+    // Passage relevé différent : le 400 m est une autre course
+    expect(
+      parse(
+        row('800m Libre', '10:58.94', '14 nov 2026', '4', 'Finale directe', '36.01 1:16.13 1:57.16 2:38.29 3:19.38 4:00.75 4:42.51 5:23.71 6:05.91 6:47.44 7:30.20 8:13.49 8:55.05 9:37.65 10:20.26'),
+        row('400m Libre', '5:25.00', '14 nov 2026'),
+      ),
+    ).toHaveLength(2);
+    // Anciennes années, places non relevées : impossible de trancher, on garde
+    expect(parse(row('800m Libre', '10:58.94', '14 nov 2021'), row('400m Libre', '5:23.71', '14 nov 2021'))).toHaveLength(2);
+  });
+});

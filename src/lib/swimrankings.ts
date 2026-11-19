@@ -397,7 +397,36 @@ export function parseSwimrankings(text: string): ParseResult {
     }
   }
 
-  return { athlete: parseAthlete(text), swims: dedupe(swims) };
+  return { athlete: parseAthlete(text), swims: dropOfficialSplits(dedupe(swims)) };
+}
+
+/**
+ * Temps de passage officiels : swimrankings publie aussi, comme des résultats, le temps aux 400 m d'un
+ * 800 m ou aux 800 m d'un 1500 m (rangés à part, « Lap », dans ses classements). Ce ne sont pas des
+ * courses : les résultats officiels, ceux du club et SplashMe ne les comptent ni comme course ni comme
+ * record personnel. Une telle ligne n'a ni place ni tour, et tombe le même jour, dans la même compétition,
+ * qu'une course plus longue de même nage et même bassin :
+ *  - temps identique au passage relevé à cette distance : passage officiel, sans doute possible ;
+ *  - passages non relevés : 400 m dans un 800 ou un 1500 m, 800 m dans un 1500 m libre, à l'allure de
+ *    la course (rapport 0,93 à 1,03), celle-ci classée ; sans place, on ne peut pas trancher : on garde.
+ * Les 50 m et 100 m nagés le même jour qu'une course plus longue (masters, meetings) restent des courses.
+ */
+export function dropOfficialSplits<T extends ParsedSwim>(list: T[]): T[] {
+  return list.filter(
+    (s) =>
+      s.place != null ||
+      !!s.round ||
+      !list.some((o) => {
+        if (o === s || o.stroke !== s.stroke || o.course !== s.course || o.date !== s.date || o.distance <= s.distance) return false;
+        if (o.meet && s.meet && o.meet !== s.meet) return false;
+        const at = o.splits?.[s.distance / (o.splitEvery ?? 50) - 1];
+        if (at != null) return at === s.timeCs;
+        const lap = s.stroke === 'FREE' && ((s.distance === 400 && (o.distance === 800 || o.distance === 1500)) || (s.distance === 800 && o.distance === 1500));
+        if (!lap || o.place == null) return false;
+        const pace = s.timeCs / ((o.timeCs * s.distance) / o.distance);
+        return pace >= 0.93 && pace <= 1.03;
+      }),
+  );
 }
 
 function cleanText(s: string): string {
