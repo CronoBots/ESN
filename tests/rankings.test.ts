@@ -10,7 +10,8 @@ DUPONT, Emma (2015)
 2025/26\t25m\t100m Libre\tBelgique · filles nées en 2015\t25\t\t1:18.90
 2026-2027\t50m\t200m 4 nages\tBelgique · 11 ans\t3
 2026-2027\t25m\tépreuve inconnue\tBelgique\t4
-2026-2027\t25m\t100m Dos\tBelgique\tpas un rang`;
+2026-2027\t25m\t100m Dos\tBelgique\tpas un rang
+2025-2026\t25m\t50m Libre Lap\tBelgique · 19 ans et plus\t41\t\t47.93M`;
 
 describe('classements nationaux', () => {
   it('lit les lignes valides et écarte les autres', () => {

@@ -29,7 +29,8 @@ export function parseRankingsText(text: string): ParsedRank[] {
   const out: ParsedRank[] = [];
   for (const line of text.split(/\r?\n/)) {
     const c = line.split('\t').map((x) => x.trim());
-    if (c.length < 5) continue;
+    // « 50m Libre Lap » : temps de passage classé à part sur swimrankings, pas une course
+    if (c.length < 5 || /\blap$/i.test(c[2])) continue;
     const season = normSeason(c[0]);
     const course: Course | null = /^25\s?m$/i.test(c[1]) || /^SCM$/i.test(c[1]) ? 'SCM' : /^50\s?m$/i.test(c[1]) || /^LCM$/i.test(c[1]) ? 'LCM' : null;
     const ev = tokenize(c[2]).find((t) => t.t === 'EVENT') as { distance: number; stroke: Stroke } | undefined;
