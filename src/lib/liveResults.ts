@@ -213,11 +213,64 @@ export function keepFinal(key: string, body: BodyInit): Promise<void> {
 
 const lenexCache = new Map<string, Promise<LenexMeet | null>>();
 
+/** Empreintes des feuilles d'une copie de livetiming (files.json), relues au plus une fois par minute. */
+const versionsCache = new Map<string, { at: number; p: Promise<Record<string, string> | null> }>();
+function mirroredVersions(id: string): Promise<Record<string, string> | null> {
+  const c = versionsCache.get(id);
+  if (c && Date.now() - c.at < 60000) return c.p;
+  const p = fetch(liveUrl(id, 'files.json'), { cache: 'no-cache' })
+    .then((r) => (r.ok ? (r.json() as Promise<{ files?: Record<string, string> }>) : null))
+    .then((d) => d?.files ?? null)
+    .catch(() => null);
+  versionsCache.set(id, { at: Date.now(), p });
+  return p;
+}
+
+/**
+ * Feuilles publiées pour une compétition. Copie de livetiming : d'après la liste des empreintes (pas la
+ * page, lourde), avec la version de chaque feuille pour ne lire que celles qui ont changé.
+ */
+async function loadMeetDocs(id: string, fresh: boolean): Promise<(MeetDocs & { versions?: Record<string, string> }) | null> {
+  if (isMirrored(id)) {
+    const versions = await mirroredVersions(id);
+    if (!versions) return null;
+    return { ...parseMeetDocs(Object.keys(versions).map((f) => `href="${f}"`).join(' ')), versions };
+  }
+  const res = await fetch(liveUrl(id), { cache: fresh ? 'no-cache' : 'default' });
+  if (!res.ok) return null;
+  return parseMeetDocs(await res.text());
+}
+
+/** Fichier LENEX d'une copie de livetiming : seulement s'il est publié, relu à chaque nouvelle version. */
+function fetchMirroredLenex(id: string): Promise<LenexMeet | null> {
+  return mirroredVersions(id).then((versions) => {
+    const version = versions?.['results.lxf'];
+    if (!version) return null;
+    const key = `${id}#${version}`;
+    let p = lenexCache.get(key);
+    if (!p) {
+      p = (async () => {
+        const res = await fetch(`${liveUrl(id, 'results.lxf')}?v=${version}`);
+        if (!res.ok) return null;
+        const buf = await res.arrayBuffer();
+        const b = new Uint8Array(buf);
+        if (b.length < 4 || b[0] !== 0x50 || b[1] !== 0x4b) return null;
+        return parseLenex(await unzipFirst(buf));
+      })();
+      p.catch(() => lenexCache.delete(key));
+      for (const k of lenexCache.keys()) if (k !== key && k.startsWith(`${id}#`)) lenexCache.delete(k);
+      lenexCache.set(key, p);
+    }
+    return p;
+  });
+}
+
 /**
  * Résultats LENEX d'une compétition (null s'ils ne sont pas encore publiés).
  * `settled` : compétition aux résultats définitifs, lus une seule fois puis gardés sur l'appareil.
  */
 export function fetchLiveResults(id: string, live = false, settled = false): Promise<LenexMeet | null> {
+  if (isMirrored(id)) return fetchMirroredLenex(id);
   const key = `${id}${live ? `@${Math.floor(Date.now() / 300000)}` : ''}`;
   let p = lenexCache.get(key);
   if (!p) {
@@ -269,12 +322,15 @@ export function parseMeetDocs(html: string): MeetDocs {
 /** Texte des feuilles déjà lues : une feuille inchangée (même version publiée) n'est pas relue. */
 const pdfMemo = new Map<string, { tag: string; text: string }>();
 
-/** Texte d'une feuille PDF. `keep` : feuille définitive, lue une seule fois puis gardée sur l'appareil (le texte, pas le PDF). */
-export async function pdfText(url: string, fresh: boolean, keep = false): Promise<string> {
-  const key = `${url}?texte`;
-  const kept = keep ? await readFinal(key) : null;
+/**
+ * Texte d'une feuille PDF. `keep` : feuille définitive, lue une seule fois puis gardée sur l'appareil (le texte,
+ * pas le PDF). `version` (copie de livetiming) : empreinte de la feuille, chaque version n'est lue qu'une fois.
+ */
+export async function pdfText(url: string, fresh: boolean, keep = false, version?: string): Promise<string> {
+  const key = version ? `${url}?v=${version}&texte` : `${url}?texte`;
+  const kept = keep || version ? await readFinal(key) : null;
   if (kept) return kept.text();
-  const res = await fetch(url, { cache: fresh ? 'no-cache' : 'default' });
+  const res = await fetch(version ? `${url}?v=${version}` : url, { cache: fresh && !version ? 'no-cache' : 'default' });
   if (!res.ok) return '';
   // Version de la feuille : pendant une compétition, seules les feuilles modifiées sont relues
   const tag = [res.headers.get('etag'), res.headers.get('last-modified'), res.headers.get('content-length')].filter(Boolean).join(' ');
@@ -285,7 +341,7 @@ export async function pdfText(url: string, fresh: boolean, keep = false): Promis
   }
   const { pdfLines } = await import('./pdfText');
   const text = (await pdfLines(await res.arrayBuffer())).join('\n');
-  if (keep && text) void keepFinal(key, text);
+  if ((keep || version) && text) void keepFinal(key, text);
   if (tag && text) {
     pdfMemo.delete(url);
     pdfMemo.set(url, { tag, text });
@@ -309,9 +365,8 @@ export async function readMeetPdfs(
 ): Promise<{ found: Map<string, PdfSwim[]>; complete: boolean; candidates: ClubCandidate[] } | null> {
   const fresh = m.status !== 'finished';
   const keep = settledMeet(m);
-  const res = await fetch(liveUrl(m.id), { cache: fresh ? 'no-cache' : 'default' });
-  if (!res.ok) return null;
-  const docs = parseMeetDocs(await res.text());
+  const docs = await loadMeetDocs(m.id, fresh);
+  if (!docs) return null;
   if (!docs.results.size && !docs.starts.size) return null;
   // Terminé : tous les résultats sont là (ou la compétition date de plus de 3 jours : épreuves annulées, relais…)
   const old = (m.endDate ?? m.startDate ?? '') < new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
@@ -319,7 +374,7 @@ export async function readMeetPdfs(
   const found = new Map<string, PdfSwim[]>();
   const candidates: ClubCandidate[] = [];
   // Aucun nageur du club inscrit : rien à lire (feuille illisible, vide : on lit les épreuves)
-  const stats = club && docs.stats ? await pdfText(liveUrl(m.id, docs.stats), fresh, keep) : '';
+  const stats = club && docs.stats ? await pdfText(liveUrl(m.id, docs.stats), fresh, keep, docs.versions?.[docs.stats]) : '';
   if (club && stats && !club.test(stats)) return { found, complete: m.status === 'finished', candidates };
   const events = [...new Set([...docs.results.keys(), ...docs.starts.keys()])].sort((a, b) => a - b);
   const course = m.course ?? 'SCM';
@@ -327,7 +382,8 @@ export async function readMeetPdfs(
   let failed = false;
   await mapLimit(events, 4, async (no) => {
     const isResult = docs.results.has(no);
-    const text = await pdfText(liveUrl(m.id, (isResult ? docs.results : docs.starts).get(no)), fresh && !isResult, keep).catch(() => '');
+    const file = (isResult ? docs.results : docs.starts).get(no)!;
+    const text = await pdfText(liveUrl(m.id, file), fresh && !isResult, keep, docs.versions?.[file]).catch(() => '');
     if (!text) {
       failed = true;
       return;
@@ -438,14 +494,13 @@ async function readEventSheet(liveId: string, eventNo: number, live: boolean, se
   const l = await fetchLiveResults(liveId, live, settled).catch(() => null);
   const fromLenex = l ? sheetFromLenex(l, eventNo) : null;
   if (fromLenex) return fromLenex;
-  const res = await fetch(liveUrl(liveId), { cache: live ? 'no-cache' : 'default' });
-  if (!res.ok) return null;
-  const docs = parseMeetDocs(await res.text());
+  const docs = await loadMeetDocs(liveId, live);
+  if (!docs) return null;
   const startFile = docs.starts.get(eventNo);
   const resultFile = docs.results.get(eventNo);
   const [st, rs] = await Promise.all([
-    startFile ? pdfText(liveUrl(liveId, startFile), live, settled) : Promise.resolve(''),
-    resultFile ? pdfText(liveUrl(liveId, resultFile), live, settled) : Promise.resolve(''),
+    startFile ? pdfText(liveUrl(liveId, startFile), live, settled, docs.versions?.[startFile]) : Promise.resolve(''),
+    resultFile ? pdfText(liveUrl(liveId, resultFile), live, settled, docs.versions?.[resultFile]) : Promise.resolve(''),
   ]);
   if (!st && !rs) return null;
   const start = st ? parseStartSheet(st) : null;

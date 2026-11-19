@@ -48,10 +48,6 @@ jobs:
       - run: npm test
         if: github.event_name != 'schedule'
       - run: npm run build
-      # GitHub Pages identifie un fichier par sa date et sa taille : dates fixées à celle de la version,
-      # pour qu'un passage programmé ne fasse pas tout retélécharger aux téléphones (réponse 304)
-      - name: Dates des fichiers
-        run: find dist -type f -exec touch -d "@$(git log -1 --format=%ct)" {} +
       - name: Copies précédentes du livetiming
         if: needs.window.outputs.active == 'true'
         uses: actions/cache/restore@v4

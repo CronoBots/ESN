@@ -31,6 +31,22 @@ describe('livetiming copié avec le site (hors live.swimrankings.net)', () => {
     expect(meetFiles(html).sort()).toEqual(['EntryStatistics.pdf', 'ResultList_1.pdf', 'StartList_1.pdf', 'results.lxf']);
   });
 
+  it('chaque version d’une feuille copiée n’est téléchargée et lue qu’une fois', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', async (u: string) => {
+      calls.push(u);
+      return new Response(new Uint8Array([37, 80, 68, 70]));
+    });
+    const url = liveUrl('ext-CB-test26', 'ResultList_2.pdf');
+    vi.mocked(pdfLines).mockClear();
+    await pdfText(url, true, false, 'aaa');
+    expect(calls).toEqual(['./live/ext-CB-test26/ResultList_2.pdf?v=aaa']);
+    await pdfText(url, true, false, 'bbb'); // feuille republiée : nouvelle version
+    expect(calls[1]).toBe('./live/ext-CB-test26/ResultList_2.pdf?v=bbb');
+    expect(pdfLines).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
+  });
+
   it('l’application lit la copie sur son propre site', () => {
     expect(isMirrored('ext-CB-test26')).toBe(true);
     expect(isMirrored('11570')).toBe(false);
@@ -54,10 +70,11 @@ describe('livetiming copié avec le site (hors live.swimrankings.net)', () => {
     expect(mergeMeetLists([{ ...live, startDate: '2026-11-21' }], [m]).map((x) => x.id)).toEqual(['12000', 'ext-CB-test26']);
   });
 
-  it('pendant la compétition, une feuille inchangée n’est pas relue', async () => {
+  it('live.swimrankings.net : une feuille inchangée (même version) n’est pas relue', async () => {
     let etag = '"a-1"';
     vi.stubGlobal('fetch', async () => new Response(new Uint8Array([37, 80, 68, 70]), { headers: { etag } }));
-    const url = liveUrl('ext-CB-test26', 'StartList_1.pdf');
+    const url = 'https://live.example/9001/StartList_1.pdf';
+    vi.mocked(pdfLines).mockClear();
     expect(await pdfText(url, true)).toBe('Epreuve 1');
     expect(await pdfText(url, true)).toBe('Epreuve 1');
     expect(pdfLines).toHaveBeenCalledTimes(1);

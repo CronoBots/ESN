@@ -16,7 +16,7 @@
  *                                                  seuls les fichiers modifiés sont retéléchargés)
  */
 import { createHash } from 'node:crypto';
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CALENDAR = new URL('../public/data/club-calendar.json', import.meta.url);
@@ -82,16 +82,6 @@ export async function mirrorMeet(ev, dist, cacheDir, manifest) {
   let fetched = 0;
   let reused = 0;
 
-  /**
-   * Date du fichier publiée par le site (Last-Modified) : GitHub Pages identifie un fichier par sa date et sa
-   * taille (ETag). Une feuille inchangée garde sa date d'un passage à l'autre : les téléphones ne la
-   * retéléchargent pas (réponse 304), même si le site est republié toutes les 5 minutes.
-   */
-  const stamp = (file, time) => {
-    const t = new Date(time);
-    for (const dir of keep ? [out, keep] : [out]) if (existsSync(join(dir, file))) utimesSync(join(dir, file), t, t);
-  };
-
   /** Télécharge un fichier (ou reprend la copie précédente s'il n'a pas changé). */
   const one = async (file, saveAs = file) => {
     const url = base + file;
@@ -99,20 +89,15 @@ export async function mirrorMeet(ev, dist, cacheDir, manifest) {
     const r = await get(url, prev);
     if (r.status === 304 && prev) {
       copyFileSync(join(keep, saveAs), join(out, saveAs));
-      stamp(saveAs, prev.time ?? Date.now());
       reused++;
       return true;
     }
     if (r.status !== 200) return false;
     writeFileSync(join(out, saveAs), r.body);
-    const sha = createHash('sha1').update(r.body).digest('hex');
-    // Même contenu qu'au passage précédent : même date ; sinon la date du site, à défaut maintenant
-    const time = prev?.sha === sha && prev.time ? prev.time : Date.parse(r.lastModified ?? '') || Date.now();
     if (keep) {
       writeFileSync(join(keep, saveAs), r.body);
-      manifest[url] = { etag: r.etag ?? undefined, lastModified: r.lastModified ?? undefined, sha, time };
+      manifest[url] = { etag: r.etag ?? undefined, lastModified: r.lastModified ?? undefined };
     }
-    stamp(saveAs, time);
     fetched++;
     return true;
   };
@@ -123,8 +108,9 @@ export async function mirrorMeet(ev, dist, cacheDir, manifest) {
   } else if (keep && existsSync(join(keep, 'index.html'))) {
     // Site momentanément indisponible : la copie précédente reste publiée
     console.warn(`${base} indisponible, copie précédente reprise`);
-    cpSync(keep, out, { recursive: true, preserveTimestamps: true });
+    cpSync(keep, out, { recursive: true });
     html = readFileSync(join(keep, 'index.html'), 'utf8');
+    writeVersions(out, meetFiles(html));
     return meetInfo(ev, id, base, html);
   } else throw new Error(`${base} indisponible`);
   const files = meetFiles(html);
@@ -140,13 +126,21 @@ export async function mirrorMeet(ev, dist, cacheDir, manifest) {
       }
     }),
   );
-  if (lenex && lenex !== 'results.lxf' && existsSync(join(out, lenex))) {
-    copyFileSync(join(out, lenex), join(out, 'results.lxf'));
-    const t = statSync(join(out, lenex)).mtime;
-    utimesSync(join(out, 'results.lxf'), t, t);
-  }
+  if (lenex && lenex !== 'results.lxf' && existsSync(join(out, lenex))) copyFileSync(join(out, lenex), join(out, 'results.lxf'));
+  writeVersions(out, lenex ? [...files, 'results.lxf'] : files);
   console.log(`${id} : ${files.length} feuilles (${fetched} téléchargées, ${reused} inchangées, ${failed} en échec)`);
   return meetInfo(ev, id, base, html);
+}
+
+/**
+ * Liste des feuilles avec l'empreinte de leur contenu (files.json). GitHub Pages remet tous les fichiers à
+ * la date du déploiement : sans cette liste, les téléphones retéléchargeraient chaque feuille toutes les
+ * 5 minutes. L'application ne lit que les feuilles dont l'empreinte a changé (et pas la page, lourde).
+ */
+function writeVersions(out, files) {
+  const versions = {};
+  for (const f of files) if (existsSync(join(out, f))) versions[f] = createHash('sha1').update(readFileSync(join(out, f))).digest('hex').slice(0, 16);
+  writeFileSync(join(out, 'files.json'), JSON.stringify({ files: versions }));
 }
 
 /** Compétition telle que listée pour l'application (nom publié par l'organisateur, dates et ville du calendrier). */
