@@ -2,6 +2,7 @@ import type { Meet, Swim, Swimmer } from '../store/types';
 import { clubRecords, recordComplete, recordKey } from './clubRecords';
 import { isValidResult, type PbInfo } from './stats';
 import { addDays } from './dates';
+import { medalSwims } from './medals';
 
 /** Une progression du week-end : record personnel amélioré de deltaCs centièmes (pct % de l'ancien record). */
 export interface WeekendProgress {
@@ -97,7 +98,8 @@ export function lastClubWeekend(
     swimmerIds: [...new Set(week.map((s) => s.swimmerId))],
     pbs,
     firsts,
-    podiums: week.filter((s) => s.place != null && s.place >= 1 && s.place <= 3).length,
+    // Même règle que les médailles : la place de série ne compte pas quand le nageur a nagé la finale
+    podiums: medalSwims(week).length,
     progress: progress.slice(0, 3),
     records,
   };

@@ -179,6 +179,8 @@ function nameOnLine(line: string, sw: SheetSwimmer): number {
   if (!first || !last) return -1;
   const fp = first.slice(0, Math.min(5, first.length));
   for (let k = 1; k < norm.length; k++) {
+    // Prénom plus long d'au moins deux lettres : un autre prénom (« Léane » n'est pas « Léa »)
+    if (norm[k].length > first.length + 1) continue;
     if (!norm[k].startsWith(fp) && editDistance(norm[k].slice(0, first.length), first) > (first.length > 5 ? 1 : 0)) continue;
     const prev: string[] = [];
     for (let j = k - 1; j >= 0 && prev.length < 3; j--) if (norm[j]) prev.unshift(norm[j]);
@@ -286,7 +288,17 @@ function inferPlace(lines: string[], idx: number): number | undefined {
 
 /** La ligne d'un nageur (ou la suivante, quand la ligne est coupée) porte-t-elle ce club ? */
 function clubOnLine(lines: string[], idx: number, club: RegExp | undefined): boolean {
-  return !club || club.test(lines[idx]) || club.test(lines[idx + 1] ?? '');
+  if (!club || club.test(lines[idx])) return true;
+  // La ligne suivante n'est la suite que si ce n'est pas celle d'un autre nageur (« 4. NOM… », « disq. NOM… »)
+  const next = lines[idx + 1] ?? '';
+  return lineRank(next) == null && !/^\s*(disq|dsq|forf|dns|abs|abd|dnf|aband)/i.test(next) && club.test(next);
+}
+
+/** Homonyme d'une autre année : la ligne porte des nombres à deux chiffres (AN), aucun n'est son année. */
+function otherYear(line: string, yy: string | null): boolean {
+  if (!yy) return false;
+  const years = [...` ${line} `.matchAll(/\s(\d{2})(?=\s)/g)].map((m) => m[1]);
+  return years.length > 0 && !years.includes(yy);
 }
 
 /**
@@ -303,12 +315,8 @@ export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = pa
       const line = lines[idx];
       if (nameOnLine(line, sw) < 0 || !clubOnLine(lines, idx, club)) continue;
       const r = readLine(line, sw, header);
-      if (!r) continue;
-      // Homonyme d'une autre année : on écarte
-      if (yy && /\s(\d{2})\s/.test(` ${r.line} `)) {
-        const years = [...` ${r.line} `.matchAll(/\s(\d{2})\s/g)].map((m) => m[1]);
-        if (years.length && !years.includes(yy) && r.verified === false && r.timeCs == null) continue;
-      }
+      // Homonyme d'une autre année : on écarte, même avec un temps (comme findSwimmerEntry)
+      if (!r || otherYear(r.line, yy)) continue;
       if (score(r) > score(best)) {
         best = r;
         bestAt = { lines, idx };
@@ -321,7 +329,8 @@ export function findSwimmerResult(texts: string[], sw: SheetSwimmer, header = pa
     if (best.place == null) {
       for (const t of texts) {
         const lines = t.split('\n').filter((l) => l.trim());
-        const i = lines.findIndex((l) => nameOnLine(l, sw) >= 0);
+        // Sa ligne, pas celle d'un homonyme (autre club, autre année)
+        const i = lines.findIndex((l, j) => nameOnLine(l, sw) >= 0 && clubOnLine(lines, j, club) && !otherYear(readLine(l, sw, header)?.line ?? '', yy));
         if (i < 0) continue;
         const r = readLine(lines[i], sw, header);
         best.place = r?.place ?? inferPlace(lines, i);

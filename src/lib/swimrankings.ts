@@ -359,19 +359,32 @@ export function parseSwimrankings(text: string): ParseResult {
 
   // Format d'import en colonnes (épreuve, bassin, temps, points, date, ville, compétition, puis club,
   // place, tour, passages, séparés par des tabulations) : ville et compétition reprises telles quelles
-  // (« 4e édition… », « Interclubs U15 ») ; place, tour et passages quand ils ont été relevés
+  // (« 4e édition… », « Interclubs U15 ») ; place, tour et passages quand ils ont été relevés.
+  // Ligne retrouvée par épreuve, bassin, temps et date : deux courses au même temps le même jour
+  // (autre bassin, autre épreuve) gardent chacune leur compétition
   const columns = new Map<string, { city?: string; meet?: string; place?: string; round?: string; splits?: string }>();
   for (const line of text.split(/\r?\n/)) {
     const c = line.split('\t');
     if (c.length < 7) continue;
+    const event = tokenize(c[0]).find((t) => t.t === 'EVENT');
+    const course = tokenize(c[1]).find((t) => t.t === 'COURSE');
     const time = tokenize(c[2]).find((t) => t.t === 'TIME');
     const date = tokenize(c[4]).find((t) => t.t === 'DATE');
-    if (time?.t === 'TIME' && date?.t === 'DATE')
-      columns.set(`${time.cs}|${date.iso}`, { city: c[5].trim() || undefined, meet: c[6].trim() || undefined, place: c[8], round: c[9], splits: c[10] });
+    if (event?.t === 'EVENT' && time?.t === 'TIME' && date?.t === 'DATE') {
+      // Bassin non écrit : 25 m, comme dans la lecture des temps
+      const pool = course?.t === 'COURSE' ? course.course : 'SCM';
+      columns.set(`${event.distance}|${event.stroke}|${pool}|${time.cs}|${date.iso}`, {
+        city: c[5].trim() || undefined,
+        meet: c[6].trim() || undefined,
+        place: c[8],
+        round: c[9],
+        splits: c[10],
+      });
+    }
   }
   if (columns.size) {
     for (const s of swims) {
-      const c = columns.get(`${s.timeCs}|${s.date}`);
+      const c = columns.get(`${s.distance}|${s.stroke}|${s.course}|${s.timeCs}|${s.date}`);
       if (c?.meet) s.meet = cleanText(c.meet);
       if (c?.city) s.city = cleanText(c.city);
       const place = Number(/^\s*(\d{1,3})\b/.exec(c?.place ?? '')?.[1]);

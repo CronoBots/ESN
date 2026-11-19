@@ -247,7 +247,7 @@ export const relativeLimitGap = (s: LimitStatus) => (s.next?.gapCs != null ? s.n
 export interface QualifyingSummary {
   /** Épreuves où une limite est atteinte. */
   qualified: LimitStatus[];
-  /** Épreuves avec un temps mais sans limite atteinte, les plus proches d'abord. */
+  /** Épreuves avec un temps mais sans limite atteinte, les plus proches d'abord (période encore ouverte). */
   close: LimitStatus[];
 }
 
@@ -266,7 +266,8 @@ export function qualifyingSummary(
       const s = limitStatus(c, swimmer, swims, Number(d), stroke as Stroke, today);
       if (!s?.best) continue;
       if (s.reached) qualified.push(s);
-      else close.push(s);
+      // Période de qualification close : plus rien « à gagner », seules les qualifications acquises restent
+      else if (today <= c.window.to) close.push(s);
     }
   }
   close.sort((a, b) => relativeLimitGap(a) - relativeLimitGap(b));

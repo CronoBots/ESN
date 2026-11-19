@@ -5,7 +5,7 @@ import { Avatar, Empty, NavBar, Row, Section, Toggle } from '../components/ui';
 import { SwimRow } from '../components/SwimRow';
 import { firstGroups, useProgressive } from '../components/progressive';
 import { navigate } from '../router';
-import { FollowButton, groupName } from './Club';
+import { FollowButton, groupName, isFollowed } from './Club';
 import { sportAge, seasonLabel, seasonOf } from '../lib/dates';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { achievements, chronoCompare } from '../lib/stats';
@@ -33,8 +33,10 @@ export function SwimmerProfile({ id }: { id: string }) {
     );
   }
   const age = sportAge(swimmer.birthYear);
-  const count = mine.filter((s) => s.timeCs != null).length;
+  // Comme la liste ouverte par « Toutes les courses » : temps, forfaits et abandons (sans le programme à venir)
+  const count = mine.filter((s) => s.timeCs != null || s.status !== 'OK').length;
   const isSelected = data.settings.selectedSwimmerId === id;
+  const noneFollowed = !data.swimmers.some(isFollowed);
   const unlocked = trophies.filter((t) => t.unlocked).length;
 
   return (
@@ -65,12 +67,14 @@ export function SwimmerProfile({ id }: { id: string }) {
 
         <Section>
           <div className="list">
-            {!isSelected && (
+            {(!isSelected || noneFollowed) && (
               <Row
                 icon="person"
                 title="Afficher sur l’accueil"
                 chevron
                 onClick={() => {
+                  // Aucun nageur suivi : l'accueil afficherait « Quels nageurs suivre ? » ; ce nageur devient suivi
+                  if (noneFollowed) actions.follow(id, true);
                   actions.selectSwimmer(id);
                   navigate('/');
                 }}
@@ -169,7 +173,17 @@ export function SwimmerHistory({ id }: { id: string }) {
   const full = useProgressive(`${stroke}|${course}|${onlyPB}`);
   const shown = firstGroups(bySeason, ([, swims]) => swims.length, full);
 
-  if (!swimmer) return <Empty icon="person" title="Nageur introuvable" />;
+  // Fiche disparue (doublon réuni à un autre nageur) : titre, retour et marges comme sur le profil
+  if (!swimmer) {
+    return (
+      <>
+        <NavBar title="Historique" back large={false} />
+        <main className="page">
+          <Empty icon="person" title="Nageur introuvable" />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -198,7 +212,7 @@ export function SwimmerHistory({ id }: { id: string }) {
         </div>
         {list.length === 0 ? (
           <div className="card" style={{ marginTop: 16 }}>
-            <Empty icon="list" title="Aucune course" text="Modifiez les filtres ou ajoutez un temps." />
+            <Empty icon="list" title="Aucune course" text="Modifiez les filtres pour voir d’autres courses." />
           </div>
         ) : (
           shown.map(([season, swims]) => (

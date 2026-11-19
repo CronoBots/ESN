@@ -5,7 +5,7 @@ import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeTag } from '../co
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { formatDate, formatLongDay, formatRange, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
-import { eventLabel, courseLabel, ROUND_LABEL } from '../lib/events';
+import { eventLabel, courseLabel, ROUND_LABEL, STATUS_SHORT } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { chronoCompare, clubMeets, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
@@ -86,7 +86,8 @@ export function Meets() {
       .sort((a, b) => (a.startDate < b.startDate ? 1 : -1));
   }, [data.meets, timeline, today, clubMeetIds]);
 
-  const pastCount = timeline.filter((e) => e.startDate <= today).length;
+  // Compétitions vraiment nagées : au moins un temps valide (pas seulement des forfaits), comme sur l'accueil
+  const pastCount = timeline.filter((e) => e.startDate <= today && e.swims.some(isValidResult)).length;
   // Autres compétitions du club : les 12 derniers mois d'abord, tout l'historique sur demande
   const [allOthers, setAllOthers] = useState(false);
   const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
@@ -247,11 +248,12 @@ export function MeetDetail({ id }: { id: string }) {
   const swims = useMemo(() => data.swims.filter((s) => s.meetId === id).sort(chronoCompare), [data.swims, id]);
   const swimmers = sortSwimmers(data.swimmers);
   const include = data.settings.includeTraining;
-  // Navigation chronologique : compétition précédente / suivante du nageur
+  // Navigation chronologique : compétition précédente / suivante du nageur.
+  // Le nageur choisi s'il a nagé, sinon un nageur suivi (enfant ou favori) ; jamais un nageur quelconque.
   const selected = useSelectedSwimmer();
   const focus = swims.some((s) => s.swimmerId === selected?.id)
     ? selected
-    : (swimmers.find((w) => swims.some((s) => s.swimmerId === w.id)) ?? selected);
+    : swimmers.find((w) => (w.favorite || w.relation === 'child') && swims.some((s) => s.swimmerId === w.id));
   const timeline = useTimeline(focus);
 
   if (!meet) {
@@ -278,9 +280,13 @@ export function MeetDetail({ id }: { id: string }) {
   const followedIds = new Set(swimmers.filter((w) => w.favorite || w.relation === 'child').map((w) => w.id));
   const mineGroups = bySwimmer.filter((g) => g.swimmer.id === focus?.id || followedIds.has(g.swimmer.id));
   const otherGroups = bySwimmer.filter((g) => !mineGroups.includes(g));
-  const pbs = swims.filter((s) => pbFlags.get(s.id)?.isPB);
+  // Courses des nageurs suivis (ou du nageur choisi) : agenda et tuiles. Sans nageur suivi, les tuiles
+  // portent sur tout le club (titrées comme telles) et l'agenda ne reçoit que les dates, sans alarme.
+  const mine = mineGroups.flatMap((g) => g.swims);
+  const tileSwims = mineGroups.length ? mine : swims;
+  const pbs = tileSwims.filter((s) => pbFlags.get(s.id)?.isPB);
   const totalGain = pbs.reduce((a, s) => a + -(pbFlags.get(s.id)?.deltaCs ?? 0), 0);
-  const swum = swims.filter(isValidResult);
+  const swum = tileSwims.filter(isValidResult);
 
   const renderGroup = ({ swimmer, swims: list }: { swimmer: Swimmer; swims: Swim[] }) => {
       const days = new Map<string, Swim[]>();
@@ -345,7 +351,7 @@ export function MeetDetail({ id }: { id: string }) {
                               </span>
                               <span className="hstack" style={{ gap: 4 }}>
                                 {s.status !== 'OK' ? (
-                                  <span className="badge bad">{s.status}</span>
+                                  <span className="badge bad">{STATUS_SHORT[s.status]}</span>
                                 ) : pb?.isPB ? (
                                   <>
                                     <span className="badge pb">PB</span>
@@ -412,16 +418,17 @@ export function MeetDetail({ id }: { id: string }) {
               icon="bell"
               iconBg="#ff9f0a"
               title="Ajouter au calendrier"
-              sub="Rappel 30 min avant chaque course"
+              sub={mine.some((s) => s.startTime) ? 'Rappel 30 min avant chaque course' : 'Dates de la compétition'}
               chevron
               onClick={() => {
-                downloadFile(`${slug(meet.name)}.ics`, buildMeetCalendar(meet, swims, data.swimmers), 'text/calendar');
+                downloadFile(`${slug(meet.name)}.ics`, buildMeetCalendar(meet, mine, data.swimmers), 'text/calendar');
                 overlay.toast('Calendrier exporté', '📅');
               }}
             />
           )}
         </div>
 
+        {swum.length > 0 && mineGroups.length === 0 && <div className="group-title">L’ESN à cette compétition</div>}
         {swum.length > 0 && (
           <div className="tiles four" style={{ marginTop: 14 }}>
             <div className="tile">

@@ -23,7 +23,7 @@
   --text: #18181b;
   /* Contrastes vérifiés (WCAG AA, 4,5:1 et plus) sur le fond et les cartes */
   --text-2: rgba(24, 24, 27, 0.68);
-  --text-3: rgba(24, 24, 27, 0.46);
+  --text-3: rgba(24, 24, 27, 0.62);
   /* Bleu du logo ESN : liens, boutons, onglet actif */
   --accent: #2357d0;
   --accent-fill: #2357d0;
@@ -255,7 +255,9 @@ p,
 
 /*
  * Pas de barre en haut de l'écran : les boutons (retour, ajouter…) et le titre défilent avec la page.
- * Le contenu passe sous l'heure et la batterie et y reste visible, comme dans les apps d'iOS.
+ * Barre d'état « default » (index.html) : iOS réserve la zone de l'heure et de la batterie, en texte
+ * foncé lisible sur toutes les versions (en « black-translucent », l'heure était blanche sur le fond
+ * clair avant iOS 26).
  */
 .navbar {
   position: relative;
@@ -296,6 +298,15 @@ p,
 .navbar.no-large .navbar-title {
   opacity: 1;
   transform: none;
+}
+
+/* Grand titre dans la page : le titre de la ligne des boutons, invisible, ne prend pas de hauteur
+   (un nom long sur plusieurs lignes agrandissait cette ligne) et n'est pas lu en double par VoiceOver.
+   Il reste dans la grille, pour que les boutons de droite gardent leur colonne. */
+.navbar:not(.no-large) .navbar-title {
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
 }
 
 .navbar-left,
@@ -514,10 +525,11 @@ html.pwa .large-brand {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    width: 264px;
+    /* Zones sûres : en paysage, la Dynamic Island et les coins arrondis ne couvrent pas les onglets */
+    width: calc(264px + var(--safe-left));
     height: 100vh;
     height: 100dvh;
-    padding: 20px 14px;
+    padding: calc(20px + var(--safe-top)) 14px calc(20px + var(--safe-bottom)) calc(14px + var(--safe-left));
     border-right: 0.5px solid var(--separator);
     background: var(--card);
     flex-shrink: 0;
@@ -1549,7 +1561,8 @@ a.row:active {
 .lvl-chip.lvl-mistral {
   background: rgba(13, 132, 120, 0.13);
   background: color-mix(in srgb, var(--lvl-mistral) 13%, transparent);
-  color: var(--lvl-mistral);
+  /* Texte un peu plus foncé que la teinte Mistral : 5,4:1 sur son fond (3,9:1 avec la teinte) */
+  color: #0a6b62;
 }
 
 .lvl-chip.lvl-trident {
@@ -1608,7 +1621,7 @@ a.row:active {
   box-shadow: inset 0 0 0 2px var(--lvl-requin);
 }
 
-.lvl-row.next .row-sub {
+.lvl-row.next .row-sub:not(.muted) {
   color: var(--text);
   font-weight: 600;
 }
@@ -2289,7 +2302,8 @@ textarea.textinput {
   font-weight: 600;
   box-shadow: var(--shadow-lg);
   animation: toast-in 0.4s var(--ease);
-  pointer-events: auto;
+  /* Rien à toucher dans le message : les boutons du haut, dessous, restent utilisables */
+  pointer-events: none;
 }
 
 .toast .t-icon {
@@ -2375,7 +2389,7 @@ textarea.textinput {
   overflow: hidden;
   font-size: 12px;
   font-weight: 500;
-  opacity: 0.85;
+  /* Blanc plein : 4,7:1 sur la case (3,9:1 à 85 %) */
   text-overflow: ellipsis;
   white-space: nowrap;
 }

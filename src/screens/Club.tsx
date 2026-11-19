@@ -27,15 +27,33 @@ const HISTORY_PARSER = 4;
 const letters = (s: string) => normName(s);
 
 /**
- * Historique des nageurs du club (toutes leurs compétitions, relevées sur
- * swimrankings.net par le club) : ajouté une fois par version publiée.
- * Renvoie le nombre de courses ajoutées.
+ * Un seul traitement à la fois. Au premier lancement, le chargement de la liste et la vérification
+ * à l'ouverture se suivent de près : le second appel attend la fin du premier, qui a alors enregistré
+ * la version appliquée, au lieu de tout télécharger, déchiffrer et relire une deuxième fois.
  */
+function oneAtATime(run: () => Promise<number>): () => Promise<number> {
+  let last: Promise<unknown> = Promise.resolve();
+  return () => {
+    const next = last.then(run);
+    last = next.catch(() => {});
+    return next;
+  };
+}
+
 /**
  * Classements nationaux publiés par le club (swimrankings) : appliqués une fois par version,
  * en remplaçant les précédents. Pas de fichier publié : rien à faire.
  */
-export async function applyClubRankings(): Promise<number> {
+export const applyClubRankings = oneAtATime(runClubRankings);
+
+/**
+ * Historique des nageurs du club (toutes leurs compétitions, relevées sur
+ * swimrankings.net par le club) : ajouté une fois par version publiée.
+ * Renvoie le nombre de courses ajoutées.
+ */
+export const applyClubHistory = oneAtATime(runClubHistory);
+
+async function runClubRankings(): Promise<number> {
   const club = getState().settings.club;
   if (!club || club.expired) return 0;
   const res = await fetch(RANKINGS_URL, { cache: 'no-cache' }).catch(() => null);
@@ -54,7 +72,7 @@ export async function applyClubRankings(): Promise<number> {
   return list.length;
 }
 
-export async function applyClubHistory(): Promise<number> {
+async function runClubHistory(): Promise<number> {
   const club = getState().settings.club;
   if (!club || club.expired) return 0;
   const res = await fetch(HISTORY_URL, { cache: 'no-cache' }).catch(() => null);
@@ -247,11 +265,17 @@ export function openFollowPicker(onDone?: () => void) {
   overlay.sheet((close) => <FollowPicker close={close} onDone={onDone} />);
 }
 
+/** Chargement de la liste du club demandé par un bouton : un message si elle ne peut pas se charger. */
+export function loadClub(): Promise<boolean> {
+  return ensureClub().then((ok) => {
+    if (!ok) overlay.toast(navigator.onLine ? 'Liste du club indisponible pour le moment' : 'Pas de connexion internet', '⚠️');
+    return ok;
+  });
+}
+
 /** Choisir des nageurs à suivre : dans la liste du club (ouverte avec le QR code la première fois). */
 export function openFollow(onDone?: () => void) {
-  void ensureClub().then((ok) =>
-    ok ? openFollowPicker(onDone) : overlay.toast(navigator.onLine ? 'Liste du club indisponible pour le moment' : 'Pas de connexion internet', '⚠️'),
-  );
+  void loadClub().then((ok) => ok && openFollowPicker(onDone));
 }
 
 export const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child';
@@ -445,6 +469,7 @@ export function ClubScreen() {
   const groups = club?.groups ?? [];
   const [filter, setFilter] = useState(savedGroup);
   const [q, setQ] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const stats = useMemo(() => {
     const m = new Map<string, { count: number; last?: string; planned: number }>();
@@ -498,8 +523,15 @@ export function ClubScreen() {
             <h2>Les nageurs de l’ESN</h2>
             <p className="muted">La liste du club se charge dès que le téléphone est connecté à internet.</p>
             {available && (
-              <button className="btn" onClick={() => void ensureClub()}>
-                <Icon name="download" /> Charger la liste du club
+              <button
+                className="btn"
+                disabled={loading}
+                onClick={() => {
+                  setLoading(true);
+                  void loadClub().finally(() => setLoading(false));
+                }}
+              >
+                <Icon name="download" /> {loading ? 'Chargement…' : 'Charger la liste du club'}
               </button>
             )}
           </div>

@@ -130,6 +130,10 @@ async function loadPdfjs() {
       }
       return pdfjs;
     })();
+    // Chargement manqué (hors ligne, ancienne version effacée) : on réessaiera à la feuille suivante
+    pdfjsPromise.catch(() => {
+      pdfjsPromise = null;
+    });
   }
   return pdfjsPromise;
 }

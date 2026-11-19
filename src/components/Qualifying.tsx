@@ -60,13 +60,14 @@ function championshipWhen(c: Championship): string {
 
 const limitsText = (s: LimitStatus) => s.lines.map((l) => `${l.label === 'Limite' ? '' : `${l.label} `}${formatTime(l.cs)}`).join('\u00a0· ');
 
-function statusText(s: LimitStatus): string {
+function statusText(s: LimitStatus, today: string): string {
   const c = s.championship;
   if (!s.best) return `Pas de temps depuis le ${formatDate(c.window.from)}`;
   const other = s.best.course !== c.course ? ` (bassin de ${courseLabel(s.best.course)})` : '';
   if (s.reached) {
     const level = s.reached.label === 'Limite' ? '' : ` (limite ${s.reached.label})`;
-    const more = s.next?.gapCs != null ? ` · A à ${gapLabel(s.next.gapCs)}` : '';
+    // Écart à la limite A seulement tant que la période de qualification est ouverte
+    const more = s.next?.gapCs != null && today <= c.window.to ? ` · A à ${gapLabel(s.next.gapCs)}` : '';
     return `Qualifié${level} avec ${formatTime(s.best.timeCs)}${other}${more}`;
   }
   const level = s.next && s.next.label !== 'Limite' ? ` pour la limite ${s.next.label}` : '';
@@ -113,6 +114,8 @@ export function QualifyingSection({ swimmer, swims, course, distance, stroke }: 
       .filter((c) => c.course === course)
       .map((c) => limitStatus(c, swimmer, swims, distance, stroke, today))
       .filter((s): s is LimitStatus => !!s)
+      // Période de qualification close : seulement les qualifications acquises
+      .filter((s) => s.reached || today <= s.championship.window.to)
       // Championnats par âge toujours ; championnats open seulement si la limite est atteinte ou à portée
       .filter((s) => s.lines[0].label === 'Limite' || s.reached || relativeLimitGap(s) <= CLOSE_GAP);
   }, [data, swimmer, swims, course, distance, stroke]);
@@ -131,7 +134,7 @@ export function QualifyingSection({ swimmer, swims, course, distance, stroke }: 
                 <div className="row-title">
                   {c.name.replace(/^Championnats de /, '')} <ProvisionalBadge c={c} />
                 </div>
-                <div className="row-sub">{statusText(s)}</div>
+                <div className="row-sub">{statusText(s, todayISO())}</div>
                 <div className="row-sub muted">{championshipWhen(c)}</div>
               </div>
               <span className="row-value tnum q-limits">{limitsText(s)}</span>

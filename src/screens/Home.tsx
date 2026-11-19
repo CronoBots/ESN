@@ -15,7 +15,7 @@ import { openShareApp } from '../components/Invite';
 import { AllroundCard, QualifyingGoals } from '../components/Qualifying';
 import { ClubWeekendCard } from './ClubWeekend';
 import { awaitingMeets, findResultsNow, useSyncStatus } from './autoResults';
-import { clubSummary, ensureClub, openFollow, openFollowPicker, useRosterAvailable } from './Club';
+import { clubSummary, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import { ClubEventCard, useClubCalendar } from '../components/ClubCalendar';
 import { upcomingClubEvents } from '../lib/clubCalendar';
 import type { Swimmer } from '../store/types';
@@ -220,7 +220,7 @@ function HomeContent({ swimmer, pbFlags }: { swimmer: Swimmer; pbFlags: ReturnTy
               title="Pas encore de résultat"
               text={
                 swimmer.member
-                  ? `Aucune compétition ${deName(swimmer.firstName)} publiée cette saison, et son historique des saisons passées n’a pas encore été ajouté par le club. Ses prochains résultats arriveront tout seuls.`
+                  ? `Aucune compétition ${deName(swimmer.firstName)} avec l’ESN pour l’instant. Ses prochains résultats arriveront tout seuls.`
                   : `Les résultats de compétition ${deName(swimmer.firstName)} sont ajoutés automatiquement dès leur publication par les organisateurs.`
               }
               action={
@@ -438,7 +438,7 @@ function ClubCard() {
           </button>
         </div>
       ) : (
-        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => void ensureClub().then((ok) => ok && openFollowPicker())}>
+        <button className="card pad club-card" style={{ width: '100%', textAlign: 'left' }} onClick={() => openFollow()}>
           <span className="row-icon club-card-icon" aria-hidden="true">
             <Icon name="users" />
           </span>

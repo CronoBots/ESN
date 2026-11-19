@@ -68,7 +68,8 @@ export function lenexTime(t: string | undefined): number | null {
 }
 
 const STROKE: Record<string, Stroke> = { FREE: 'FREE', BACK: 'BACK', BREAST: 'BREAST', FLY: 'FLY', MEDLEY: 'IM' };
-const ROUND: Record<string, Round> = { TIM: 'TIM', PRE: 'HEAT', SEM: 'SEMI', SOP: 'SEMI', FIN: 'FINAL', SOS: 'TIM' };
+// Barrages (SOP, SOS, SOQ : après les séries, demi-finales, quarts) et quarts de finale : comme une série
+const ROUND: Record<string, Round> = { TIM: 'TIM', PRE: 'HEAT', QUA: 'HEAT', SEM: 'SEMI', FIN: 'FINAL', SOP: 'HEAT', SOS: 'HEAT', SOQ: 'HEAT' };
 
 export interface LenexSwim {
   eventNo?: number;
@@ -119,6 +120,8 @@ export function parseLenex(xml: string): LenexMeet | null {
     distance: number;
     stroke: Stroke;
     round: Round;
+    /** Barrage : sa place n'est pas un classement de l'épreuve. */
+    swimOff: boolean;
     date?: string;
     time?: string;
   }
@@ -134,12 +137,14 @@ export function parseLenex(xml: string): LenexMeet | null {
       if (!style) continue;
       const stroke = STROKE[style.attrs.stroke];
       const distance = +style.attrs.distance;
-      if (!stroke || !distance || +(style.attrs.relaycount ?? 1) > 1) continue;
+      // Relais et épreuves spéciales (technique : jambes, bras, départ, virage…) ignorés
+      if (!stroke || !distance || +(style.attrs.relaycount ?? 1) > 1 || style.attrs.technique) continue;
       events.set(ev.attrs.eventid, {
         no: ev.attrs.number ? +ev.attrs.number : undefined,
         distance,
         stroke,
         round: ROUND[ev.attrs.round] ?? 'TIM',
+        swimOff: /^SO[PSQ]$/.test(ev.attrs.round ?? ''),
         date,
         time: ev.attrs.daytime || session.attrs.daytime,
       });
@@ -191,7 +196,7 @@ export function parseLenex(xml: string): LenexMeet | null {
           timeCs: time,
           status,
           points: r.attrs.points && +r.attrs.points > 0 ? +r.attrs.points : undefined,
-          place: places.get(r.attrs.resultid)?.place,
+          place: ev.swimOff ? undefined : places.get(r.attrs.resultid)?.place,
           splits: splitArr.length ? splitArr : undefined,
           entryCs: entry ?? undefined,
           heat: r.attrs.heatid ? heats.get(r.attrs.heatid) : undefined,

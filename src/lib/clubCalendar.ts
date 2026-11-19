@@ -69,21 +69,25 @@ const norm = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase();
 const words = (s: string) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) => w.length >= 4));
+/** Mots du nom à comparer : sans « s » final (championnat/championnats) ni nombre (année). */
+const nameStems = (s: string) => new Set([...words(s)].filter((w) => !/^\d+$/.test(w)).map((w) => w.replace(/s$/, '')));
 
 /**
  * Compétition publiée (programme ou résultats déjà dans l'application) qui correspond à cette
- * entrée du calendrier : dates qui se chevauchent (à un jour près) et même ville, ou un mot du nom en commun.
+ * entrée du calendrier : dates qui se chevauchent (à un jour près) et même ville, ou deux mots du
+ * nom en commun (un mot courant comme « meeting » ne suffit pas : un autre meeting le même week-end).
  */
 export function publishedMeet(ev: ClubEvent, meets: Meet[]): Meet | undefined {
   const evEnd = ev.end ?? ev.start;
   const city = words(ev.city);
-  const name = words(ev.name);
+  const name = nameStems(ev.name);
   return meets.find((m) => {
     const mEnd = m.endDate ?? m.startDate;
     if (daysBetween(evEnd, m.startDate) > 1 || daysBetween(mEnd, ev.start) > 1) return false;
     const mCity = words(m.city ?? '');
     const mName = words(m.name);
-    return [...city].some((w) => mCity.has(w) || mName.has(w)) || [...name].some((w) => mName.has(w));
+    const mStems = nameStems(m.name);
+    return [...city].some((w) => mCity.has(w) || mName.has(w)) || [...name].filter((w) => mStems.has(w)).length >= 2;
   });
 }
 

@@ -200,6 +200,8 @@ export function fetchLiveResults(id: string, live = false, settled = false): Pro
       return parseLenex(await unzipFirst(buf));
     })();
     p.catch(() => lenexCache.delete(key));
+    // Une seule lecture en direct gardée par compétition : les précédentes (toutes les 5 minutes) sont oubliées
+    for (const k of lenexCache.keys()) if (k !== key && k.startsWith(`${id}@`)) lenexCache.delete(k);
     lenexCache.set(key, p);
   }
   return p;
@@ -264,15 +266,20 @@ export async function readMeetPdfs(
   const complete = m.status === 'finished' && docs.results.size > 0 && (docs.results.size >= docs.starts.size || old);
   const found = new Map<string, PdfSwim[]>();
   const candidates: ClubCandidate[] = [];
-  // Aucun nageur du club inscrit : rien à lire
-  if (club && docs.stats && !club.test(await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh, keep)))
-    return { found, complete: m.status === 'finished', candidates };
+  // Aucun nageur du club inscrit : rien à lire (feuille illisible, vide : on lit les épreuves)
+  const stats = club && docs.stats ? await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh, keep) : '';
+  if (club && stats && !club.test(stats)) return { found, complete: m.status === 'finished', candidates };
   const events = [...new Set([...docs.results.keys(), ...docs.starts.keys()])].sort((a, b) => a - b);
   const course = m.course ?? 'SCM';
+  // Une feuille n'a pas pu être lue (réseau, serveur, lecteur PDF) : la compétition n'est pas complète, on réessaiera
+  let failed = false;
   await mapLimit(events, 4, async (no) => {
     const isResult = docs.results.has(no);
-    const text = await pdfText(`${LIVE_BASE}/${m.id}/${(isResult ? docs.results : docs.starts).get(no)}`, fresh && !isResult, keep);
-    if (!text) return;
+    const text = await pdfText(`${LIVE_BASE}/${m.id}/${(isResult ? docs.results : docs.starts).get(no)}`, fresh && !isResult, keep).catch(() => '');
+    if (!text) {
+      failed = true;
+      return;
+    }
     const flat = normName(text);
     const header = parseSheetHeader([text]);
     if (!header.distance || !header.stroke || !isValidEvent(header.distance, header.stroke, course)) return;
@@ -304,7 +311,7 @@ export async function readMeetPdfs(
       if (swim) found.set(sw.id, [...(found.get(sw.id) ?? []), swim]);
     }
   });
-  return { found, complete, candidates };
+  return { found, complete: complete && !failed, candidates };
 }
 
 /* ------------------------------------------------------------------------ */
@@ -468,6 +475,9 @@ export const syncStatus = {
 
 export const isSyncing = () => running != null;
 
+/** Nageurs dont on cherche les résultats. Anciens membres : leur historique au club suffit (pas de recherche de leurs résultats actuels, souvent ailleurs). */
+const searchedSwimmers = (s: { swimmers: Swimmer[] }) => s.swimmers.filter((sw) => !sw.former);
+
 export function syncLive(opts: { force?: boolean; onProgress?: (p: Progress) => void } = {}): Promise<LiveSyncResult> {
   if (!running) {
     syncStatus.set({ done: 0, total: 0 });
@@ -495,9 +505,9 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   const all = await listLiveMeets();
   const meets = all.filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
   // Nouvelle version de la recherche : toutes les compétitions sont relues (sans doublon)
-  const processed = (cfg.engine ?? 1) < SYNC_ENGINE ? {} : { ...cfg.processed };
-  // Anciens membres : leur historique au club suffit (pas de recherche de leurs résultats actuels, souvent ailleurs)
-  const swimmers = state.swimmers.filter((s) => !s.former);
+  const start: Record<string, string[]> = (cfg.engine ?? 1) < SYNC_ENGINE ? {} : cfg.processed;
+  const processed = { ...start };
+  const swimmers = searchedSwimmers(state);
   // Nageurs du club : on lit aussi les feuilles PDF (compétitions récentes sans fichier LENEX, programmes à venir)
   const club = swimmers.some((s) => s.member) ? CLUB.match : undefined;
   const soon = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
@@ -562,6 +572,16 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   const added: Swim[] = [];
   // Nouveaux nageurs du club : ajoutés à la liste ; leurs résultats sont cherchés à la recherche suivante
   if (club && candidates.length) result.newMembers = actions.addClubSwimmers(candidates);
+  // Nageur renommé (nom ou année) pendant la recherche : cherché sous l'ancien nom, il reste à rechercher
+  const before = new Map(swimmers.map((s) => [s.id, s]));
+  const unchanged = new Set(
+    getState()
+      .swimmers.filter((x) => {
+        const sw = before.get(x.id);
+        return sw && x.firstName === sw.firstName && x.lastName === sw.lastName && x.birthYear === sw.birthYear;
+      })
+      .map((x) => x.id),
+  );
   // Un seul enregistrement pour tous les nageurs du club
   batch(() => {
     for (const sw of swimmers) {
@@ -581,7 +601,13 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
         added.push(...done);
       }
     }
-    actions.updateLiveSync({ processed, lastCheck: Date.now(), engine: SYNC_ENGINE });
+    // Liste relue à la fin, et non la copie du départ : ce qui a changé pendant la recherche est gardé ; on n'y ajoute que ce que cette recherche a traité
+    const next: Record<string, string[]> = { ...((cfg.engine ?? 1) < SYNC_ENGINE ? {} : getState().settings.liveSync.processed) };
+    for (const [id, ids] of Object.entries(processed)) {
+      const newly = ids.filter((x) => unchanged.has(x) && !start[id]?.includes(x));
+      if (newly.length) next[id] = [...new Set([...(next[id] ?? []), ...newly])];
+    }
+    actions.updateLiveSync({ processed: next, lastCheck: Date.now(), engine: SYNC_ENGINE });
   });
   if (added.length) {
     const flags = computePbFlags(getState().swims, getState().settings.includeTraining);
@@ -597,9 +623,9 @@ export function shouldAutoSyncLive(): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
   // Application mise à jour avec une nouvelle façon de chercher : tout de suite
   if ((cfg.engine ?? 1) < SYNC_ENGINE) return true;
-  // Nageur ajouté (ou renommé) depuis la dernière recherche : tout de suite
+  // Nageur ajouté (ou renommé) depuis la dernière recherche : tout de suite (seulement ceux que la recherche traite : pas les anciens membres)
   const known = new Set(Object.values(cfg.processed).flat());
-  if (s.swimmers.some((sw) => !known.has(sw.id))) return true;
+  if (searchedSwimmers(s).some((sw) => !known.has(sw.id))) return true;
   // Pendant un week-end de compétition, on vérifie plus souvent
   const ongoing = s.meets.some((m) => m.startDate <= todayISO() && (m.endDate ?? m.startDate) >= todayISO());
   return Date.now() - (cfg.lastCheck ?? 0) > (ongoing ? 15 * 60 * 1000 : 3 * 3600 * 1000);

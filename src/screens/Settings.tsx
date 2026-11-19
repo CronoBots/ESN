@@ -3,11 +3,13 @@ import { fullName, isActiveMember, mySwimmers } from '../store/hooks';
 import { Avatar, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
-import { ensureClub, groupName, openFollow, useRosterAvailable } from './Club';
+import { groupName, isFollowed, loadClub, openFollow, useRosterAvailable } from './Club';
 import { downloadFile } from '../lib/ics';
 import { formatDate, relativeDay, toISO, todayISO } from '../lib/dates';
 import { COURSES, eventLabel, ROUND_LABEL, STATUS_LABEL } from '../lib/events';
 import { formatTime } from '../lib/time';
+import { computePbFlags } from '../lib/stats';
+import type { Swim } from '../store/types';
 import { isStandalone, promptInstall } from './Install';
 import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
@@ -73,6 +75,7 @@ export function Settings() {
   const swimmers = mySwimmers(data.swimmers);
   const club = data.settings.club;
   const rosterAvailable = useRosterAvailable();
+  const [loadingClub, setLoadingClub] = useState(false);
   const s = data.settings;
 
   return (
@@ -121,7 +124,20 @@ export function Settings() {
                   <Row icon="qr" iconBg="#34c759" title="Partager l’application aux parents" sub="QR code à scanner, lien ou affiche" chevron onClick={openShareApp} />
                 </>
               ) : (
-                <Row icon="download" iconBg="var(--brand-green)" title="Charger la liste du club" chevron onClick={() => void ensureClub()} />
+                <Row
+                  icon="download"
+                  iconBg="var(--brand-green)"
+                  title={loadingClub ? 'Chargement de la liste du club…' : 'Charger la liste du club'}
+                  chevron={!loadingClub}
+                  onClick={
+                    loadingClub
+                      ? undefined
+                      : () => {
+                          setLoadingClub(true);
+                          void loadClub().finally(() => setLoadingClub(false));
+                        }
+                  }
+                />
               )}
               <Row icon="info" iconBg="#8e8e93" title="Infos du club" chevron onClick={() => navigate('/about')} />
             </div>
@@ -145,8 +161,8 @@ export function Settings() {
             <Row icon="list" iconBg="#8e8e93" title="Exporter les résultats (Excel / CSV)" chevron onClick={exportCsv} />
           </div>
           <div className="section-foot">
-            Les données sont gardées sur cet appareil. Sur un autre téléphone, il suffit d’ouvrir l’application : tout revient
-            automatiquement.
+            Les données sont gardées sur cet appareil. Sur un autre téléphone, il suffit d’ouvrir l’application : la liste du club et
+            les résultats reviennent automatiquement ; choisissez à nouveau vos nageurs suivis.
           </div>
         </Section>
 
@@ -229,7 +245,8 @@ export function About() {
         <Section title="Vos données">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
             Tout est enregistré <b>uniquement sur votre appareil</b>&nbsp;: pas de compte, pas de serveur, pas de publicité. Sur un autre
-            téléphone, il suffit d’ouvrir l’application&nbsp;: tout revient automatiquement.
+            téléphone, il suffit d’ouvrir l’application&nbsp;: la liste du club et les résultats reviennent automatiquement&nbsp;;
+            choisissez à nouveau vos nageurs suivis.
           </div>
         </Section>
         <Section title="Points World Aquatics">
@@ -255,6 +272,20 @@ export function About() {
   );
 }
 
+/** Course nagée (temps, forfait, disqualification), et non une épreuve au programme. */
+const swum = (x: Swim) => x.timeCs != null || x.status !== 'OK';
+
+/**
+ * Un nageur suivi a-t-il battu un record parmi les résultats arrivés depuis `before` (courses déjà
+ * nagées avant la recherche) ? Les records des autres nageurs du club ne se fêtent pas.
+ */
+export function followedRecord(before: Set<string>): boolean {
+  const s = getState();
+  const followed = new Set(s.swimmers.filter(isFollowed).map((x) => x.id));
+  const flags = computePbFlags(s.swims, s.settings.includeTraining);
+  return s.swims.some((x) => swum(x) && !before.has(x.id) && followed.has(x.swimmerId) && !!flags.get(x.id)?.isPB);
+}
+
 function SyncNowRow() {
   const data = useData();
   const [busy, setBusy] = useState<string | null>(null);
@@ -272,10 +303,12 @@ function SyncNowRow() {
           : async () => {
               setBusy('Recherche des nouveaux résultats…');
               try {
+                // Courses déjà nagées : un programme qui reçoit son temps garde son identifiant
+                const before = new Set(getState().swims.filter(swum).map((x) => x.id));
                 const r = await syncLive({ force: true, onProgress: (p) => p.total && setBusy(`Lecture des résultats… ${p.done}/${p.total}`) });
                 if (r.added) {
                   overlay.toast(`${r.added} nouveaux résultats ajoutés`, '🏊');
-                  if (r.pbs) overlay.celebrate();
+                  if (r.pbs && followedRecord(before)) overlay.celebrate();
                 } else overlay.toast('Tout est à jour', '✓');
               } catch {
                 overlay.toast(navigator.onLine ? 'Résultats du club indisponibles pour le moment' : 'Pas de connexion internet', '⚠️');

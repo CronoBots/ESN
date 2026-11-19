@@ -63,14 +63,12 @@ const compose = (mark, color, width, text = true) =>
   );
 
 const MARK = source('esn-mark.png');
-const MARK_DARK = source('esn-mark-dark.png');
 
-// Logos affichés dans l'application (thème clair / sombre)
+// Logos affichés dans l'application (les mêmes en thème clair et sombre : les versions sombres,
+// plus utilisées, ne sont plus générées, pour ne pas revenir dans le précache du service worker)
 const brand = folder('brand');
 save(brand, 'esn-competition.png', (await compose(MARK, '#015B1C', 720)).url);
-save(brand, 'esn-competition-dark.png', (await compose(MARK_DARK, '#4CAF6A', 720)).url);
 save(brand, 'esn-mark.png', (await compose(MARK, '', 360, false)).url);
-save(brand, 'esn-mark-dark.png', (await compose(MARK_DARK, '', 360, false)).url);
 
 // Icônes : logo sur fond blanc, liseré d'eau aux couleurs du club en bas
 const LOCKUP = await compose(MARK, '#015B1C', 1200);

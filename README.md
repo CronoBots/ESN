@@ -35,9 +35,9 @@ L'application est **ouverte à tous**, sans lien, code ni connexion (décision d
 
 Préparer ou mettre à jour la liste :
 
-1. Un fichier `membres.csv` **hors du dépôt** (ou à la racine : il est ignoré par git), une ligne par nageur : `groupe;nom;prénom;année de naissance;sexe` (F ou M), par exemple `A;DUPONT;Emma;2012;F`. Le groupe est facultatif : sans groupe, les nageurs sont classés par année de naissance.
-2. La clé est celle de `src/club.ts` (`CLUB.accessKey`) ; pour en changer, `npm run roster -- code` en propose une nouvelle, à reporter dans `src/club.ts`.
-3. `npm run roster -- chiffrer membres.csv ESN-7KQ4-M2XP` écrit le fichier chiffré ; `npm run roster -- verifier ESN-7KQ4-M2XP` le relit.
+1. Un fichier `membres.csv` **hors du dépôt** (ou à la racine : il est ignoré par git), une ligne par nageur : `groupe;nom;prénom;année de naissance;sexe;statut;autres noms`, par exemple `A;DUPONT;Emma;2012;F` ou `;MARTIN;Lucas;2009;M;ancien;MARTINS, Lucas (2009)`. Sexe : F ou M. Le groupe est facultatif : sans groupe, les nageurs sont classés par année de naissance. Statut : `ancien` pour un ancien membre, sinon vide. Autres noms (facultatif) : le même nageur écrit autrement sur swimrankings, `NOM, Prénom (AAAA)`, plusieurs séparés par `|`. Pour modifier la liste, partez toujours de la liste publiée : `node scripts/roster.mjs lire > membres.csv` (les 7 colonnes) ; `chiffrer` remplace toute la liste, et un tableur sans les colonnes statut et autres noms ferait redevenir actifs les anciens membres et perdre les autres noms.
+2. La clé est celle de `src/club.ts` (`CLUB.accessKey`), utilisée quand aucun code n'est donné ; pour en changer, `npm run roster -- code` en propose une nouvelle, à passer à `chiffrer` avec `--nouveau-code` et à reporter dans `src/club.ts` dans le même commit.
+3. `npm run roster -- chiffrer membres.csv` écrit le fichier chiffré ; `npm run roster -- verifier` le relit.
 4. Seul `public/data/club-roster.json` est ajouté au dépôt.
 
 Les nageurs ne sont jamais ajoutés à la main. La liste du club se charge toute seule au premier lancement ; les parents touchent le cœur des nageurs à suivre. Une nouvelle liste publiée est appliquée automatiquement (nouveaux nageurs, changements de groupe). Les résultats de compétition de tous les membres sont ensuite ajoutés automatiquement.

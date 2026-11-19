@@ -173,7 +173,14 @@ describe('bilan de la récupération', () => {
           noLenex.push(`${m.startDate ?? '?'} ${m.name}`);
           continue;
         }
-        const l = parseLenex(await unzipFirst(buf!));
+        // Fichier abîmé (archive tronquée, sans compétition) : cette compétition seulement est passée
+        const l = await unzipFirst(buf!)
+          .then(parseLenex)
+          .catch(() => null);
+        if (!l) {
+          noLenex.push(`${m.startDate ?? '?'} ${m.name} (fichier illisible)`);
+          continue;
+        }
         for (const a of l.athletes) {
           if (!swimsForClub(a)) continue;
           const k = `${normName(a.lastName)}|${normName(a.firstName)}|${a.birthYear ?? ''}`;

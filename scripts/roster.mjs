@@ -1,16 +1,21 @@
 // Liste des membres du club, chiffrée pour l'application (public/data/club-roster.json).
 //
 //   node scripts/roster.mjs code                        propose un nouveau code du club
-//   node scripts/roster.mjs chiffrer membres.csv CODE    chiffre la liste avec ce code
+//   node scripts/roster.mjs chiffrer membres.csv CODE    chiffre la liste avec ce code ; un autre code que celui de
+//                                                        l'application (src/club.ts) demande --nouveau-code
 //   node scripts/roster.mjs verifier CODE                relit le fichier publié avec ce code
 //   node scripts/roster.mjs lire CODE                    affiche la liste des membres (sur votre ordinateur seulement)
 //   node scripts/roster.mjs manquants CODE               membres actifs dont l'historique n'est pas encore publié
 //   node scripts/roster.mjs historique DOSSIER CODE      chiffre l'historique swimrankings (un .txt par nageur)
 //                                                        dans public/data/club-history.json (fusionné avec
 //                                                        l'historique déjà publié : rien n'est perdu) ; seules
-//                                                        les courses nagées pour l'ESN sont gardées (8e colonne)
+//                                                        les courses nagées pour l'ESN sont gardées (8e colonne) ;
+//                                                        un fichier plus pauvre que la version publiée (moins de
+//                                                        temps, @@PARTIEL, club non relevé) est écarté sans --remplacer
 //   node scripts/roster.mjs classements DOSSIER CODE     chiffre les classements nationaux (un .txt par nageur)
-//                                                        dans public/data/club-rankings.json (fusionnés de même)
+//                                                        dans public/data/club-rankings.json (fusionnés ligne par
+//                                                        ligne : un classement publié absent du fichier est gardé,
+//                                                        sauf avec --remplacer)
 //
 // membres.csv : groupe ; nom ; prénom ; année de naissance ; sexe (F/M) ; statut ; autres noms, une ligne par nageur.
 // Statut : « ancien » pour un ancien membre (liste à part, classements sur option), sinon vide.
@@ -18,10 +23,12 @@
 // dans l'application, une fiche à l'un de ces noms est réunie avec celle du membre.
 // Le code peut aussi être donné par la variable d'environnement ESN_CODE ; sans code, c'est la clé publique
 // de l'application (src/club.ts, CLUB.accessKey : application ouverte à tous).
+// ESN_DATA : autre dossier que public/data pour les fichiers publiés (tests).
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { aliasesText, decryptHistory, decryptRankings, decryptRoster, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { aliasesText, decryptHistory, decryptRankings, decryptRoster, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, normalizeCode, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
 import { existsSync } from 'node:fs';
 import { CLUB } from '../src/club.ts';
 
@@ -35,10 +42,24 @@ async function publishedHistory(code) {
 const sameMember = (a, b) =>
   memberKey(a) === memberKey(b) || (!(a.birthYear && b.birthYear) && memberKey({ ...a, birthYear: undefined }) === memberKey({ ...b, birthYear: undefined }));
 
-const OUT = new URL('../public/data/club-roster.json', import.meta.url);
-const HISTORY = new URL('../public/data/club-history.json', import.meta.url);
-const RANKINGS = new URL('../public/data/club-rankings.json', import.meta.url);
-const [cmd, ...args] = process.argv.slice(2);
+/** Nombre de courses (ou de classements) d'un texte : une ligne d'au moins 5 colonnes. */
+const races = (text) => text.split(/\r?\n/).filter((l) => l.split('\t').length >= 5).length;
+
+/** Même nageur deux fois dans le dossier : le second fichier effacerait les données du premier. */
+function checkTwin(seen, h, f) {
+  const twin = seen.find((s) => sameMember(s.h, h));
+  if (twin) throw new Error(`${twin.f} et ${f} : même nageur deux fois dans le dossier, gardez un seul fichier`);
+  seen.push({ h, f });
+}
+
+const DATA = process.env.ESN_DATA ? pathToFileURL(`${resolve(process.env.ESN_DATA)}/`) : new URL('../public/data/', import.meta.url);
+const OUT = new URL('club-roster.json', DATA);
+const HISTORY = new URL('club-history.json', DATA);
+const RANKINGS = new URL('club-rankings.json', DATA);
+const [cmd, ...all] = process.argv.slice(2);
+// Options (--remplacer, --nouveau-code) à part des arguments
+const args = all.filter((a) => !a.startsWith('--'));
+const option = (name) => all.includes(`--${name}`);
 
 function summary(roster) {
   const count = (n) => `${n} nageur${n > 1 ? 's' : ''}`;
@@ -58,9 +79,25 @@ if (cmd === 'code') {
   const [file, argCode] = args;
   const code = argCode ?? process.env.ESN_CODE ?? CLUB.accessKey;
   if (!file || !code) throw new Error('Usage : node scripts/roster.mjs chiffrer membres.csv CODE');
+  // Un autre code que celui de l'application : plus aucun téléphone ne pourrait lire la liste
+  if (normalizeCode(code) !== normalizeCode(CLUB.accessKey) && !option('nouveau-code'))
+    throw new Error(
+      "Ce code n'est pas celui de l'application (src/club.ts, CLUB.accessKey) : les téléphones ne pourraient plus lire la liste. " +
+        'Omettez le code ; pour changer de code, ajoutez --nouveau-code et reportez-le dans src/club.ts dans le même commit.',
+    );
   const text = readFileSync(file, 'utf8');
   const raw = file.endsWith('.json') ? JSON.parse(text) : { members: parseRosterCsv(text) };
   const roster = validateRoster(Array.isArray(raw) ? { members: raw } : raw);
+  // Liste publiée : un tableur sans les colonnes statut et autres noms ferait revenir les anciens et perdre les autres noms
+  const before = existsSync(OUT) ? await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code).catch(() => null) : null;
+  if (before) {
+    const back = roster.members.filter((m) => !m.former && before.members.some((b) => b.former && memberKey(b) === memberKey(m))).length;
+    const names = new Set(roster.members.flatMap((m) => (m.aliases ?? []).map(memberKey)));
+    const lost = before.members.flatMap((b) => b.aliases ?? []).filter((a) => !names.has(memberKey(a))).length;
+    if (back) console.log(`⚠ ${back} anciens membres de la liste publiée redeviennent actifs (6e colonne « ancien » vide)`);
+    if (lost) console.log(`⚠ ${lost} « autres noms » de la liste publiée disparaissent (7e colonne)`);
+    if (back || lost) console.log('  Partez de « node scripts/roster.mjs lire » ; pour annuler : git checkout public/data/club-roster.json');
+  }
   mkdirSync(new URL('./', OUT), { recursive: true });
   writeFileSync(OUT, `${JSON.stringify(await encryptRoster(roster, code))}\n`);
   console.log(`Liste chiffrée dans public/data/club-roster.json\n${summary(roster)}`);
@@ -98,23 +135,44 @@ if (cmd === 'code') {
   const code = argCode ?? process.env.ESN_CODE ?? CLUB.accessKey;
   if (!dir || !code) throw new Error('Usage : node scripts/roster.mjs historique DOSSIER CODE');
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
-  const members = new Map(roster.members.map((m) => [memberKey(m), m]));
+  const previous = await publishedHistory(code);
   const athletes = [];
+  const seen = [];
   for (const f of readdirSync(dir).filter(isSwimmerFile).sort()) {
     const raw = readFileSync(join(dir, f), 'utf8').trim();
     const h = historyHeader(raw);
     if (!h) throw new Error(`${f} : en-tête « NOM, Prénom (AAAA) » introuvable`);
+    checkTwin(seen, h, f);
     // Seulement les courses nagées pour l'ESN (club relevé en 8e colonne)
     const { text, kept, dropped, verified } = keepClubRaces(raw, CLUB.match);
-    const known = members.has(memberKey(h)) || [...members.values()].some((m) => memberKey({ ...m, birthYear: undefined }) === memberKey({ ...h, birthYear: undefined }));
+    // Comme dans l'application : même année de naissance quand les deux sont connues
+    const known = roster.members.some((m) => sameMember(m, h));
+    const otherYear = !known && roster.members.some((m) => memberKey({ ...m, birthYear: undefined }) === memberKey({ ...h, birthYear: undefined }));
+    const mark = known ? '✓' : otherYear ? '⚠ année de naissance différente de la liste (corrigez l’en-tête ou ajoutez l’autre nom) :' : '⚠ pas dans la liste du club :';
     const club = verified ? (dropped ? ` (${dropped} nagés pour un autre club, retirés)` : ' (tous pour l’ESN)') : ' ⚠ club des courses non relevé';
-    console.log(`${known ? '✓' : '⚠ pas dans la liste du club :'} ${f} : ${kept} temps${club}`);
+    // Version publiée plus riche (fichier ancien resté sur cet ordinateur) : gardée, sauf --remplacer
+    const old = previous.find((a) => sameMember(a, h));
+    const was = old ? ` (publié : ${races(old.text)})` : '';
+    const poorer = !old
+      ? ''
+      : kept + dropped < races(old.text)
+        ? 'moins de temps que la version publiée'
+        : /^@@PARTIEL/m.test(raw) && !/^@@PARTIEL/m.test(old.text)
+          ? 'historique provisoire (@@PARTIEL), la version publiée est complète'
+          : /^@@CLUBS/m.test(old.text) && !verified
+            ? 'club des courses non relevé, la version publiée est vérifiée'
+            : '';
+    if (poorer && !option('remplacer')) {
+      console.log(`⚠ ${f} : ${kept} temps${was}, ${poorer} : version publiée gardée (--remplacer pour publier ce fichier)`);
+      continue;
+    }
+    console.log(`${mark} ${f} : ${kept} temps${was}${club}`);
     athletes.push({ ...h, text });
   }
   // Nageurs déjà publiés absents du dossier (autre ordinateur, dossier vidé…) : gardés tels quels,
   // sauf l'ancienne fiche d'un nageur réunie avec une autre (« autres noms » de la liste)
   const aliases = roster.members.flatMap((m) => m.aliases ?? []);
-  const published = (await publishedHistory(code)).filter((a) => !athletes.some((b) => sameMember(a, b)));
+  const published = previous.filter((a) => !athletes.some((b) => sameMember(a, b)));
   const kept = published.filter((a) => !aliases.some((b) => sameMember(a, b)));
   if (kept.length) console.log(`${kept.length} nageurs de l'historique déjà publié gardés tels quels`);
   if (published.length > kept.length) console.log(`${published.length - kept.length} anciennes fiches en double retirées (réunies avec une autre)`);
@@ -133,23 +191,34 @@ if (cmd === 'code') {
   };
   const parseRankingsText = (text) => text.split('\n').filter((l) => l.split('\t').length >= 5 && okLine(l));
   const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
+  const before = existsSync(RANKINGS) ? (await decryptRankings(JSON.parse(readFileSync(RANKINGS, 'utf8')), code)).athletes : [];
+  // Clé d'un classement : saison, bassin, épreuve, classement (sans casse ni espaces)
+  const rankKey = (l) => l.split('\t').slice(0, 4).map((x) => x.toLowerCase().replace(/\s+/g, '')).join('|');
   const athletes = [];
+  const seen = [];
   for (const f of readdirSync(dir).filter(isSwimmerFile).sort()) {
-    const text = readFileSync(join(dir, f), 'utf8').trim();
+    let text = readFileSync(join(dir, f), 'utf8').trim();
     const h = historyHeader(text);
     if (!h) throw new Error(`${f} : en-tête « NOM, Prénom (AAAA) » introuvable`);
-    const lines = text.split('\n').filter((l) => l.split('\t').length >= 5).length;
+    checkTwin(seen, h, f);
+    const lines = races(text);
     const ranks = parseRankingsText(text).length;
+    // Classements déjà publiés absents du fichier (saison précédente…) : gardés, sauf --remplacer
+    const keys = new Set(text.split(/\r?\n/).map(rankKey));
+    const old = option('remplacer') ? [] : (before.find((a) => sameMember(a, h))?.text ?? '').split(/\r?\n/).filter((l) => l.split('\t').length >= 5 && !keys.has(rankKey(l)));
+    if (old.length) text = `${text}\n${old.join('\n')}`;
     const known = roster.members.some((m) => sameMember(m, h));
-    console.log(`${known ? '✓' : '⚠ pas dans la liste du club :'} ${f} : ${ranks} classements${ranks < lines ? ` ⚠ ${lines - ranks} ligne(s) illisible(s)` : ''}`);
+    console.log(
+      `${known ? '✓' : '⚠ pas dans la liste du club :'} ${f} : ${ranks} classements${old.length ? ` (+ ${old.length} déjà publiés gardés)` : ''}${ranks < lines ? ` ⚠ ${lines - ranks} ligne(s) illisible(s)` : ''}`,
+    );
     athletes.push({ ...h, text });
   }
-  const before = existsSync(RANKINGS) ? (await decryptRankings(JSON.parse(readFileSync(RANKINGS, 'utf8')), code)).athletes : [];
   const kept = before.filter((a) => !athletes.some((b) => sameMember(a, b)));
   if (kept.length) console.log(`${kept.length} nageurs des classements déjà publiés gardés tels quels`);
   athletes.push(...kept);
   writeFileSync(RANKINGS, `${JSON.stringify(await encryptRankings({ updated: new Date().toISOString().slice(0, 10), athletes }, code))}\n`);
   console.log(`Classements de ${athletes.length} nageurs chiffrés dans public/data/club-rankings.json`);
 } else {
-  console.log(readFileSync(new URL(import.meta.url), 'utf8').split('\n').slice(0, 17).join('\n'));
+  const head = readFileSync(new URL(import.meta.url), 'utf8').split('\n');
+  console.log(head.slice(0, head.findIndex((l) => !l.startsWith('//'))).join('\n'));
 }

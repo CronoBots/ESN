@@ -145,6 +145,12 @@ export function parseResultSheet(text: string): EventSheet {
       continue;
     }
     if (!started || /Splash Meet Manager|Registered to|Page \d/i.test(line)) continue;
+    // Catégorie écrite en chiffres (« 11 - 12 ans », « 13 ans et plus ») : avant le rang, qui la prendrait pour « 11. »
+    if (c.length === 1 && /\bans\b|cat[ée]gorie/i.test(c[0]) && !/\d[.:]\d{2}/.test(c[0])) {
+      cur = { category: c[0], rows: [] };
+      groups.push(cur);
+      continue;
+    }
     // Rang : « 1. », « 1. NOM… », « disq. NOM… »
     const head = /^(\d{1,3})\.?(?:\s+(.+))?$/.exec(c[0]) ?? /^(disq\.?|dsq|forf\.?|forfait|aband\.?|abandon|dns|dnf)(?:\s+(.+))?$/i.exec(c[0]);
     if (!head) {

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSPrope
 import { Icon, type IconName } from './Icon';
 import { bindLayers, goBack, isLayerAbove, popLayer, pushLayer } from '../router';
 import { STROKE_BY_ID } from '../lib/events';
+import { getState } from '../store/store';
 import type { Stroke, Swimmer } from '../store/types';
 
 /* ------------------------------------------------------------------------ */
@@ -105,6 +106,8 @@ export const overlay = {
   },
 
   celebrate() {
+    // Réglage « Célébrer les records » désactivé : ni confettis ni vibration
+    if (!getState().settings.celebrate) return;
     setUi({ confetti: ui.confetti + 1 });
     if ('vibrate' in navigator) {
       try {

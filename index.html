@@ -11,7 +11,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="ESN Compétition" />
     <meta name="application-name" content="ESN Compétition" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="64x64" href="./icons/favicon-64.png" />
@@ -32,6 +32,8 @@
       @keyframes splash-in { from { opacity: 0; transform: scale(0.94); } }
       @media (prefers-reduced-motion: reduce) { #splash img { animation: none; } }
     </style>
+    <!-- Sans JavaScript, l'écran d'ouverture ne serait jamais retiré et cacherait le message ci-dessous -->
+    <noscript><style>#splash { display: none; }</style></noscript>
   </head>
   <body>
     <div id="splash" aria-hidden="true"><img src="./brand/esn-competition.png" alt="" /></div>

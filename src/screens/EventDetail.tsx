@@ -45,8 +45,31 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
   const byId = new Map(candidates.map((c) => [c.swimmer.id, c]));
   // Raccourcis : les nageurs suivis (pas encore comparés), les autres via la recherche
   const shortcuts = sortSwimmers(candidates.map((c) => c.swimmer).filter((s) => (s.favorite || s.relation === 'child') && !compareIds.includes(s.id))).slice(0, 3);
+  // Records du club sur cette épreuve : tous âges et à l'âge du nageur cette année.
+  // Calculés avant le retour « Nageur introuvable » : les hooks restent les mêmes à chaque rendu,
+  // même quand la fiche disparaît (doublon réuni par la liste du club, autre onglet).
+  const clubRecs = useMemo(() => {
+    if (!swimmer?.member || !hasClubMembers(data.swimmers)) return [];
+    const band = bandForAge(ageAt({ date: `${new Date().getFullYear()}-01-01` }, swimmer));
+    const k = recordKey(distance, stroke);
+    const out: { label: string; rec: ClubRecord }[] = [];
+    const atAge = band ? clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender, band }).get(k) : undefined;
+    if (band && atAge) out.push({ label: `à ${band.label}`, rec: atAge });
+    const all = clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender }).get(k);
+    if (all && all.swim.id !== atAge?.swim.id) out.push({ label: 'tous âges', rec: all });
+    return out;
+  }, [data.swims, data.swimmers, swimmer, course, distance, stroke]);
 
-  if (!swimmer) return <Empty icon="person" title="Nageur introuvable" />;
+  if (!swimmer) {
+    return (
+      <>
+        <NavBar title={eventLabel(distance, stroke)} back="/records" large={false} />
+        <main className="page">
+          <Empty icon="person" title="Nageur introuvable" />
+        </main>
+      </>
+    );
+  }
 
   const valid = history.filter((s) => countsForRecords(s, include));
   const series: ChartSeries[] = [
@@ -77,18 +100,6 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
       .filter((s): s is ChartSeries => !!s),
   ];
   const best = stats.best;
-  // Records du club sur cette épreuve : tous âges et à l'âge du nageur cette année
-  const clubRecs = useMemo(() => {
-    if (!swimmer?.member || !hasClubMembers(data.swimmers)) return [];
-    const band = bandForAge(ageAt({ date: `${new Date().getFullYear()}-01-01` }, swimmer));
-    const k = recordKey(distance, stroke);
-    const out: { label: string; rec: ClubRecord }[] = [];
-    const atAge = band ? clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender, band }).get(k) : undefined;
-    if (band && atAge) out.push({ label: `à ${band.label}`, rec: atAge });
-    const all = clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender }).get(k);
-    if (all && all.swim.id !== atAge?.swim.id) out.push({ label: 'tous âges', rec: all });
-    return out;
-  }, [data.swims, data.swimmers, swimmer, course, distance, stroke]);
   // Niveaux FFBN de l'âge atteint cette année, comparés au record
   const levels = levelStatus(swimmer, course, distance, stroke, levelYear(), best?.timeCs);
   const bestPts = best ? pointsFor(best, swimmer) : null;

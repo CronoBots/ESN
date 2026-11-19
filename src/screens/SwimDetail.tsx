@@ -39,17 +39,22 @@ export function SwimDetail({ id }: { id: string }) {
   // Analyse des passages : temps par tronçon
   const laps: { from: number; to: number; cs: number }[] = [];
   if (swim.splits?.length && t) {
-    const marks = swim.distance === 50 ? [25] : Array.from({ length: swim.splits.length }, (_, i) => (i + 1) * 50);
-    let prevCs = 0;
-    let prevM = 0;
-    swim.splits.forEach((cs, i) => {
-      if (cs > prevCs) {
-        laps.push({ from: prevM, to: marks[i], cs: cs - prevCs });
-        prevCs = cs;
-        prevM = marks[i];
-      }
-    });
-    laps.push({ from: prevM, to: swim.distance, cs: t - prevCs });
+    // Passages tous les 25 m ou 50 m, comme relevés (sinon 25 m sur un 50 m, 50 m au-delà)
+    const step = swim.splitEvery ?? (swim.distance === 50 ? 25 : 50);
+    const marks = swim.splits.map((_, i) => (i + 1) * step);
+    // Un passage au-delà de la distance : relevé incohérent, pas de tableau
+    if (marks[marks.length - 1] < swim.distance) {
+      let prevCs = 0;
+      let prevM = 0;
+      swim.splits.forEach((cs, i) => {
+        if (cs > prevCs) {
+          laps.push({ from: prevM, to: marks[i], cs: cs - prevCs });
+          prevCs = cs;
+          prevM = marks[i];
+        }
+      });
+      laps.push({ from: prevM, to: swim.distance, cs: t - prevCs });
+    }
   }
   const fastestLap = laps.length ? Math.min(...laps.map((l) => l.cs / (l.to - l.from))) : 0;
 

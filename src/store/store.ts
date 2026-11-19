@@ -107,6 +107,31 @@ function notify() {
 }
 
 let lastWrite: Promise<void> = Promise.resolve();
+/** Base rouverte après un échec d'écriture : l'écriture suivante est le seul nouvel essai. */
+let retrying = false;
+let reopening = false;
+
+/**
+ * Écriture refusée : connexion à la base perdue (iPhone après un long passage en arrière-plan),
+ * qui ferait échouer toutes les écritures suivantes. La base est rouverte et l'écriture refaite
+ * une fois ; si elle échoue encore, la modification suivante réessaie.
+ */
+function reopenDb() {
+  if (reopening) return;
+  reopening = true;
+  void openDb().then((d) => {
+    reopening = false;
+    if (!d) return;
+    try {
+      db?.close();
+    } catch {
+      /* déjà fermée */
+    }
+    db = d;
+    retrying = true;
+    writeIdb();
+  });
+}
 
 /** Une écriture à la fois ; si l'état change pendant ce temps, on réécrit la dernière version ensuite. */
 function writeIdb() {
@@ -118,10 +143,13 @@ function writeIdb() {
   lastWrite = idbPut(db!, DATA_KEY, state)
     .then(() => {
       saveError = null;
+      retrying = false;
       channel?.postMessage('saved');
     })
     .catch((e) => {
       saveError = e instanceof Error ? e.message : String(e);
+      if (retrying) retrying = false;
+      else reopenDb();
     })
     .finally(() => {
       writing = false;
@@ -178,8 +206,10 @@ function persist() {
 /**
  * Ouvre IndexedDB et y charge les données, avant le premier affichage.
  * Reprise : des données encore dans localStorage (ancienne version de
- * l'application, ou session où IndexedDB était indisponible) sont les plus
- * récentes ; elles passent dans IndexedDB, puis l'ancienne copie est effacée.
+ * l'application) passent dans IndexedDB si la base est vide, puis l'ancienne
+ * copie est effacée. Une copie écrite pendant une session où IndexedDB était
+ * lente ou indisponible part d'un état vide (localStorage effacé à la reprise) :
+ * elle ne remplace jamais les données déjà dans la base.
  * Si la base tarde (certains iPhone au premier lancement), l'application
  * démarre quand même et la charge dès qu'elle répond.
  */
@@ -201,11 +231,12 @@ async function attach(d: IDBDatabase) {
     } catch {
       /* localStorage inaccessible */
     }
-    if (local) {
-      await idbPut(d, DATA_KEY, state);
-    } else {
-      const stored = await idbGet<unknown>(d, DATA_KEY);
-      if (stored) state = normalizeData(stored);
+    const stored = await idbGet<unknown>(d, DATA_KEY);
+    let copied: AppData | null = null;
+    if (stored) state = normalizeData(stored);
+    else if (local) {
+      copied = state;
+      await idbPut(d, DATA_KEY, copied);
     }
     db = d;
     backend = 'idb';
@@ -216,6 +247,8 @@ async function attach(d: IDBDatabase) {
         /* sans effet : la copie IndexedDB fait foi */
       }
     }
+    // Modifié pendant la reprise : enregistré aussi (la copie locale vient d'être effacée)
+    if (copied && state !== copied) persist();
     notify();
     // Demande au navigateur de ne pas effacer ces données en cas de manque de place
     navigator.storage?.persist?.().catch(() => {});
@@ -270,10 +303,12 @@ if (typeof window !== 'undefined') {
     }
   });
   channel?.addEventListener('message', () => {
-    if (!db) return;
+    // Modification de cet onglet pas encore enregistrée : gardée. Son écriture remplacera les données
+    // de l'autre onglet, qui les relira à son tour (« saved »)
+    if (!db || writeTimer || writing) return;
     idbGet<unknown>(db, DATA_KEY)
       .then((stored) => {
-        if (!stored) return;
+        if (!stored || writeTimer || writing) return;
         state = normalizeData(stored);
         notify();
       })
@@ -325,19 +360,25 @@ function findMeet(meets: Meet[], name: string, date: string, course: Meet['cours
 }
 
 /** Vrai si une course identique (même épreuve, même temps, dates proches) existe déjà. */
-function isDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId'>): boolean {
+function isDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId' | 'eventNo'>): boolean {
   return !!findDuplicate(existing, s);
 }
 
 /** Même course déjà enregistrée (même épreuve, même temps, à quelques jours près). */
-function findDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId'>): Swim | undefined {
+function findDuplicate(existing: Swim[], s: Pick<Swim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status' | 'meetId' | 'eventNo'>): Swim | undefined {
   const t = new Date(s.date).getTime();
   return existing.find(
     (x) =>
       x.course === s.course &&
       x.distance === s.distance &&
       x.stroke === s.stroke &&
-      (s.timeCs != null ? x.timeCs === s.timeCs : x.status === s.status && x.meetId === s.meetId) &&
+      // Séries et finale d'une même épreuve (numéros d'épreuve différents) : deux courses, même au même temps
+      (x.eventNo == null || s.eventNo == null || x.eventNo === s.eventNo) &&
+      (s.timeCs != null
+        ? x.timeCs === s.timeCs ||
+          // Disqualification déjà enregistrée sans temps (feuille PDF) : le fichier LENEX la complète
+          (s.status !== 'OK' && x.status === s.status && x.timeCs == null && x.meetId === s.meetId)
+        : x.status === s.status && x.meetId === s.meetId) &&
       Math.abs(new Date(x.date).getTime() - t) <= 4 * dayMs,
   );
 }
@@ -730,7 +771,16 @@ export const actions = {
         const sorted = [...r.swims].sort((a, b) => (a.eventNo ?? 0) - (b.eventNo ?? 0));
         for (const rs of sorted) {
           const date = rs.date ?? r.meet.startDate;
-          const candidate = { course: rs.course, distance: rs.distance, stroke: rs.stroke, timeCs: rs.timeCs ?? null, date, status: rs.status, meetId: meet.id };
+          const candidate = {
+            course: rs.course,
+            distance: rs.distance,
+            stroke: rs.stroke,
+            timeCs: rs.timeCs ?? null,
+            date,
+            status: rs.status,
+            meetId: meet.id,
+            eventNo: rs.eventNo,
+          };
           // Programme déjà connu : on met à jour série, ligne, heure et engagement s'ils ont changé
           if (rs.timeCs == null && rs.status === 'OK') {
             const same = [...mine, ...addedSwims, ...refreshed].find(
@@ -769,10 +819,16 @@ export const actions = {
             const base = refreshed.find((x) => x.id === dup.id) ?? dup;
             const round = base.source === 'swimrankings' && rs.round ? rs.round : base.round;
             const more =
-              (rs.place != null && base.place == null) || (!!rs.splits?.length && !base.splits?.length) || round !== base.round || (rs.eventNo != null && base.eventNo == null);
+              (rs.place != null && base.place == null) ||
+              (!!rs.splits?.length && !base.splits?.length) ||
+              round !== base.round ||
+              (rs.eventNo != null && base.eventNo == null) ||
+              (rs.timeCs != null && base.timeCs == null);
             if (known && more) {
               const enriched: Swim = {
                 ...base,
+                // Disqualification enregistrée sans temps : le temps du fichier LENEX s'y ajoute
+                timeCs: base.timeCs ?? rs.timeCs ?? null,
                 place: base.place ?? rs.place,
                 splits: base.splits?.length ? base.splits : rs.splits,
                 round,

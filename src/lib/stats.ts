@@ -10,7 +10,9 @@ export function chronoCompare(a: Swim, b: Swim): number {
   if (a.date !== b.date) return a.date < b.date ? -1 : 1;
   const ta = a.startTime ?? '';
   const tb = b.startTime ?? '';
-  if (ta !== tb) return ta < tb ? -1 : 1;
+  // Heure de passage comparée seulement si les deux courses en ont une : une finale sans heure
+  // (historique) ne doit pas passer avant la série du matin relevée en direct.
+  if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
   const ra = ROUND_ORDER[a.round] ?? 1;
   const rb = ROUND_ORDER[b.round] ?? 1;
   if (ra !== rb) return ra - rb;
