@@ -4449,3 +4449,44 @@ button.meet-nav-btn:active {
   margin-top: 1px;
   color: var(--accent);
 }
+
+/* En-tête de la fiche (accueil et page d'un nageur) : distinctions sous les chiffres */
+.hero-badges {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.hero-badges span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.hero-badges svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Bouton cœur (suivre) sur fond bleu */
+.hero .follow-btn {
+  color: #fff;
+}
+
+.file-actions {
+  margin-top: 12px;
+}
+
+.file-actions:empty {
+  display: none;
+}
