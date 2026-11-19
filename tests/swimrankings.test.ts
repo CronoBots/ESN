@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { extractAthleteId, parseSwimrankings } from '../src/lib/swimrankings';
+import { extractAthleteId, parseSwimrankings, roundFromText } from '../src/lib/swimrankings';
+
+describe('roundFromText', () => {
+  it('reconnaît les tours des pages de compétition', () => {
+    expect(roundFromText('Eliminatoire')).toBe('HEAT');
+    expect(roundFromText('Éliminatoires')).toBe('HEAT');
+    expect(roundFromText('Séries')).toBe('HEAT');
+    expect(roundFromText('Demi-finale')).toBe('SEMI');
+    expect(roundFromText('Finale')).toBe('FINAL');
+    expect(roundFromText('Finale directe')).toBe('FINAL');
+    expect(roundFromText('')).toBeUndefined();
+  });
+});
 
 // Texte tel que copié depuis la page « Meilleurs temps » (navigateur de bureau, cellules séparées par des tabulations)
 const DESKTOP_COPY = `Accueil

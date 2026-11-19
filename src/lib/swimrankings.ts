@@ -240,7 +240,8 @@ export function roundFromText(s: string | undefined): Round | undefined {
   if (!t) return undefined;
   if (/demi|semi/i.test(t)) return 'SEMI';
   if (/final/i.test(t)) return 'FINAL';
-  if (/s[ée]rie|heat|prelim|reeks|vorl/i.test(t)) return 'HEAT';
+  // « Eliminatoire » : séries d'une épreuve avec finale (pages de compétition swimrankings en français)
+  if (/s[ée]rie|heat|prelim|reeks|vorl|limin/i.test(t)) return 'HEAT';
   return 'TIM';
 }
 
