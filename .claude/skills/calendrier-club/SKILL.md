@@ -32,7 +32,8 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
       "name": "Championnats de Belgique 25 m 11-16 ans",
       "course": "SCM (25 m) ou LCM (50 m), seulement s'il est indiqué",
       "groups": ["A", "B"],
-      "note": "Conditions : temps limites, sélection, limite de séries…"
+      "note": "Conditions : temps limites, sélection, limite de séries…",
+      "live": "https://resultats.glprod.be/CB-bastogne26/ (facultatif : livetiming hors live.swimrankings.net)"
     }
   ]
 }
@@ -43,6 +44,7 @@ Le calendrier annonce les compétitions **avant** que les organisateurs publient
 - Nom en clair et en français (« Championnats FFBN 25 m Jeunes », « Dernière Chance »), sans abréviation obscure (« Champ » → « Championnats »).
 - Espace insécable ` ` entre un nombre et son unité (`25 m`, `15 ans`), pour éviter une coupure à l'écran.
 - Pas de filtre par âge : toutes les compétitions du club s'affichent pour tout le monde (décision de l'utilisateur). Une condition d'âge (« 11-16 ans ») s'écrit dans le nom ou dans `note`.
+- `live` (facultatif) : adresse du livetiming quand l'organisateur ne publie pas sur live.swimrankings.net (championnats de la fédération et district LNL : resultats.glprod.be ; lien « Livetiming » de la page de l'événement sur belswim.be). Le déploiement en copie la page et les feuilles PDF dans le site toutes les 10 minutes, de 2 jours avant à 14 jours après la compétition (scripts/mirror-live.mjs) ; l'application les lit comme live.swimrankings.net. Une page Splash Meet Manager (liens `StartList_N.pdf`, `ResultList_N.pdf`) est nécessaire.
 - Deuxième partie de saison : ajoute les compétitions à la suite, mets à jour `version`, `until` et `note`.
 
 ## Étapes

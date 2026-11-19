@@ -76,10 +76,10 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
   const lines = texts.flatMap((t) => t.split('\n').map(clean)).filter(Boolean);
 
   for (const l of lines) {
-    // Lieu et dates : « 4367 Crisnée, 13- - 15-11-2026 » ou « Liège, 12-10-2025 »
+    // Lieu et dates : « 4367 Crisnée, 13- - 15-11-2026 », « Liège, 12-10-2025 », « Bastogne, 20 - 22/11/2026 »
     if (!h.startDate) {
-      const m = /([A-ZÀ-Ý][A-Za-zÀ-ÿ'’\- ]{1,40}),\s*(\d{1,2})\s*-?\s*-\s*-?\s*(\d{1,2})-(\d{1,2})-(\d{4})/.exec(l);
-      const s = m ? null : /([A-ZÀ-Ý][A-Za-zÀ-ÿ'’\- ]{1,40}),\s*(\d{1,2})-(\d{1,2})-(\d{4})\b/.exec(l);
+      const m = /([A-ZÀ-Ý][A-Za-zÀ-ÿ'’\- ]{1,40}),\s*(\d{1,2})\s*-?\s*-\s*-?\s*(\d{1,2})[-/](\d{1,2})[-/](\d{4})/.exec(l);
+      const s = m ? null : /([A-ZÀ-Ý][A-Za-zÀ-ÿ'’\- ]{1,40}),\s*(\d{1,2})[-/](\d{1,2})[-/](\d{4})\b/.exec(l);
       if (m) {
         const a = makeISO(+m[5], +m[4], +m[2]);
         const b = makeISO(+m[5], +m[4], +m[3]);
@@ -108,7 +108,8 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
       if (m) h.eventNo = +m[1];
     }
     if (!h.startTime) {
-      const m = /\b(\d{1,2})-(\d{1,2})-(\d{2,4})\s*-\s*(\d{1,2})[:.](\d{2})/.exec(l);
+      // « 14-11-26 - 15:30 », « 20/11/2026 - 8:30 »
+      const m = /\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\s*-\s*(\d{1,2})[:.](\d{2})/.exec(l);
       if (m) {
         const y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
         const d = makeISO(y, +m[2], +m[1]);
@@ -120,7 +121,7 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
     }
     if (!h.date) {
       // Heure tronquée (« 14-11-26 - 15:3 ») : on garde au moins le jour
-      const m = /\b(\d{1,2})-(\d{1,2})-(\d{2})\s*-\s*\d/.exec(l);
+      const m = /\b(\d{1,2})[-/](\d{1,2})[-/](\d{2})\s*-\s*\d/.exec(l);
       if (m) {
         const d = makeISO(2000 + +m[3], +m[2], +m[1]);
         if (d) h.date = d;
@@ -138,6 +139,13 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
           else if (/s[ée]ries/i.test(l)) h.round = 'HEAT';
         }
       }
+    }
+    // Tour sur la ligne du titre de la feuille : « Liste des séries Eliminatoires » (séries d'une épreuve avec
+    // finale), « Liste des résultats Finale » ; « Liste des séries » seule ou « Finale directe » : classement au temps
+    if (h.round === 'TIM' && /liste\s+des\s+(s[ée]ries|r[ée]sultats)/i.test(l) && !/finale\s+directe/i.test(l)) {
+      if (/demi[-\s]?finale/i.test(l)) h.round = 'SEMI';
+      else if (/[ée]liminatoire/i.test(l)) h.round = 'HEAT';
+      else if (/\bfinale\b/i.test(l)) h.round = 'FINAL';
     }
   }
   // Date de l'épreuve plausible ?

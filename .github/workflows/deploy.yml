@@ -4,18 +4,39 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Jours de compétition du club : le livetiming publié hors live.swimrankings.net (fédération)
+  # est recopié dans le site toutes les 10 minutes (scripts/mirror-live.mjs). Les autres jours,
+  # la vérification s'arrête tout de suite, sans rien reconstruire.
+  schedule:
+    - cron: '*/10 5-21 * * *'
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# Un déploiement à la fois ; un passage programmé n'interrompt pas celui d'une mise à jour
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  window:
+    runs-on: ubuntu-latest
+    outputs:
+      active: ${{ steps.check.outputs.active }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            public/data
+            scripts
+      - id: check
+        run: node scripts/mirror-live.mjs --check >> "$GITHUB_OUTPUT"
+
   build:
+    needs: window
+    if: github.event_name != 'schedule' || needs.window.outputs.active == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -25,7 +46,25 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+        if: github.event_name != 'schedule'
       - run: npm run build
+      - name: Copies précédentes du livetiming
+        if: needs.window.outputs.active == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .live-cache
+          key: live-${{ github.run_id }}
+          restore-keys: live-
+      - name: Livetiming des compétitions du club
+        if: needs.window.outputs.active == 'true'
+        continue-on-error: true
+        run: node scripts/mirror-live.mjs dist .live-cache
+      - if: needs.window.outputs.active == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .live-cache
+          key: live-${{ github.run_id }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

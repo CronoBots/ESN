@@ -90,6 +90,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Livetiming copié avec le site (live/) : toujours relu sur le réseau, l'application garde elle-même
+  // les feuilles définitives ; jamais servi depuis le cache des fichiers de l'application
+  if (url.pathname.includes('/live/')) return;
+
   // Données du club (liste, historique) : réseau d'abord (requête conditionnelle, 304 si inchangées),
   // dernière copie en secours hors connexion, dans le cache des données (gardé lors des mises à jour).
   if (url.pathname.includes('/data/')) {

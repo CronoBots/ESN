@@ -150,8 +150,8 @@ export function Settings() {
             <SyncNowRow />
           </div>
           <div className="section-foot">
-            Tout est automatique : programme et résultats publiés par les organisateurs (live.swimrankings.net, fichiers officiels et
-            feuilles PDF), historique des saisons passées relevé par le club, nouveaux nageurs de l’ESN ajoutés à la liste. Vérification à
+            Tout est automatique : programme et résultats publiés par les organisateurs (live.swimrankings.net ou livetiming de la fédération, fichiers
+            officiels et feuilles PDF), historique des saisons passées relevé par le club, nouveaux nageurs de l’ESN ajoutés à la liste. Vérification à
             chaque ouverture, et toutes les 15 min pendant une compétition.
           </div>
         </Section>
@@ -259,7 +259,8 @@ export function About() {
         <Section title="swimrankings.net">
           <div className="card pad" style={{ fontSize: 15, lineHeight: 1.5 }}>
             L’application ESN Compétition n’est pas affiliée à swimrankings.net. Elle lit les résultats publiés par les organisateurs sur
-            live.swimrankings.net et l’historique relevé par le club ; aucune donnée n’est envoyée à un tiers.
+            live.swimrankings.net ou sur le livetiming de la fédération, et l’historique relevé par le club ; aucune donnée n’est envoyée
+            à un tiers.
           </div>
         </Section>
         <Section title="Hors-ligne">

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CLUB } from '../club';
 import type { Meet } from '../store/types';
-import { fetchLiveResults, isSettled, loadEventSheet } from '../lib/liveResults';
+import { fetchLiveResults, isMirrored, isSettled, loadEventSheet } from '../lib/liveResults';
 import type { MeetEvent, MeetOverview } from '../lib/lenex';
 import { medalTable, meetEventLabel } from '../lib/meetOverview';
 import { overallRanking, type EventSheet, type SheetRow } from '../lib/heatSheet';
@@ -89,7 +89,8 @@ export function MeetOverviewSections({ meet }: { meet: Meet }) {
           </div>
         </div>
         <div className="section-foot">
-          {overview.organizer ? `Organisation : ${overview.organizer}. ` : ''}Résultats officiels publiés sur live.swimrankings.net
+          {overview.organizer ? `Organisation : ${overview.organizer}. ` : ''}Résultats officiels publiés sur{' '}
+          {isMirrored(meet.liveId) ? 'le livetiming de l’organisateur' : 'live.swimrankings.net'}
           {live ? `, relus toutes les 5 minutes (dernière lecture à ${updated})` : settled ? ', définitifs' : ''}.
         </div>
       </Section>

@@ -113,6 +113,22 @@ Splash Meet Manager   Page 1`;
     expect(h).toMatchObject({ eventNo: 9, distance: 100, stroke: 'BREAST', gender: 'M', date: '2026-11-13', startTime: '19:15' });
   });
 
+  it('dates avec des barres et séries éliminatoires (livetiming de la fédération)', () => {
+    const fed = `Championnats de Belgique Test 2026
+Bastogne, 20 - 22/11/2026
+Epreuve 75   Garçons, 200m Brasse   Jeunesse/Jeugd 2
+22/11/2026 - 16:20   Liste des séries
+AN
+Série 1 de 4
+5 DUPONT, Hugo   12   Esn   2:52.81`;
+    expect(parseSheetHeader([fed])).toMatchObject({ eventNo: 75, distance: 200, stroke: 'BREAST', gender: 'M', round: 'TIM', date: '2026-11-22', startTime: '16:20' });
+    expect(findSwimmerEntry(fed, { firstName: 'Hugo', lastName: 'Dupont', birthYear: 2012, gender: 'M' })).toEqual({ heat: 1, lane: 5, entryCs: 17281 });
+    const heats = fed.replace('Epreuve 75', 'Epreuve 1').replace('22/11/2026 - 16:20   Liste des séries', '20/11/2026 - 8:30   Liste des séries Eliminatoires');
+    expect(parseSheetHeader([heats])).toMatchObject({ round: 'HEAT', date: '2026-11-20', startTime: '08:30' });
+    expect(parseSheetHeader([fed.replace('Liste des séries', 'Liste des résultats Finale')]).round).toBe('FINAL');
+    expect(parseSheetHeader([fed.replace('Liste des séries', 'Liste des résultats Finale directe')]).round).toBe('TIM');
+  });
+
   it('liste les feuilles publiées sur la page de la compétition', () => {
     const docs = parseMeetDocs(
       '<a href="StartList_1.pdf">x</a><a href="StartList_2.pdf">x</a><a href="ResultList_1.pdf">x</a><a href="EntryStatistics.pdf">x</a>',

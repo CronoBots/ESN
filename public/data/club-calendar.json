@@ -39,6 +39,7 @@
       "city": "Bastogne",
       "name": "Championnats de Belgique 25\u00a0m 11-16\u00a0ans",
       "course": "SCM",
+      "live": "https://resultats.glprod.be/CB-bastogne26/",
       "groups": ["A", "B"],
       "note": "11-16\u00a0ans, suivant la qualification FRBN (limites, nombre de nageurs)"
     },

@@ -49,6 +49,18 @@ export interface Progress {
  */
 export const LIVE_BASE = 'https://live.swimrankings.net';
 
+/**
+ * Livetiming publié ailleurs (p. ex. celui de la fédération, resultats.glprod.be) : ces sites ne
+ * permettent pas la lecture depuis l'application. Le déploiement en publie une copie avec le site,
+ * sous live/<id>/ (scripts/mirror-live.mjs), toutes les 10 minutes les jours de compétition du club.
+ */
+export const isMirrored = (id: string) => id.startsWith('ext-');
+
+/** Adresse d'un fichier d'une compétition (page de la compétition si `file` est vide). */
+export function liveUrl(id: string, file = ''): string {
+  return isMirrored(id) ? `./live/${id}/${file || 'index.html'}` : `${LIVE_BASE}/${id}/${file}`;
+}
+
 /** 2 : lecture des feuilles PDF (résultats et listes de départ). */
 export const SYNC_ENGINE = 7; // 3 : fiche swimrankings reliée ; 4 : séries en direct ; 5 : nouveaux nageurs du club ; 6 : noms à une lettre près ; 7 : places ajoutées aux courses déjà connues (historique)
 
@@ -124,6 +136,30 @@ export async function listLiveMeets(nation = CLUB.liveNation): Promise<LiveMeet[
   return parseMeetList(await res.text());
 }
 
+/** État d'une compétition d'après ses dates. */
+function statusOn(m: Pick<LiveMeet, 'startDate' | 'endDate'>, today: string): LiveMeet['status'] {
+  if (!m.startDate || today < m.startDate) return 'upcoming';
+  return today <= (m.endDate ?? m.startDate) ? 'live' : 'finished';
+}
+
+/** Compétitions dont le livetiming est copié avec le site (live/meets.json). */
+export async function listMirroredMeets(today = todayISO()): Promise<LiveMeet[]> {
+  try {
+    const res = await fetch('./live/meets.json', { cache: 'no-cache' });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { meets?: Omit<LiveMeet, 'status'>[] };
+    return (data.meets ?? []).filter((m) => isMirrored(m.id) && m.name).map((m) => ({ ...m, status: statusOn(m, today) }));
+  } catch {
+    return [];
+  }
+}
+
+/** Les deux listes ; une compétition copiée qui paraît aussi sur live.swimrankings.net n'est lue qu'une fois. */
+export function mergeMeetLists(live: LiveMeet[], mirrored: LiveMeet[]): LiveMeet[] {
+  const same = (a: LiveMeet, b: LiveMeet) => a.startDate === b.startDate && normName(a.name) === normName(b.name);
+  return [...live, ...mirrored.filter((m) => !live.some((l) => same(l, m)))];
+}
+
 /* ------------------------------------------------------------------------ */
 /* Compétitions terminées : documents gardés sur l'appareil                  */
 /* ------------------------------------------------------------------------ */
@@ -185,7 +221,7 @@ export function fetchLiveResults(id: string, live = false, settled = false): Pro
   let p = lenexCache.get(key);
   if (!p) {
     p = (async () => {
-      const url = `${LIVE_BASE}/${id}/results.lxf`;
+      const url = liveUrl(id, 'results.lxf');
       const kept = settled ? await readFinal(url) : null;
       let buf: ArrayBuffer;
       if (kept) buf = await kept.arrayBuffer();
@@ -257,7 +293,7 @@ export async function readMeetPdfs(
 ): Promise<{ found: Map<string, PdfSwim[]>; complete: boolean; candidates: ClubCandidate[] } | null> {
   const fresh = m.status !== 'finished';
   const keep = settledMeet(m);
-  const res = await fetch(`${LIVE_BASE}/${m.id}/`, { cache: fresh ? 'no-cache' : 'default' });
+  const res = await fetch(liveUrl(m.id), { cache: fresh ? 'no-cache' : 'default' });
   if (!res.ok) return null;
   const docs = parseMeetDocs(await res.text());
   if (!docs.results.size && !docs.starts.size) return null;
@@ -267,7 +303,7 @@ export async function readMeetPdfs(
   const found = new Map<string, PdfSwim[]>();
   const candidates: ClubCandidate[] = [];
   // Aucun nageur du club inscrit : rien à lire (feuille illisible, vide : on lit les épreuves)
-  const stats = club && docs.stats ? await pdfText(`${LIVE_BASE}/${m.id}/${docs.stats}`, fresh, keep) : '';
+  const stats = club && docs.stats ? await pdfText(liveUrl(m.id, docs.stats), fresh, keep) : '';
   if (club && stats && !club.test(stats)) return { found, complete: m.status === 'finished', candidates };
   const events = [...new Set([...docs.results.keys(), ...docs.starts.keys()])].sort((a, b) => a - b);
   const course = m.course ?? 'SCM';
@@ -275,7 +311,7 @@ export async function readMeetPdfs(
   let failed = false;
   await mapLimit(events, 4, async (no) => {
     const isResult = docs.results.has(no);
-    const text = await pdfText(`${LIVE_BASE}/${m.id}/${(isResult ? docs.results : docs.starts).get(no)}`, fresh && !isResult, keep).catch(() => '');
+    const text = await pdfText(liveUrl(m.id, (isResult ? docs.results : docs.starts).get(no)), fresh && !isResult, keep).catch(() => '');
     if (!text) {
       failed = true;
       return;
@@ -368,7 +404,7 @@ export function loadEventSheet(liveId: string, eventNo: number, live: boolean, s
   const key = `${liveId}/${eventNo}`;
   const cached = sheetCache.get(key);
   if (cached && (!live || Date.now() - cached.at < 120000)) return cached.p;
-  const kept = `${LIVE_BASE}/${liveId}/epreuve-${eventNo}.json`;
+  const kept = liveUrl(liveId, `epreuve-${eventNo}.json`);
   const p = (async () => {
     const saved = settled ? await readFinal(kept) : null;
     if (saved) return (await saved.json()) as EventSheet;
@@ -386,14 +422,14 @@ async function readEventSheet(liveId: string, eventNo: number, live: boolean, se
   const l = await fetchLiveResults(liveId, live, settled).catch(() => null);
   const fromLenex = l ? sheetFromLenex(l, eventNo) : null;
   if (fromLenex) return fromLenex;
-  const res = await fetch(`${LIVE_BASE}/${liveId}/`, { cache: live ? 'no-cache' : 'default' });
+  const res = await fetch(liveUrl(liveId), { cache: live ? 'no-cache' : 'default' });
   if (!res.ok) return null;
   const docs = parseMeetDocs(await res.text());
   const startFile = docs.starts.get(eventNo);
   const resultFile = docs.results.get(eventNo);
   const [st, rs] = await Promise.all([
-    startFile ? pdfText(`${LIVE_BASE}/${liveId}/${startFile}`, live, settled) : Promise.resolve(''),
-    resultFile ? pdfText(`${LIVE_BASE}/${liveId}/${resultFile}`, live, settled) : Promise.resolve(''),
+    startFile ? pdfText(liveUrl(liveId, startFile), live, settled) : Promise.resolve(''),
+    resultFile ? pdfText(liveUrl(liveId, resultFile), live, settled) : Promise.resolve(''),
   ]);
   if (!st && !rs) return null;
   const start = st ? parseStartSheet(st) : null;
@@ -502,7 +538,10 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   if ((!cfg.enabled && !force) || !state.swimmers.length) return result;
 
   const today = todayISO();
-  const all = await listLiveMeets();
+  // live.swimrankings.net indisponible : les compétitions copiées avec le site sont quand même lues
+  const [live, mirrored] = await Promise.all([listLiveMeets().catch((e: unknown) => e as Error), listMirroredMeets(today)]);
+  if (live instanceof Error && !mirrored.length) throw live;
+  const all = mergeMeetLists(live instanceof Error ? [] : live, mirrored);
   const meets = all.filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
   // Nouvelle version de la recherche : toutes les compétitions sont relues (sans doublon)
   const start: Record<string, string[]> = (cfg.engine ?? 1) < SYNC_ENGINE ? {} : cfg.processed;
