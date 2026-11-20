@@ -4,9 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Jours de compétition du club : le livetiming publié hors live.swimrankings.net (fédération)
-  # est recopié dans le site toutes les 5 minutes (scripts/mirror-live.mjs). Les autres jours,
-  # la vérification s'arrête tout de suite, sans rien reconstruire.
+  # Jours de compétition du club : le livetiming publié hors live.swimrankings.net (fédération,
+  # district LNL) est recopié dans le site toutes les 5 minutes (scripts/mirror-live.mjs). La semaine
+  # avant, le lien du district est cherché au plus toutes les 30 minutes. Les autres jours, la
+  # vérification s'arrête tout de suite, sans rien reconstruire.
   schedule:
     - cron: '*/5 5-21 * * *'
 
@@ -25,14 +26,28 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       active: ${{ steps.check.outputs.active }}
+      links: ${{ steps.check.outputs.links }}
     steps:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: |
             public/data
             scripts
+      # Liens de livetiming trouvés sur le site du district (LNL) et heure de la dernière recherche
+      - uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: .live-links
+          key: links-${{ github.run_id }}
+          restore-keys: links-
       - id: check
-        run: node scripts/mirror-live.mjs --check >> "$GITHUB_OUTPUT"
+        run: node scripts/mirror-live.mjs --check .live-links >> "$GITHUB_OUTPUT"
+      - if: steps.check.outputs.changed == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .live-links
+          key: links-${{ github.run_id }}
 
   build:
     needs: window
@@ -58,6 +73,8 @@ jobs:
       - name: Livetiming des compétitions du club
         if: needs.window.outputs.active == 'true'
         continue-on-error: true
+        env:
+          LIVE_LINKS: ${{ needs.window.outputs.links }}
         run: node scripts/mirror-live.mjs dist .live-cache
       - if: needs.window.outputs.active == 'true'
         continue-on-error: true

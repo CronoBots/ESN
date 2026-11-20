@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 // @ts-expect-error script Node sans types
-import { activeEvents, meetFiles, mirrorId } from '../scripts/mirror-live.mjs';
+import { activeEvents, eventKey, findLiveLink, findLiveLinks, liveBase, matchPublication, meetFiles, mirrorId, parseLnlCalendar, withLinks } from '../scripts/mirror-live.mjs';
 import { isMirrored, liveUrl, listMirroredMeets, mergeMeetLists, pdfText, type LiveMeet } from '../src/lib/liveResults';
 import { pdfLines } from '../src/lib/pdfText';
 
@@ -82,5 +82,116 @@ describe('livetiming copié avec le site (hors live.swimrankings.net)', () => {
     await pdfText(url, true);
     expect(pdfLines).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
+  });
+});
+
+/*
+ * Liens de livetiming publiés par le district LNL (lnl.glprod.be) : pages fictives, construites comme
+ * celles du site (calendrier du mois, page de la compétition avec le bouton « Résultats live »).
+ */
+const row = (n: number, name: string, tag: string, dates: string) =>
+  `<article class="event-row"><div class="event-date"><strong>05</strong><span>Déc 2026</span></div><div class="event-content">` +
+  `<span class="tag">${tag}</span><h2><a href="/publication/${n}/">${name}</a></h2><p>Lieu à préciser · ${dates}</p>` +
+  `<a class="text-link" href="/publication/${n}/">Informations et documents ↗</a></div></article>`;
+const month = (...rows: string[]) => `<html><body><div class="calendar-toolbar"><h2>décembre 2026</h2></div>${rows.join('')}</body></html>`;
+const pubPage = (live?: string) =>
+  `<html><body><a class="champ-button" href="#resultats">Résultats complets ↓</a>` +
+  `<a href="https://resultats.glprod.be/Ancien-25/index.html">Résultats de l’an passé</a>` +
+  `<a href="https://resultats.glprod.be/Fictif-26/ResultList_1.pdf">Épreuve 1</a>` +
+  (live ? `<a class="champ-button" href="${live}" target="_blank" rel="noopener noreferrer">Résultats live ↗</a>` : '') +
+  `<a href="https://www.ffbn.be/">FFBN</a></body></html>`;
+
+describe('liens de livetiming du district LNL trouvés tout seuls', () => {
+  const jeunes = { start: '2026-12-05', end: '2026-12-06', city: 'Bastogne', name: 'Championnats FFBN 25\u00a0m Jeunes' };
+  const derniere = { start: '2026-12-12', end: '2026-12-13', city: 'Waremme', name: 'Dernière Chance' };
+
+  it('lien publié par le district (…/index.html) : même copie que le dossier', () => {
+    expect(liveBase('https://resultats.glprod.be/Fictif-26/index.html')).toBe('https://resultats.glprod.be/Fictif-26/');
+    expect(liveBase('https://resultats.glprod.be/Fictif-26')).toBe('https://resultats.glprod.be/Fictif-26/');
+    expect(liveBase('https://resultats.glprod.be/Fictif-26/')).toBe('https://resultats.glprod.be/Fictif-26/');
+    expect(mirrorId('https://resultats.glprod.be/Fictif-26/index.html')).toBe('ext-Fictif-26');
+  });
+
+  it('calendrier du district : page, nom, organisateur et dates', () => {
+    const html = month(
+      row(16, 'Championnats FFBN 25 M Jeunes', 'Natation · FFBN', '05/12/2026 — 06/12/2026'),
+      row(18, 'Meeting d&#39;hiver &amp; relais', 'Natation · Club fictif - WAREMME', '12/12/2026'),
+      '<article class="event-row"><p>Sans lien</p></article>',
+    );
+    expect(parseLnlCalendar(html)).toEqual([
+      { path: '/publication/16/', name: 'Championnats FFBN 25 M Jeunes', tag: 'Natation · FFBN', start: '2026-12-05', end: '2026-12-06' },
+      { path: '/publication/18/', name: 'Meeting d’hiver & relais', tag: 'Natation · Club fictif - WAREMME', start: '2026-12-12', end: '2026-12-12' },
+    ]);
+  });
+
+  it('compétition du district rattachée par les dates et le nom (ou la ville)', () => {
+    const entries = parseLnlCalendar(
+      month(
+        row(15, 'Championnats FFBN 25 M 15 ans et +', 'Natation · FFBN', '28/11/2026 — 29/11/2026'),
+        row(20, 'Meeting fictif de Spa', 'Natation · Club fictif - SPA', '05/12/2026'),
+        row(16, 'Championnats FFBN 25 M Jeunes', 'Natation · FFBN', '05/12/2026 — 06/12/2026'),
+        row(18, 'Meeting d’hiver', 'Natation · Club fictif - WAREMME', '12/12/2026 — 13/12/2026'),
+      ),
+    );
+    expect(matchPublication(jeunes, entries)?.path).toBe('/publication/16/');
+    expect(matchPublication(derniere, entries)?.path).toBe('/publication/18/'); // même ville
+    // Dates qui ne se recouvrent pas, aucun mot en commun : rien
+    expect(matchPublication({ ...jeunes, start: '2026-12-19', end: '2026-12-20' }, entries)).toBeNull();
+    expect(matchPublication({ start: '2026-12-05', city: 'Ailleurs', name: 'Critérium d’automne' }, entries)).toBeNull();
+    // Deux compétitions aussi proches l'une que l'autre : on ne devine pas
+    const twice = parseLnlCalendar(month(row(21, 'Jeunes A', 'FFBN', '05/12/2026'), row(22, 'Jeunes B', 'FFBN', '05/12/2026')));
+    expect(matchPublication(jeunes, twice)).toBeNull();
+  });
+
+  it('lien « Résultats live » de la page de la compétition, seulement vers une page de resultats.glprod.be', () => {
+    expect(findLiveLink(pubPage('https://resultats.glprod.be/Fictif-26/index.html'))).toBe('https://resultats.glprod.be/Fictif-26/');
+    // Pas encore publié : ni l'édition passée, ni une feuille PDF ; le livetiming d'un autre site n'est pas copié
+    expect(findLiveLink(pubPage())).toBeNull();
+    expect(findLiveLink(pubPage('https://resultats.glprod.be/Fictif-26/ResultList_1.pdf'))).toBeNull();
+    expect(findLiveLink(pubPage('https://live.swimrankings.net/12345/'))).toBeNull();
+  });
+
+  it('recherche polie : de 7 jours avant au dernier jour, au plus toutes les 30 minutes, arrêtée une fois le lien trouvé', async () => {
+    const calendar = { events: [jeunes, { start: '2026-12-05', city: 'Liège', name: 'Avec lien', live: 'https://resultats.glprod.be/Autre-26/' }] };
+    let published = false;
+    const calls: string[] = [];
+    const fetchText = async (url: string) => {
+      calls.push(url);
+      if (url.includes('/calendrier/')) return month(row(16, 'Championnats FFBN 25 M Jeunes', 'Natation · FFBN', '05/12/2026 — 06/12/2026'));
+      return pubPage(published ? 'https://resultats.glprod.be/Fictif-26/index.html' : undefined);
+    };
+    const state: Record<string, { checked: number; live?: string }> = {};
+    const t0 = Date.UTC(2026, 10, 28, 9);
+    const opts = (day: string, now: number) => ({ day, now, fetchText, pause: 0 });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(await findLiveLinks(calendar, state, opts('2026-11-27', t0))).toBe(false); // 8 jours avant
+    expect(calls).toEqual([]);
+    expect(await findLiveLinks(calendar, state, opts('2026-11-28', t0))).toBe(true);
+    expect(calls).toEqual(['https://lnl.glprod.be/calendrier/?month=2026-12&view=list', 'https://lnl.glprod.be/publication/16/']);
+    expect(state[eventKey(jeunes)]).toEqual({ checked: t0 });
+    await findLiveLinks(calendar, state, opts('2026-11-28', t0 + 10 * 60000)); // 10 minutes plus tard : rien
+    expect(calls).toHaveLength(2);
+    published = true;
+    await findLiveLinks(calendar, state, opts('2026-11-28', t0 + 31 * 60000));
+    expect(calls).toHaveLength(4);
+    expect(state[eventKey(jeunes)].live).toBe('https://resultats.glprod.be/Fictif-26/');
+    await findLiveLinks(calendar, state, opts('2026-12-05', t0 + 7 * 86400000)); // trouvé : plus rien
+    expect(calls).toHaveLength(4);
+
+    // Copié comme un lien du calendrier, de 2 jours avant à 14 jours après
+    const links = { [eventKey(jeunes)]: state[eventKey(jeunes)].live };
+    expect(activeEvents(withLinks(calendar, links), '2026-12-02').map((e: { name: string }) => e.name)).toEqual([]);
+    expect(activeEvents(withLinks(calendar, links), '2026-12-03').map((e: { live: string }) => e.live)).toEqual([
+      'https://resultats.glprod.be/Fictif-26/',
+      'https://resultats.glprod.be/Autre-26/',
+    ]);
+    // Lien d'un autre site : ignoré
+    expect(withLinks(calendar, { [eventKey(jeunes)]: 'https://ailleurs.example/x/' }).events[0].live).toBeUndefined();
+    // Compétition finie depuis plus de 14 jours : oubliée
+    expect(await findLiveLinks(calendar, state, opts('2026-12-22', t0 + 30 * 86400000))).toBe(true);
+    expect(state).toEqual({});
+    expect(calls).toHaveLength(4);
+    warn.mockRestore();
   });
 });
