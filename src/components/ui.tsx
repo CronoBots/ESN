@@ -608,15 +608,18 @@ export function Section({
   caption,
   footer,
   children,
+  id,
 }: {
   title?: ReactNode;
   action?: ReactNode;
   caption?: string;
   footer?: ReactNode;
   children: ReactNode;
+  /** Ancre (raccourcis d'une page longue) */
+  id?: string;
 }) {
   return (
-    <section className="section">
+    <section className="section" id={id}>
       {(title || action) && (
         <div className="section-head">
           {title && <h2 className="section-title">{title}</h2>}

@@ -104,6 +104,12 @@ export function seasonOf(iso: string): string {
   return `${y}-${y + 1}`;
 }
 
+/** « 2026-2027 » → « 2026/27 » (saison de petit bassin) ; « 2026 » (année civile, grand bassin) inchangé. */
+export function seasonShort(season: string): string {
+  const m = /^(\d{4})-(\d{4})$/.exec(season.trim());
+  return m ? `${m[1]}/${m[2].slice(2)}` : season;
+}
+
 export function seasonLabel(season: string): string {
   const [a, b] = season.split('-');
   return `Saison ${a}/${b.slice(2)}`;

@@ -1045,6 +1045,16 @@ a.row:active {
   display: none;
 }
 
+/* Raccourcis d'une page longue (compétition) et leurs ancres, arrivée sous la barre du haut */
+.jump-chips {
+  margin-top: 14px;
+}
+
+.section[id],
+.anchor {
+  scroll-margin-top: 72px;
+}
+
 .chips.wrap {
   flex-wrap: wrap;
   overflow: visible;

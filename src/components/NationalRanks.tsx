@@ -2,6 +2,7 @@ import { useData } from '../store/store';
 import type { Course, Stroke } from '../store/types';
 import { rankLabel, ranksFor } from '../lib/rankings';
 import { formatTime } from '../lib/time';
+import { seasonShort } from '../lib/dates';
 import { Section } from './ui';
 
 /** Fiche d'une épreuve : classements nationaux relevés sur swimrankings, saison par saison. */
@@ -17,7 +18,7 @@ export function NationalRankSection({ swimmerId, course, distance, stroke }: { s
             <div className="row-body">
               <div className="row-title">{r.label}</div>
               <div className="row-sub">
-                Saison {r.season}
+                Saison {seasonShort(r.season)}
                 {r.timeCs != null ? ` · ${formatTime(r.timeCs)}` : ''}
               </div>
             </div>

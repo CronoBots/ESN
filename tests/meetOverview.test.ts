@@ -47,6 +47,6 @@ describe('vue d’ensemble d’une compétition (comme SplashMe)', () => {
 
   it('libellés d’épreuves', () => {
     expect(meetEventLabel(o.events[0])).toBe('Dames, 100 m Libre');
-    expect(meetEventLabel(o.events[1])).toBe('Tous, 4 × 50 m 4 nages');
+    expect(meetEventLabel(o.events[1])).toBe('Mixte, 4 × 50 m 4 nages');
   });
 });

@@ -47,7 +47,10 @@ function useOverview(meet: Meet) {
 const dash = (n: number) => (n ? String(n) : '–');
 
 /** Chiffres, médailles par club et programme d'une compétition publiée en direct. */
-export function MeetOverviewSections({ meet }: { meet: Meet }) {
+/** Sections présentes, pour les raccourcis de la page (null : pas encore lues ou pas de fichier officiel). */
+export type OverviewSections = { medals: boolean; program: boolean } | null;
+
+export function MeetOverviewSections({ meet, onSections }: { meet: Meet; onSections?: (s: OverviewSections) => void }) {
   const { overview, at, live, settled } = useOverview(meet);
   const [allClubs, setAllClubs] = useState(false);
   const table = useMemo(() => (overview ? medalTable(overview) : []), [overview]);
@@ -62,6 +65,10 @@ export function MeetOverviewSections({ meet }: { meet: Meet }) {
     }
     return out;
   }, [overview]);
+  const ready = !!meet.liveId && !!overview;
+  useEffect(() => {
+    onSections?.(ready ? { medals: table.length > 0, program: sessions.length > 0 } : null);
+  }, [ready, table.length, sessions.length, onSections]);
   if (!meet.liveId || !overview) return null;
 
   const esnIndex = table.findIndex((c) => isEsn(c.club));
@@ -70,7 +77,7 @@ export function MeetOverviewSections({ meet }: { meet: Meet }) {
 
   return (
     <>
-      <Section title="La compétition en chiffres">
+      <Section title="La compétition en chiffres" id="meet-figures">
         <div className="tiles three">
           <div className="tile">
             <div className="tile-label">Nageurs</div>
@@ -96,7 +103,7 @@ export function MeetOverviewSections({ meet }: { meet: Meet }) {
       </Section>
 
       {table.length > 0 && (
-        <Section title="Médailles par club" action={esnIndex >= 0 ? <span className="muted small">ESN : {esnIndex + 1}e</span> : undefined}>
+        <Section id="meet-medals" title="Médailles par club" action={esnIndex >= 0 ? <span className="muted small">ESN : {esnIndex + 1}e</span> : undefined}>
           <div className="card medal-table" role="table" aria-label="Médailles par club">
             <div className="mt-head" role="row">
               <span role="columnheader">Club</span>
@@ -134,7 +141,7 @@ export function MeetOverviewSections({ meet }: { meet: Meet }) {
           </div>
           {table.length > shown.length && (
             <button className="btn ghost block" style={{ marginTop: 10 }} onClick={() => setAllClubs(true)}>
-              Voir les {table.length} clubs
+              Voir les {table.length} clubs médaillés
             </button>
           )}
           <div className="section-foot">Une médaille par place de 1 à 3 de chaque classement par catégorie d’âge, comme sur les feuilles officielles.</div>
@@ -142,7 +149,7 @@ export function MeetOverviewSections({ meet }: { meet: Meet }) {
       )}
 
       {sessions.length > 0 && (
-        <Section title={`Programme · ${overview.events.length} épreuves`}>
+        <Section id="meet-program" title={`Programme · ${overview.events.length} épreuves`}>
           {sessions.map((s) => (
             <div key={s.key} className="program-session">
               <div className="group-head">

@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 import { TimelineMeetCard, useTimeline } from './MeetTimeline';
 import { navigate } from '../router';
 import { achievements, chronoCompare, pointsFor, swimmerSummary } from '../lib/stats';
-import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, seasonLabel, seasonOf, todayISO } from '../lib/dates';
+import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, seasonLabel, seasonOf, seasonShort, todayISO } from '../lib/dates';
 import { courseLabel, eventLabel, STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
@@ -17,6 +17,7 @@ import { groupsLabel, publishedMeet, upcomingClubEvents } from '../lib/clubCalen
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { capitalize, deName } from '../lib/text';
 import { gapLabel, LevelGoals, useLevelGoals } from './Levels';
+import { recordComplete } from '../lib/clubRecords';
 import { AllroundCard, championshipShort, QualifyingGoals, useQualifying } from './Qualifying';
 import { SwimmerMedals } from './Medals';
 import { ClubEventCard, useClubCalendar } from './ClubCalendar';
@@ -101,6 +102,8 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
 
   // Comme la liste ouverte par « Toutes les courses » : temps, forfaits et abandons (sans le programme à venir)
   const count = mine.filter((s) => s.timeCs != null || s.status !== 'OK').length;
+  // En compétition, disqualifications et forfaits compris : le même compte que la liste « Toutes les courses »
+  const races = mine.filter((s) => s.context === 'competition' && (s.timeCs != null || s.status !== 'OK')).length;
   const isSelected = data.settings.selectedSwimmerId === id;
   const noneFollowed = !data.swimmers.some(isFollowed);
   const unlocked = trophies.filter((t) => t.unlocked).length;
@@ -213,7 +216,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                 <span className="hero-parts">
                   <span>{rankLabel(sigRank.rank)} en Belgique</span>
                   <span>{rankCategory(sigRank.label)}</span>
-                  <span>{sigRank.season}</span>
+                  <span>{seasonShort(sigRank.season)}</span>
                 </span>
               </span>
             )}
@@ -226,8 +229,8 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
             <span>{summary.meets > 1 ? 'Compétitions' : 'Compétition'}</span>
           </div>
           <div className="hero-stat" role="listitem">
-            <b>{summary.races}</b>
-            <span>{summary.races > 1 ? 'Courses' : 'Course'}</span>
+            <b>{races}</b>
+            <span>{races > 1 ? 'Courses' : 'Course'}</span>
           </div>
           <div className="hero-stat" role="listitem">
             <b>{bestsCount}</b>
@@ -563,10 +566,10 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                         {eventLabel(h.swim.distance, h.swim.stroke)} · {courseLabel(h.course)}
                       </div>
                       <div className="row-sub">
-                        {h.band.id === 'all' ? 'Record absolu du club' : h.band.label} · {formatDate(h.swim.date)}
+                        {h.band.id === 'all' ? (recordComplete(h.course, h.swim.distance, h.swim.stroke) ? 'Record absolu du club' : 'Meilleur temps connu du club') : h.band.label} · {formatDate(h.swim.date)}
                       </div>
                     </div>
-                    <span className="row-value tnum">{formatTime(h.swim.timeCs)}</span>
+                    <span className="time-big tnum">{formatTime(h.swim.timeCs)}</span>
                   </div>
                 ))}
               </div>
@@ -598,7 +601,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                         {eventLabel(r.distance, r.stroke)} · {courseLabel(r.course)}
                       </div>
                       <div className="row-sub">
-                      {r.label} · {r.season}
+                      {r.label} · {seasonShort(r.season)}
                     </div>
                     </div>
                     <div className="row-end">
@@ -680,8 +683,6 @@ function sinceLabel(at: number): string {
   return `il y a ${d} jour${d > 1 ? 's' : ''}`;
 }
 
-/** « 2025-2026 » → « 2025-26 » */
-const seasonShort = (s: string) => `${s.slice(0, 4)}-${s.slice(7, 9)}`;
 /** +38, −12 (vrai signe moins), = */
 const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `\u2212${-n}` : '=');
 

@@ -1,9 +1,9 @@
 import type { MeetEvent, MeetOverview } from './lenex';
 import { eventLabel, STROKE_BY_ID } from './events';
 
-/** « Messieurs, 800 m Libre », « Dames, 4 × 50 m 4 nages », « Tous, 100 m Libre ». */
+/** « Messieurs, 800 m Libre », « Dames, 4 × 50 m 4 nages », « Mixte, 100 m Libre ». */
 export function meetEventLabel(e: MeetEvent): string {
-  const who = e.gender === 'F' ? 'Dames' : e.gender === 'M' ? 'Messieurs' : 'Tous';
+  const who = e.gender === 'F' ? 'Dames' : e.gender === 'M' ? 'Messieurs' : 'Mixte';
   const what =
     e.relay > 1
       ? `${e.relay} × ${e.distance} m${e.stroke ? ` ${STROKE_BY_ID[e.stroke].label.toLowerCase()}` : ''}`

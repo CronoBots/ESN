@@ -16,7 +16,7 @@ import { SwimmerChips } from './Records';
 import { findResultsNow } from './autoResults';
 import { capitalize, deName } from '../lib/text';
 import { ClubEventRow, GroupsBadge, useClubCalendar } from '../components/ClubCalendar';
-import { MeetOverviewSections } from '../components/MeetOverview';
+import { MeetOverviewSections, type OverviewSections } from '../components/MeetOverview';
 import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
 
 
@@ -256,6 +256,8 @@ export function MeetDetail({ id }: { id: string }) {
     ? selected
     : swimmers.find((w) => (w.favorite || w.relation === 'child') && swims.some((s) => s.swimmerId === w.id));
   const timeline = useTimeline(focus);
+  // Sections de la vue d'ensemble officielle (médailles, programme), pour les raccourcis en haut de page
+  const [overview, setOverview] = useState<OverviewSections>(null);
 
   if (!meet) {
     return (
@@ -465,6 +467,36 @@ export function MeetDetail({ id }: { id: string }) {
           </div>
         )}
 
+        {/* Page longue (tous les nageurs de l'ESN, puis la compétition) : raccourcis vers chaque partie */}
+        {(bySwimmer.length > 2 || overview) && (
+          <nav className="chips jump-chips" aria-label="Aller à">
+            {[
+              bySwimmer.length > 0 ? ['meet-swimmers', `Nageurs · ${bySwimmer.length}`] : null,
+              overview ? ['meet-figures', 'En chiffres'] : null,
+              overview?.medals ? ['meet-medals', 'Médailles'] : null,
+              overview?.program ? ['meet-program', 'Programme'] : null,
+              ['meet-infos', 'Infos'],
+            ]
+              .filter((x): x is string[] => !!x)
+              .map(([target, label]) => (
+                <button
+                  key={target}
+                  className="chip"
+                  onClick={() => {
+                    const el = document.getElementById(target);
+                    if (!el) return;
+                    // Défilement doux seulement sur une courte distance : sur une longue page, il serait interrompu
+                    const far = Math.abs(el.getBoundingClientRect().top) > 2 * window.innerHeight;
+                    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                    el.scrollIntoView({ behavior: far || reduce ? 'auto' : 'smooth', block: 'start' });
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+          </nav>
+        )}
+
         {bySwimmer.length === 0 && (
           <div className="card" style={{ marginTop: 16 }}>
             <Empty
@@ -479,6 +511,7 @@ export function MeetDetail({ id }: { id: string }) {
           </div>
         )}
 
+        <div id="meet-swimmers" className="anchor" />
         {mineGroups.map(renderGroup)}
 
         {(() => {
@@ -535,9 +568,9 @@ export function MeetDetail({ id }: { id: string }) {
 
 
         {/* Vue d'ensemble publiée en direct : chiffres, médailles par club, programme */}
-        <MeetOverviewSections meet={meet} />
+        <MeetOverviewSections meet={meet} onSections={setOverview} />
 
-        <Section title="Infos">
+        <Section title="Infos" id="meet-infos">
           <div className="list">
             <Row title="Date" value={formatRange(meet.startDate, meet.endDate)} />
             <Row title="Bassin" value={courseLabel(meet.course)} />
