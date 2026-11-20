@@ -11,7 +11,7 @@ import { courseLabel, eventLabel, STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
 import { rankCategory, rankLabel } from '../lib/rankings';
-import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, topRanks } from '../lib/profile';
+import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, strokeProfile, topRanks } from '../lib/profile';
 import { groupsLabel, publishedMeet, upcomingClubEvents } from '../lib/clubCalendar';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { capitalize, deName } from '../lib/text';
@@ -110,42 +110,118 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
     actions.selectSwimmer(id);
     navigate(path);
   };
-  const sub = [
-    swimmer.former ? 'Ancien membre de l’ESN' : swimmer.member || isActiveMember(swimmer) ? 'Ecole Seraing Natation' : swimmer.club,
-    age != null ? `${age} ans` : null,
-    span.first && swimmer.member ? `au club depuis ${span.first.date.slice(0, 4)}` : null,
-  ].filter(Boolean);
+  const club = swimmer.former ? 'Ancien membre de l’ESN' : swimmer.member || isActiveMember(swimmer) ? 'Ecole Seraing Natation' : swimmer.club;
+  // Chaque élément reste d'un bloc (« 13 ans » ne se coupe jamais) ; les éléments passent à la ligne entiers
+  const meta = [
+    age != null ? `${age} ans` : null,
+    span.first && swimmer.member ? `au club depuis ${span.first.date.slice(0, 4)}` : null,
+  ].filter((x): x is string => !!x);
+  // Meilleure performance (le plus de points) et son rang national sur la même épreuve, s'il est connu
+  const signature = summary.bestPoints;
+  const sigRank = signature
+    ? ranks.find((r) => r.course === signature.swim.course && r.distance === signature.swim.distance && r.stroke === signature.swim.stroke)
+    : undefined;
+  const strengths = strokeProfile(summary.strokePoints);
+  const otherRank = ranks.find((r) => r !== sigRank);
 
   return (
     <>
       <div className="hero">
         <div className="hero-top">
-          <Avatar swimmer={swimmer} size={58} onBrand />
-          <div className="grow">
+          <Avatar swimmer={swimmer} size={60} onBrand />
+          <div className="grow hero-id">
             <div className="hero-name">{fullName(swimmer)}</div>
-            <div className="hero-sub">{sub.join('\u00a0· ')}</div>
+            {club && <div className="hero-club">{club}</div>}
+            {meta.length > 0 && (
+              <div className="hero-meta hero-parts">
+                {meta.map((m) => (
+                  <span key={m}>{m}</span>
+                ))}
+              </div>
+            )}
           </div>
           {!home && <FollowButton swimmer={swimmer} />}
         </div>
-        <div className="hero-stats">
-          <div className="hero-stat">
+
+        {signature && (
+          <button
+            className="hero-sig"
+            onClick={() => navigate(`/event/${id}/${signature.swim.course}/${signature.swim.distance}/${signature.swim.stroke}`)}
+            aria-label={`Meilleure performance : ${eventLabel(signature.swim.distance, signature.swim.stroke)} en ${courseLabel(signature.swim.course)}, ${formatTime(signature.swim.timeCs!)}, ${signature.points} points${sigRank ? `, ${rankLabel(sigRank.rank)} en Belgique` : ''}`}
+          >
+            <span className="hero-sig-head">
+              <span className="hero-kicker">Meilleure performance</span>
+              <span className="hero-sig-pts">
+                <b className="tnum">{signature.points}</b>&nbsp;pts
+              </span>
+            </span>
+            <span className="hero-sig-main">
+              <b className="hero-sig-time tnum">{formatTime(signature.swim.timeCs!)}</b>
+              <span className="hero-sig-event">
+                <span className="hero-sig-ev">
+                  <StrokeDot stroke={signature.swim.stroke} /> {eventLabel(signature.swim.distance, signature.swim.stroke)}
+                </span>
+                <span className="hero-sig-when">
+                  {courseLabel(signature.swim.course)} · {formatDate(signature.swim.date)}
+                </span>
+              </span>
+              <Icon name="chevronRight" className="hero-sig-chev" />
+            </span>
+            {sigRank && (
+              <span className="hero-sig-rank">
+                <Icon name="ranking" />
+                <span className="hero-parts">
+                  <span>{rankLabel(sigRank.rank)} en Belgique</span>
+                  <span>{rankCategory(sigRank.label)}</span>
+                  <span>{sigRank.season}</span>
+                </span>
+              </span>
+            )}
+          </button>
+        )}
+
+        <div className="hero-stats" role="list">
+          <div className="hero-stat" role="listitem">
             <b>{summary.meets}</b>
             <span>{summary.meets > 1 ? 'Compétitions' : 'Compétition'}</span>
           </div>
-          <div className="hero-stat">
+          <div className="hero-stat" role="listitem">
             <b>{summary.races}</b>
             <span>{summary.races > 1 ? 'Courses' : 'Course'}</span>
           </div>
-          <div className="hero-stat">
+          <div className="hero-stat" role="listitem">
             <b>{bestsCount}</b>
             <span>Records perso</span>
           </div>
-          <div className="hero-stat">
-            <b>{summary.bestPoints?.points ?? '–'}</b>
-            <span>Points max</span>
+          <div className="hero-stat" role="listitem">
+            <b>{summary.pbsThisSeason}</b>
+            <span>RP cette saison</span>
           </div>
         </div>
-        {(held.length > 0 || levelTotal > 0 || ranks.length > 0) && (
+
+        {strengths.length > 0 && (
+          <div className="hero-strokes">
+            <div className="hero-kicker">Points par nage</div>
+            <div className="hero-stroke-grid" role="list">
+              {strengths.map((s) => (
+                <div
+                  key={s.stroke}
+                  className={`hero-stroke${s.best ? ' best' : ''}${s.points == null ? ' none' : ''}`}
+                  role="listitem"
+                  aria-label={`${STROKE_BY_ID[s.stroke].label} : ${s.points != null ? `${s.points} points` : 'pas encore nagée'}${s.best ? ', nage la plus forte' : ''}`}
+                >
+                  <b className="tnum">{s.points ?? '–'}</b>
+                  <span className="hero-gauge" aria-hidden="true">
+                    <i style={{ width: `${Math.round(s.ratio * 100)}%` }} />
+                  </span>
+                  <span className="hero-stroke-name">{STROKE_BY_ID[s.stroke].label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(held.length > 0 || levelTotal > 0 || otherRank) && (
           <div className="hero-badges">
             {held.length > 0 && (
               <span>
@@ -157,9 +233,9 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                 <Icon name="target" /> {LEVELS.filter((l) => reached[l]).map((l) => `${reached[l]} ${l}`).join(' · ')}
               </span>
             )}
-            {ranks[0] && (
+            {otherRank && (
               <span>
-                <Icon name="ranking" /> {rankLabel(ranks[0].rank)} en Belgique · {rankCategory(ranks[0].label)}
+                <Icon name="ranking" /> {rankLabel(otherRank.rank)} en Belgique · {eventLabel(otherRank.distance, otherRank.stroke)} {courseLabel(otherRank.course)}
               </span>
             )}
           </div>

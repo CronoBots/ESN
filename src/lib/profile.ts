@@ -96,6 +96,29 @@ export function seasonsSummary(mine: Swim[], swimmer: Swimmer, pbFlags: Map<stri
     .map(([season, e]) => ({ season, meets: e.meets.size, races: e.races, pbs: e.pbs, bestPoints: e.best }));
 }
 
+export interface StrokeStrength {
+  stroke: Stroke;
+  /** Meilleurs points sur cette nage (toutes distances, 25 et 50 m) ; null : jamais nagée en compétition. */
+  points: number | null;
+  /** Part du meilleur total des cinq nages (0 à 1) : la longueur de la jauge. */
+  ratio: number;
+  /** Nage la plus forte du nageur. */
+  best: boolean;
+}
+
+/**
+ * Profil par nage de l'en-tête de la fiche : les cinq nages, dans l'ordre habituel, avec les meilleurs points
+ * de chacune, rapportés à la plus forte. Vide sous deux nages avec des points (rien à comparer).
+ */
+export function strokeProfile(list: { stroke: Stroke; points: number | null }[]): StrokeStrength[] {
+  const max = Math.max(0, ...list.map((x) => x.points ?? 0));
+  if (list.filter((x) => (x.points ?? 0) > 0).length < 2) return [];
+  return STROKES.map((st) => {
+    const points = list.find((x) => x.stroke === st.id)?.points ?? null;
+    return { stroke: st.id, points, ratio: points ? points / max : 0, best: !!points && points === max };
+  });
+}
+
 /** Meilleur rang de chaque épreuve sur la saison la plus récente classée, du meilleur au moins bon. */
 export function topRanks(rankings: NationalRank[] | undefined, swimmerId: string, limit = 5): NationalRank[] {
   const mine = sortRanks((rankings ?? []).filter((r) => r.swimmerId === swimmerId));

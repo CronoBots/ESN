@@ -2319,20 +2319,32 @@ textarea.textinput {
 
 /* ---------------------------------------------------------- Hero etc */
 
+/* En-tête de la fiche d'un nageur : carte bleu ESN, plus sombre vers le bas.
+   Jamais plus clair que #2357d0 sous le texte : blanc à 6,3:1 au minimum. */
 .hero {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
   margin-top: 16px;
-  padding: 20px;
+  padding: 20px 18px 18px;
   border-radius: var(--radius-lg);
-  background: var(--brand-solid);
+  background:
+    radial-gradient(130% 80% at 100% 0%, rgba(255, 255, 255, 0.1), transparent 60%),
+    linear-gradient(165deg, var(--brand-solid) 0%, #1f4dbf 55%, #183f9e 100%);
   color: #fff;
-  box-shadow: 0 12px 32px rgba(35, 87, 208, 0.22);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 14px 34px rgba(24, 63, 158, 0.28);
 }
 
 .avatar.on-brand {
-  background: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 0 3px rgba(255, 255, 255, 0.12);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .hero-top {
@@ -2341,65 +2353,297 @@ textarea.textinput {
   gap: 14px;
 }
 
+.hero-id {
+  min-width: 0;
+}
+
 .hero-name {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  text-wrap: balance;
 }
 
-.hero-sub {
-  margin-top: 3px;
-  opacity: 0.85;
+.hero-club {
+  margin-top: 4px;
+  overflow: hidden;
   font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* « 13 ans · au club depuis 2021 » : chaque élément d'un bloc, le point reste en fin de ligne */
+.hero-parts {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.hero-parts > span {
+  white-space: nowrap;
+}
+
+.hero-parts > span:not(:last-child)::after {
+  margin: 0 6px;
+  content: '·';
+  opacity: 0.7;
+}
+
+.hero-meta {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+/* Petit titre en capitales (« MEILLEURE PERFORMANCE », « POINTS PAR NAGE ») */
+.hero-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+/* Meilleure performance : panneau en verre, ouvre l'épreuve */
+.hero-sig {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.hero-sig:hover {
+  background: rgba(255, 255, 255, 0.17);
+}
+
+.hero-sig:active {
+  transform: scale(0.99);
+}
+
+.hero-sig:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.hero-sig-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hero-sig-pts {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--brand-solid);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hero-sig-pts b {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.hero-sig-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.hero-sig-time {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.hero-sig-event {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.hero-sig-ev {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hero-sig-ev .stroke-dot {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.hero-sig-when {
+  font-size: 13px;
+  opacity: 0.92;
+}
+
+.hero-sig-chev {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.hero-sig-rank {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hero-sig-rank svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Chiffres clés : quatre colonnes égales, séparées par un filet */
 .hero-stats {
   position: relative;
   z-index: 1;
   display: grid;
-  /* Cases de même largeur ; sur un petit écran, celle dont le libellé est plus
-     long (« Compétitions ») s'élargit juste ce qu'il faut, les autres cèdent. */
-  grid-template-columns: repeat(4, minmax(min-content, 1fr));
-  gap: 8px;
-  margin-top: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
 }
 
 .hero-stat {
-  padding: 10px 4px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.14);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  padding: 2px 4px;
   text-align: center;
+}
+
+.hero-stat + .hero-stat {
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .hero-stat b {
   display: block;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.05;
 }
 
 .hero-stat span {
   display: block;
-  margin-top: 2px;
-  overflow: hidden;
+  margin-top: 3px;
   font-size: 12px;
   font-weight: 500;
-  /* Blanc plein : 4,7:1 sur la case (3,9:1 à 85 %) */
+  line-height: 1.2;
+  /* Libellé sur deux lignes au besoin (« Records perso »), jamais coupé */
+  text-wrap: balance;
+}
+
+/* Points par nage : cinq jauges, la nage la plus forte en blanc plein */
+.hero-strokes {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.hero-stroke-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hero-stroke {
+  min-width: 0;
+}
+
+.hero-stroke b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.hero-gauge {
+  display: block;
+  height: 5px;
+  margin: 4px 0 4px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-gauge i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.hero-stroke.best .hero-gauge i {
+  background: #fff;
+}
+
+.hero-stroke-name {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.hero-stroke.best .hero-stroke-name {
+  font-weight: 700;
+}
+
+.hero-stroke.none b,
+.hero-stroke.none .hero-stroke-name {
+  opacity: 0.75;
+}
+
 @media (max-width: 359px) {
-  .hero-stats {
-    gap: 5px;
+  .hero {
+    padding: 18px 14px 16px;
   }
-  .hero-stat span {
+  .hero-sig-time {
+    font-size: 32px;
+  }
+  .hero-stat b {
+    font-size: 22px;
+  }
+  .hero-stat span,
+  .hero-stroke-name {
     font-size: 11px;
+  }
+  .hero-stroke-grid {
+    gap: 5px;
   }
 }
 

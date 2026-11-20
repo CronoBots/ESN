@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, topRanks } from '../src/lib/profile';
+import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, strokeProfile, topRanks } from '../src/lib/profile';
 import type { NationalRank, Swim, Swimmer } from '../src/store/types';
 
 // Nageurs et courses fictifs
@@ -75,5 +75,21 @@ describe('fiche d’un nageur', () => {
       'e',
     );
     expect(both.map((x) => `${x.course} ${x.season} ${x.rank}`)).toEqual(['LCM 2026 5', 'SCM 2026-2027 20']);
+  });
+
+  it('profil par nage : cinq nages, rapportées à la plus forte', () => {
+    const p = strokeProfile([
+      { stroke: 'FREE', points: 400 },
+      { stroke: 'BACK', points: 300 },
+      { stroke: 'BREAST', points: null },
+      { stroke: 'FLY', points: 200 },
+      { stroke: 'IM', points: null },
+    ]);
+    expect(p.map((x) => x.stroke)).toEqual(['FREE', 'BACK', 'BREAST', 'FLY', 'IM']);
+    expect(p[0]).toEqual({ stroke: 'FREE', points: 400, ratio: 1, best: true });
+    expect(p[1]).toMatchObject({ points: 300, ratio: 0.75, best: false });
+    expect(p[2]).toEqual({ stroke: 'BREAST', points: null, ratio: 0, best: false });
+    // Une seule nage avec des points : rien à comparer
+    expect(strokeProfile([{ stroke: 'FREE', points: 400 }, { stroke: 'BACK', points: null }])).toEqual([]);
   });
 });
