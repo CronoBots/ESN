@@ -68,6 +68,7 @@ describe('bilan de la récupération', () => {
     let withPlace = 0;
     let withRound = 0;
     let withSplits = 0;
+    let dsq = 0;
     for (const m of active) {
       const h = histOf(m);
       if (!h) {
@@ -75,7 +76,10 @@ describe('bilan de la récupération', () => {
         rows.push(`| ${who(m)} | absent | | | | | |`);
         continue;
       }
-      const swims: ParsedSwim[] = parseSwimrankings(keepClubRaces(h.text, CLUB.match).text).swims;
+      const parsed: ParsedSwim[] = parseSwimrankings(keepClubRaces(h.text, CLUB.match).text).swims;
+      // Disqualifications et forfaits (sans temps) comptés à part
+      const swims = parsed.filter((s) => !s.status);
+      dsq += parsed.length - swims.length;
       const state = /^@@PARTIEL/m.test(h.text) ? 'partiel (meilleurs temps)' : /^@@CLUBS/m.test(h.text) ? 'vérifié (club par course)' : 'complet, club non relevé';
       if (/^@@PARTIEL/m.test(h.text)) todo.partial.push(who(m));
       else if (!/^@@CLUBS/m.test(h.text)) todo.noClub.push(who(m));
@@ -101,7 +105,7 @@ describe('bilan de la récupération', () => {
     say();
     summary.push(
       `Historique : ${active.length - todo.absent.length}/${active.length} actifs ; ${active.length - todo.absent.length - todo.partial.length - todo.noClub.length} vérifiés ; ` +
-        `${races} courses (place ${pct(withPlace, races)}, tour ${pct(withRound, races)}, passages ${pct(withSplits, races)})`,
+        `${races} courses (place ${pct(withPlace, races)}, tour ${pct(withRound, races)}, passages ${pct(withSplits, races)}) ; ${dsq} disqualifications ou forfaits`,
     );
 
     // 3. Classements nationaux
@@ -140,7 +144,7 @@ describe('bilan de la récupération', () => {
             .map((x) => readFileSync(`historique/${x}`, 'utf8'))
             .map((t) => ({ h: historyHeader(t), lines: t.split(/\r?\n/).filter((l) => l.split('\t').length >= 7) }))
         : [];
-      const otherClub = (h: { lastName: string; firstName: string; birthYear?: number }, pb: ParsedSwim) => {
+      const otherClub = (h: { lastName: string; firstName: string; birthYear?: number }, pb: ParsedSwim & { timeCs: number }) => {
         for (const l of local.find((x) => x.h && sameMember(x.h, h))?.lines ?? []) {
           const c = l.split('\t');
           if (c[2].trim().replace(/M$/, '') !== formatTime(pb.timeCs) || !c[7]?.trim() || CLUB.match.test(c[7])) continue;
@@ -163,8 +167,10 @@ describe('bilan de la récupération', () => {
           continue;
         }
         const pubText = history.find((a) => sameMember(a, h))?.text;
-        const pub = pubText ? parseSwimrankings(keepClubRaces(pubText, CLUB.match).text).swims : [];
-        for (const pb of parseSwimrankings(text).swims) {
+        // Seulement les courses nagées : une disqualification n'a pas de temps
+        const timed = (list: ParsedSwim[]) => list.filter((s): s is ParsedSwim & { timeCs: number } => s.timeCs != null);
+        const pub = timed(pubText ? parseSwimrankings(keepClubRaces(pubText, CLUB.match).text).swims : []);
+        for (const pb of timed(parseSwimrankings(text).swims)) {
           const same = pub.filter((s) => s.distance === pb.distance && s.stroke === pb.stroke && s.course === pb.course);
           const best = same.reduce<ParsedSwim | undefined>((b, s) => (!b || s.timeCs < b.timeCs ? s : b), undefined);
           const ev = `${eventLabel(pb.distance, pb.stroke)} ${pb.course === 'LCM' ? '50 m' : '25 m'}`;

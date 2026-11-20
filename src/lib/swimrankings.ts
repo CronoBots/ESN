@@ -12,11 +12,19 @@ import { isValidEvent } from './events';
  * copier-coller). Ce module transforme ce texte en performances structurées.
  */
 
+/** Course sans temps de l'historique du club : disqualification, forfait, abandon. */
+export type HistoryStatus = 'DSQ' | 'DNS' | 'DNF';
+
 export interface ParsedSwim {
   distance: number;
   stroke: Stroke;
   course: Course;
-  timeCs: number;
+  /** Temps en centièmes ; absent pour une disqualification, un forfait ou un abandon (`status`). */
+  timeCs?: number;
+  /** Disqualification, forfait ou abandon (« DSQ », « DNS », « DNF » dans la colonne du temps) ; absent : course nagée. */
+  status?: HistoryStatus;
+  /** Raison de la disqualification (12e colonne de l'historique du club). */
+  note?: string;
   points?: number;
   date: string;
   city?: string;
@@ -47,6 +55,14 @@ export interface ParsedAthlete {
 export interface ParseResult {
   athlete: ParsedAthlete;
   swims: ParsedSwim[];
+}
+
+/** Course nagée, avec son temps. */
+type TimedSwim = ParsedSwim & { timeCs: number };
+
+/** Remarque enregistrée avec la course (comme les résultats en direct) : « Disqualification : SW 6.4… ». */
+export function historyNote(s: Pick<ParsedSwim, 'status' | 'note'>): string | undefined {
+  return s.note ? `${s.status === 'DSQ' ? 'Disqualification' : 'Remarque'} : ${s.note}` : undefined;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -265,7 +281,7 @@ export function parseSwimrankings(text: string): ParseResult {
       .map((l) => (l.split('\t').length > 7 ? l.split('\t').slice(0, 7).join('\t') : l))
       .join('\n'),
   );
-  const swims: ParsedSwim[] = [];
+  const swims: TimedSwim[] = [];
 
   let ctxEvent: { distance: number; stroke: Stroke } | null = null;
   let ctxCourse: Course | null = null;
@@ -362,15 +378,41 @@ export function parseSwimrankings(text: string): ParseResult {
   // place, tour, passages, séparés par des tabulations) : ville et compétition reprises telles quelles
   // (« 4e édition… », « Interclubs U15 ») ; place, tour et passages quand ils ont été relevés.
   // Ligne retrouvée par épreuve, bassin, temps et date : deux courses au même temps le même jour
-  // (autre bassin, autre épreuve) gardent chacune leur compétition
+  // (autre bassin, autre épreuve) gardent chacune leur compétition.
+  // Disqualification, forfait, abandon : « DSQ », « DNS » ou « DNF » à la place du temps, raison de la
+  // disqualification en 12e colonne ; ligne commencée par « @@ » dans l'historique publié : les versions
+  // d'avant le 20 nov. 2026 (lecture de toutes les colonnes) l'ignorent, comme les autres lignes « @@ »
   const columns = new Map<string, { city?: string; meet?: string; place?: string; round?: string; splits?: string }>();
+  const statusSwims = new Map<string, ParsedSwim>();
   for (const line of text.split(/\r?\n/)) {
     const c = line.split('\t');
     if (c.length < 7) continue;
-    const event = tokenize(c[0]).find((t) => t.t === 'EVENT');
+    const event = tokenize(c[0].replace(/^\s*@@/, '')).find((t) => t.t === 'EVENT');
     const course = tokenize(c[1]).find((t) => t.t === 'COURSE');
-    const time = tokenize(c[2]).find((t) => t.t === 'TIME');
     const date = tokenize(c[4]).find((t) => t.t === 'DATE');
+    const status = /^(DSQ|DNS|DNF)$/i.exec(c[2].trim())?.[1].toUpperCase() as HistoryStatus | undefined;
+    if (status && event?.t === 'EVENT' && date?.t === 'DATE') {
+      const pool = course?.t === 'COURSE' ? course.course : 'SCM';
+      if (!isValidEvent(event.distance, event.stroke, pool)) continue;
+      const key = `${event.distance}|${event.stroke}|${pool}|${status}|${date.iso}`;
+      const note = cleanText(c[11] ?? '') || undefined;
+      const round = roundFromText(c[9]);
+      if (!statusSwims.has(key))
+        statusSwims.set(key, {
+          distance: event.distance,
+          stroke: event.stroke,
+          course: pool,
+          status,
+          date: date.iso,
+          city: cleanText(c[5]) || undefined,
+          meet: cleanText(c[6]) || undefined,
+          ...(course?.t === 'COURSE' ? {} : { courseGuessed: true }),
+          ...(round ? { round } : {}),
+          ...(note ? { note } : {}),
+        });
+      continue;
+    }
+    const time = tokenize(c[2]).find((t) => t.t === 'TIME');
     if (event?.t === 'EVENT' && time?.t === 'TIME' && date?.t === 'DATE') {
       // Bassin non écrit : 25 m, comme dans la lecture des temps
       const pool = course?.t === 'COURSE' ? course.course : 'SCM';
@@ -397,7 +439,9 @@ export function parseSwimrankings(text: string): ParseResult {
     }
   }
 
-  return { athlete: parseAthlete(text), swims: dropOfficialSplits(dedupe(swims)) };
+  // Disqualifications et forfaits après les courses du même jour (même ordre que les dates)
+  const all: ParsedSwim[] = [...dropOfficialSplits(dedupe(swims)), ...statusSwims.values()];
+  return { athlete: parseAthlete(text), swims: all.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)) };
 }
 
 /**
@@ -411,7 +455,7 @@ export function parseSwimrankings(text: string): ParseResult {
  *    la course (rapport 0,93 à 1,03), celle-ci classée ; sans place, on ne peut pas trancher : on garde.
  * Les 50 m et 100 m nagés le même jour qu'une course plus longue (masters, meetings) restent des courses.
  */
-export function dropOfficialSplits<T extends ParsedSwim>(list: T[]): T[] {
+export function dropOfficialSplits<T extends TimedSwim>(list: T[]): T[] {
   return list.filter(
     (s) =>
       s.place != null ||
@@ -433,8 +477,8 @@ function cleanText(s: string): string {
   return s.replace(/\s+/g, ' ').replace(/\s*(?:\.\.\.|…)$/, '').trim();
 }
 
-function dedupe(list: ParsedSwim[]): ParsedSwim[] {
-  const map = new Map<string, ParsedSwim>();
+function dedupe(list: TimedSwim[]): TimedSwim[] {
+  const map = new Map<string, TimedSwim>();
   for (const s of list) {
     const key = `${s.course}|${s.distance}|${s.stroke}|${s.timeCs}|${s.date}`;
     const prev = map.get(key);

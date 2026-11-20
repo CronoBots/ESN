@@ -51,6 +51,7 @@ Pour une mise à jour plus tard (nouveaux membres, nouvelle saison) : `node scri
 NOM, Prénom (AAAA)
 BEL - Ecole Seraing Natation
 <Épreuve>	<Bassin>	<Temps>	<Points>	<Date>	<Ville>	<Compétition>	<Club>	<Place>	<Tour>	<Passages>
+@@<Épreuve>	<Bassin>	DSQ		<Date>	<Ville>	<Compétition>	<Club>		<Tour>		<Raison>
 ```
 
 - `@@GENDER:` : `F` ou `M`.
@@ -59,6 +60,7 @@ BEL - Ecole Seraing Natation
 - Bassin : `25m` ou `50m`. Temps : `m:ss.cc` ou `ss.cc`, suivi de `M` pour un temps masters, tel qu'écrit sur swimrankings (`2:21.62M`) : l'application garde la marque et affiche « Masters ». Les lignes « Lap » (temps de passage) ne sont pas des courses : ne les relève pas. Points : nombre, ou vide. Date : `11 oct 2025`.
 - Club : tel qu'écrit sur swimrankings (`BEL - Ecole Seraing Natation`, `Ecole Seraing Natation`, `ESN`, ou le nom d'un autre club). Seules les courses de l'ESN sont publiées. La colonne reste dans le fichier publié, en 8e position, avant place, tour et passages : laisse-la vide si le club est introuvable, mais garde sa tabulation dès qu'une colonne suit (sinon la place serait lue comme un club et la course retirée). Quand chaque course a son club, l'en-tête reçoit `@@CLUBS` (historique vérifié).
 - Place : le rang du nageur dans l'épreuve (`1`, `2`, `14`…), vide s'il n'est pas affiché. Tour : `Séries`, `Demi-finale`, `Finale` (`Finale B` accepté), vide pour une épreuve en une seule course ou inconnue. Passages : temps cumulés séparés par des espaces (`35.10 1:13.20 1:51.80` pour un 200 m), vide s'ils ne sont pas affichés. Une colonne vide n'est jamais devinée. Dans l'application : places, podiums et médailles, finales, temps de passage de chaque course.
+- Disqualification, forfait, abandon (`DSQ`, `DNS`, `DNF`, tels que dans les résultats officiels : fichier LENEX, feuille de résultats ; swimrankings ne les affiche pas) : ligne commencée par `@@`, `DSQ`, `DNS` ou `DNF` à la place du temps, points et place vides, tour relevé, raison de la disqualification en 12e colonne (après les passages, vide si elle n'est pas donnée). Le `@@` masque la ligne aux versions de l'application d'avant le 20 nov. 2026 (elles y auraient lu les passages des lignes suivantes comme des courses). Dans l'application : badge DSQ / FOR / ABD sur la fiche, raison sur la course, jamais comptée dans les records ni les médailles.
 - Colonnes séparées par une **tabulation**, une course par ligne, sans ligne d'en-tête de tableau.
 
 Exemple (fictif) :
@@ -71,6 +73,7 @@ BEL - Ecole Seraing Natation
 100m Libre	25m	1:31.08	171	11 oct 2025	Liège	Meeting d'automne	BEL - Ecole Seraing Natation	3	Finale	43.90
 100m Libre	25m	1:35.40	148	14 déc 2024	Seraing	Coupe de Noël	BEL - Ecole Seraing Natation	12
 50m Dos	50m	45.12	180	14 juin 2023	Namur	Meeting de Namur	BEL - Club Exemple Natation
+@@100m Dos	25m	DSQ		14 déc 2024	Seraing	Coupe de Noël	BEL - Ecole Seraing Natation		Séries		6.4 - Ne pas toucher le mur lors du virage
 ```
 
 (La dernière course, nagée pour un autre club avant l'arrivée à l'ESN, est retirée à la publication.)

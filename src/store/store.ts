@@ -3,7 +3,7 @@ import type { AppData, Goal, LiveSyncSettings, Meet, NationalRank, Settings, Swi
 import { closeSwimmer, sameSwimmer, swimmerNames, type ReportMeet, type ReportSwim } from '../lib/results';
 import type { Roster } from '../lib/roster';
 import { CLUB } from '../club';
-import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
+import { historyNote, type ParsedAthlete, type ParsedSwim } from '../lib/swimrankings';
 import { uid } from '../lib/id';
 import { idbGet, idbPut, openDb } from './idb';
 
@@ -961,14 +961,26 @@ export const actions = {
         if (list) list.push(x);
         else byTime.set(k, [x]);
       }
+      // Disqualifications et forfaits (sans temps) déjà enregistrés pour ce nageur : résultats en direct, feuille PDF
+      const withStatus = s.swims.filter((x) => x.swimmerId === swimmerId && x.status !== 'OK');
+      const sameStatus = (x: Swim, p: ParsedSwim) =>
+        x.course === p.course && x.distance === p.distance && x.stroke === p.stroke && x.status === p.status && Math.abs(Date.parse(x.date) - Date.parse(p.date)) <= dayMs;
       for (const p of swims) {
-        if (isDuplicate(byTime.get(timeKey(p)) ?? [], { ...p, timeCs: p.timeCs, status: 'OK', meetId: undefined })) {
+        const dup = p.status
+          ? withStatus.some((x) => sameStatus(x, p))
+          : isDuplicate(byTime.get(timeKey(p)) ?? [], { ...p, timeCs: p.timeCs, status: 'OK', meetId: undefined });
+        if (dup) {
           skipped++;
           continue;
         }
         let meetId: string | undefined;
         const meetName = p.meet || (p.city ? `Compétition à ${p.city.replace(/\s*\([A-Z]{3}\)$/, '')}` : 'Compétition');
-        const found = findMeet(meets, meetName, p.date, p.course);
+        // Disqualification d'une compétition déjà présente sous un autre nom (résultats en direct) : celle des
+        // autres courses du nageur ce jour-là, dans ce bassin
+        const sameDay = p.status
+          ? [...s.swims, ...newSwims].find((x) => x.swimmerId === swimmerId && x.date === p.date && x.course === p.course && x.meetId)?.meetId
+          : undefined;
+        const found = findMeet(meets, meetName, p.date, p.course) ?? meets.find((m) => m.id === sameDay);
         if (found) {
           meetId = found.id;
           const i = meets.indexOf(found);
@@ -1003,9 +1015,10 @@ export const actions = {
           stroke: p.stroke,
           course: p.course,
           timeCs: p.timeCs,
-          status: 'OK',
+          status: p.status ?? 'OK',
           round: p.round ?? 'TIM',
           points: p.points,
+          ...(historyNote(p) ? { notes: historyNote(p) } : {}),
           ...(p.place != null ? { place: p.place } : {}),
           ...(p.splits ? { splits: p.splits, splitEvery: p.splitEvery } : {}),
           ...(p.masters ? { masters: true } : {}),
@@ -1015,6 +1028,11 @@ export const actions = {
           updatedAt: now,
         });
         const added1 = newSwims[newSwims.length - 1];
+        if (p.status) {
+          withStatus.push(added1);
+          added++;
+          continue;
+        }
         const k = timeKey(added1);
         const list = byTime.get(k);
         if (list) list.push(added1);
@@ -1047,9 +1065,10 @@ export const actions = {
     }));
   },
 
-  pruneHistorySwims(swimmerId: string, keep: Pick<ParsedSwim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date'>[]): number {
-    const key = (x: Pick<Swim, 'course' | 'distance' | 'stroke' | 'date'> & { timeCs?: number | null }) =>
-      `${x.course}|${x.distance}|${x.stroke}|${x.timeCs}|${x.date}`;
+  pruneHistorySwims(swimmerId: string, keep: Pick<ParsedSwim, 'course' | 'distance' | 'stroke' | 'timeCs' | 'date' | 'status'>[]): number {
+    // Disqualification, forfait : sans temps, reconnus à leur statut (course nagée : « OK »)
+    const key = (x: Pick<Swim, 'course' | 'distance' | 'stroke' | 'date'> & { timeCs?: number | null; status?: string }) =>
+      `${x.course}|${x.distance}|${x.stroke}|${x.timeCs ?? ''}|${x.status ?? 'OK'}|${x.date}`;
     const wanted = new Set(keep.map(key));
     let removed = 0;
     setState((s) => {

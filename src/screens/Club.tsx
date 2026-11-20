@@ -8,7 +8,7 @@ import { openShareApp } from '../components/Invite';
 import { offerInstall } from './Install';
 import { navigate } from '../router';
 import { decryptHistory, decryptRankings, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
-import { parseSwimrankings } from '../lib/swimrankings';
+import { historyNote, parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
 import { formatDate, formatDayMonth } from '../lib/dates';
@@ -23,8 +23,9 @@ const ROSTER_URL = './data/club-roster.json';
 const HISTORY_URL = './data/club-history.json';
 const RANKINGS_URL = './data/club-rankings.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ».
- * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. 6 : rattaché aussi par les autres noms du membre. */
-const HISTORY_PARSER = 6;
+ * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. 6 : rattaché aussi par les autres noms du membre.
+ * 7 : disqualifications, forfaits et abandons (DSQ, DNS, DNF, sans temps), avec la raison de la disqualification. */
+const HISTORY_PARSER = 7;
 
 const letters = (s: string) => normName(s);
 
@@ -130,8 +131,9 @@ async function runClubHistory(): Promise<number> {
       // Noms de compétitions tronqués par une version précédente (« e édition… ») : on les rétablit
       const state = getState();
       // Courses du nageur et compétitions indexées une fois (et non une recherche dans toutes les courses par temps)
-      const key = (x: { distance: number; stroke: string; course: string; timeCs?: number | null; date: string }) =>
-        `${x.distance}|${x.stroke}|${x.course}|${x.timeCs}|${x.date}`;
+      // Disqualification, forfait (sans temps) : reconnus à leur statut
+      const key = (x: { distance: number; stroke: string; course: string; timeCs?: number | null; status?: string; date: string }) =>
+        `${x.distance}|${x.stroke}|${x.course}|${x.timeCs ?? ''}|${x.status ?? 'OK'}|${x.date}`;
       const mine = new Map(state.swims.filter((x) => x.swimmerId === swimmerId).map((x) => [key(x), x]));
       const meetsById = new Map(state.meets.map((m) => [m.id, m]));
       for (const ps of parsed.swims) {
@@ -144,6 +146,9 @@ async function runClubHistory(): Promise<number> {
           if (ps.place != null && swim.place == null) extra.place = ps.place;
           if (ps.round && ps.round !== 'TIM' && swim.round === 'TIM') extra.round = ps.round;
           if (ps.splits && !swim.splits?.length) Object.assign(extra, { splits: ps.splits, splitEvery: ps.splitEvery });
+          // Raison de la disqualification relevée depuis
+          const note = historyNote(ps);
+          if (note && !swim.notes) extra.notes = note;
           if (Object.keys(extra).length) actions.updateSwim(swim.id, extra);
         }
         if (!ps.meet) continue;
