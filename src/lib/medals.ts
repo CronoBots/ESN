@@ -5,16 +5,21 @@ const isValidResult = (s: Swim): s is Swim & { timeCs: number } => s.status === 
 
 /**
  * Médailles : 1re, 2e ou 3e place d'une course en compétition (classement de la catégorie, tel que
- * publié dans les résultats). Les places ne sont connues que pour les compétitions lues par
- * l'application (résultats en direct) : l'historique swimrankings ne donne pas les classements.
+ * publié dans les résultats : pages de compétition du club sur swimrankings, résultats officiels, direct).
  */
 
 /**
- * Nombre de médailles affiché seulement quand les places de toutes les compétitions sont relevées
- * (demande du club) : l'historique swimrankings n'en a pas encore, un total partiel serait faux.
- * Passer à true une fois les places de l'historique ajoutées.
+ * Nombre de médailles affiché pour les membres actifs (décision du club, 20 nov. 2026 ; pas pour les anciens :
+ * seuls leurs temps comptent), compté depuis MEDALS_SINCE, d'où les places des actifs sont toutes connues.
  */
-export const SHOW_MEDAL_COUNTS = false;
+export const SHOW_MEDAL_COUNTS = true;
+
+/**
+ * Début du compte des médailles : saison 2017/18. Depuis, chaque course classée d'un membre actif a sa place
+ * (les autres sont des premiers relayeurs ou des temps de passage, sans place) ; avant, les classements ne sont
+ * pas encore tous relevés. À avancer quand les compétitions plus anciennes seront lues.
+ */
+export const MEDALS_SINCE = '2017-09-01';
 
 export interface MedalCount {
   gold: number;
@@ -41,6 +46,11 @@ export function medalSwims(swims: Swim[], swimmerId?: string): MedalSwim[] {
     if (s.round === 'SEMI') return !finals.has(eventKey(s));
     return true;
   });
+}
+
+/** Courses médaillées comptées dans le nombre de médailles : depuis MEDALS_SINCE. */
+export function countedMedalSwims(swims: Swim[], swimmerId?: string): MedalSwim[] {
+  return medalSwims(swims, swimmerId).filter((s) => s.date >= MEDALS_SINCE);
 }
 
 export function medalCount(list: MedalSwim[]): MedalCount {

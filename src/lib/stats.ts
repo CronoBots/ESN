@@ -2,7 +2,7 @@ import type { Course, Goal, Meet, Round, Stroke, Swim, Swimmer } from '../store/
 import { computePoints } from './points';
 import { daysBetween, fromISO, seasonOf, toISO, todayISO } from './dates';
 import { STROKES, fullEventKey } from './events';
-import { medalCount, medalSwims, type MedalCount } from './medals';
+import { countedMedalSwims, medalCount, medalSwims, type MedalCount } from './medals';
 
 const ROUND_ORDER: Record<Round, number> = { HEAT: 0, TIM: 1, SEMI: 2, FINAL: 3 };
 
@@ -270,8 +270,8 @@ export function swimmerSummary(
       best: byStroke.get(st.id)?.swim,
     })),
     lastRace: [...valid].sort(chronoCompare).pop(),
-    // Médailles : une place de série ne compte pas quand le nageur a nagé la finale
-    ...((m) => ({ medals: m, podiums: m.total, wins: m.gold }))(medalCount(medalSwims(mine))),
+    // Médailles (depuis MEDALS_SINCE) : une place de série ne compte pas quand le nageur a nagé la finale
+    ...((m) => ({ medals: m, podiums: m.total, wins: m.gold }))(medalCount(countedMedalSwims(mine))),
   };
 }
 

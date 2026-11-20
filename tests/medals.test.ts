@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { medalCount, medalSwims, placesKnownSince } from '../src/lib/medals';
+import { countedMedalSwims, MEDALS_SINCE, medalCount, medalSwims, placesKnownSince, SHOW_MEDAL_COUNTS } from '../src/lib/medals';
 import type { Swim } from '../src/store/types';
 
 let n = 0;
@@ -34,6 +34,20 @@ describe('médailles', () => {
       swim({ place: 1, swimmerId: 'b' }),
     ];
     expect(medalCount(medalSwims(swims, 'a'))).toEqual({ gold: 2, silver: 1, bronze: 1, total: 4 });
+  });
+
+  it('nombre de médailles affiché, compté depuis la saison 2017/18 (places des actifs toutes connues)', () => {
+    expect(SHOW_MEDAL_COUNTS).toBe(true);
+    expect(MEDALS_SINCE).toBe('2017-09-01');
+    const swims = [
+      swim({ place: 1, date: '2016-11-20', meetId: 'old' }), // avant : classements pas tous relevés
+      swim({ place: 2, date: '2017-08-31', meetId: 'summer' }), // saison 2016/17
+      swim({ place: 3, date: '2017-09-01', meetId: 'first' }), // premier jour compté
+      swim({ place: 1, date: '2026-11-14', meetId: 'recent' }),
+    ];
+    expect(medalSwims(swims, 'a')).toHaveLength(4);
+    expect(countedMedalSwims(swims, 'a').map((s) => s.meetId).sort()).toEqual(['first', 'recent']);
+    expect(medalCount(countedMedalSwims(swims, 'a'))).toEqual({ gold: 1, silver: 0, bronze: 1, total: 2 });
   });
 
   it('série puis finale : seule la place de la finale est une médaille', () => {

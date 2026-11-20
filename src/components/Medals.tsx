@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import type { Meet, Swim, Swimmer } from '../store/types';
 import type { PbInfo } from '../lib/stats';
 import { chronoCompare } from '../lib/stats';
-import { medalCount, medalSwims, placesKnownSince, SHOW_MEDAL_COUNTS, type MedalCount } from '../lib/medals';
-import { formatDate } from '../lib/dates';
+import { countedMedalSwims, MEDALS_SINCE, medalCount, placesKnownSince, SHOW_MEDAL_COUNTS, type MedalCount } from '../lib/medals';
+import { seasonOf, seasonShort } from '../lib/dates';
 import { Section } from './ui';
 import { SwimRow } from './SwimRow';
 
@@ -27,7 +27,7 @@ export function MedalTally({ count }: { count: MedalCount }) {
   );
 }
 
-/** Fiche du nageur : médailles des compétitions dont le classement est connu. */
+/** Fiche d'un membre actif : médailles depuis MEDALS_SINCE (pas pour un ancien : seuls ses temps comptent). */
 export function SwimmerMedals({
   swimmer,
   swims,
@@ -39,11 +39,14 @@ export function SwimmerMedals({
   meetsById: Map<string, Meet>;
   pbFlags: Map<string, PbInfo>;
 }) {
-  const { list, count, since } = useMemo(() => {
-    const list = medalSwims(swims, swimmer.id).sort(chronoCompare).reverse();
-    return { list, count: medalCount(list), since: placesKnownSince(swims, swimmer.id) };
+  const { list, count, since, older } = useMemo(() => {
+    const list = countedMedalSwims(swims, swimmer.id).sort(chronoCompare).reverse();
+    const counted = swims.filter((s) => s.date >= MEDALS_SINCE);
+    // Courses en compétition plus anciennes : leurs classements ne sont pas encore tous relevés
+    const older = swims.some((s) => s.swimmerId === swimmer.id && s.context === 'competition' && s.date < MEDALS_SINCE);
+    return { list, count: medalCount(list), since: placesKnownSince(counted, swimmer.id), older };
   }, [swims, swimmer.id]);
-  if (!SHOW_MEDAL_COUNTS || !since) return null;
+  if (!SHOW_MEDAL_COUNTS || swimmer.former || !since) return null;
   return (
     <Section title="Médailles" action={count.total ? <span className="muted small">{count.total}</span> : undefined}>
       <div className="tiles three">
@@ -66,8 +69,8 @@ export function SwimmerMedals({
       )}
       <div className="section-foot">
         {list.length > 5 ? `Les 5 dernières sur ${list.length}. ` : ''}
-        Place dans sa catégorie, pour les compétitions suivies par l’application depuis le {formatDate(since)}. L’historique
-        swimrankings ne donne pas les classements.
+        Place dans sa catégorie, telle que publiée dans les résultats
+        {older ? `, depuis la saison ${seasonShort(seasonOf(MEDALS_SINCE))} : les classements plus anciens ne sont pas encore tous relevés.` : '.'}
       </div>
     </Section>
   );

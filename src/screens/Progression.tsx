@@ -136,7 +136,7 @@ export function Progression() {
                 </div>
                 <div className="tile-sub">en compétition</div>
               </div>
-              {SHOW_MEDAL_COUNTS ? (
+              {SHOW_MEDAL_COUNTS && !swimmer.former ? (
                 <button className="tile tile-button" onClick={() => navigate(`/swimmer/${swimmer.id}`)}>
                   <div className="tile-label">Médailles</div>
                   <div className="tile-value">{summary.medals.total}</div>
