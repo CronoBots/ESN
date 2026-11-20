@@ -11,7 +11,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { activeEvents } from './mirror-live.mjs';
+import { activeEvents, eventKey, withLinks } from './mirror-live.mjs';
 
 const CALENDAR = new URL('../public/data/club-calendar.json', import.meta.url);
 const UA = 'ESN-Competition/1.0 (application du club, copie des feuilles publiques)';
@@ -36,6 +36,16 @@ async function pageVersion(url) {
   }
 }
 
+/** Liens de livetiming trouvés par le robot sur le site du district (cache .live-links/links.json). */
+function foundLinks(calendar) {
+  try {
+    const state = JSON.parse(readFileSync('.live-links/links.json', 'utf8'));
+    return Object.fromEntries((calendar.events ?? []).filter((e) => !e.live && state[eventKey(e)]?.live).map((e) => [eventKey(e), state[eventKey(e)].live]));
+  } catch {
+    return {};
+  }
+}
+
 function deploy() {
   execFileSync('gh', ['workflow', 'run', 'deploy.yml', '--ref', 'main', '-R', process.env.GITHUB_REPOSITORY ?? 'CronoBots/ESN'], { stdio: 'inherit' });
 }
@@ -43,7 +53,8 @@ function deploy() {
 let deployed = null;
 let lastDeploy = 0;
 while (Date.now() < UNTIL && brusselsHour() >= 6 && brusselsHour() < 22) {
-  const events = activeEvents(JSON.parse(readFileSync(CALENDAR, 'utf8')));
+  const calendar = JSON.parse(readFileSync(CALENDAR, 'utf8'));
+  const events = activeEvents(withLinks(calendar, foundLinks(calendar)));
   if (!events.length) {
     console.log('Aucune compétition à suivre aujourd’hui.');
     break;

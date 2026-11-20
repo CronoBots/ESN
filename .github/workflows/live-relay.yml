@@ -29,6 +29,13 @@ jobs:
           sparse-checkout: |
             public/data
             scripts
+      # Liens de livetiming trouvés par le déploiement sur le site du district (LNL)
+      - uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: .live-links
+          key: links-${{ github.run_id }}
+          restore-keys: links-
       - run: node scripts/live-relay.mjs
         env:
           GH_TOKEN: ${{ github.token }}
