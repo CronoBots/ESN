@@ -59,12 +59,15 @@ function* walk(n: XNode, tag: string): Generator<XNode> {
 const first = (n: XNode, tag: string) => walk(n, tag).next().value as XNode | undefined;
 const kids = (n: XNode | undefined, tag: string) => (n ? n.children.filter((c) => c.tag === tag) : []);
 
-/** « 00:01:24.62 » → centièmes ; « NT » ou vide → null */
+/**
+ * « 00:01:24.62 » → centièmes ; « NT », vide ou « 00:00:00.00 » → null (temps nul laissé par Splash sur une
+ * disqualification, un forfait ou un passage non chronométré : ce n'est pas un temps).
+ */
 export function lenexTime(t: string | undefined): number | null {
   if (!t) return null;
   const m = /^(\d{1,2}):(\d{2}):(\d{2})\.(\d{2})$/.exec(t.trim());
   if (!m) return null;
-  return ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 100 + +m[4];
+  return ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 100 + +m[4] || null;
 }
 
 const STROKE: Record<string, Stroke> = { FREE: 'FREE', BACK: 'BACK', BREAST: 'BREAST', FLY: 'FLY', MEDLEY: 'IM' };
@@ -250,6 +253,7 @@ export function parseLenex(xml: string): LenexMeet | null {
         const st = r.attrs.status;
         if (st === 'WDR') continue; // forfait déclaré avant l'épreuve
         const status: LenexSwim['status'] = st === 'DSQ' ? 'DSQ' : st === 'DNS' ? 'DNS' : st === 'DNF' ? 'DNF' : 'OK';
+        // Disqualification ou forfait sans temps (absent ou « 00:00:00.00 ») : course gardée, sans temps
         const time = lenexTime(r.attrs.swimtime) ?? undefined;
         if (status === 'OK' && time == null) continue;
         const splits = kids(first(r, 'SPLITS'), 'SPLIT')

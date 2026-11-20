@@ -103,7 +103,8 @@ export function TimelineMeetCard({
                 )}
               </div>
               <div className="tl-time">
-                <span className="time-big">{s.status === 'OK' || s.status === 'DSQ' ? formatTime(s.timeCs) : ''}</span>
+                {/* Disqualification : son temps seulement s'il existe (pas le « 0.00 » d'un fichier LENEX) */}
+                <span className="time-big">{s.status === 'OK' || (s.status === 'DSQ' && (s.timeCs ?? 0) > 0) ? formatTime(s.timeCs) : ''}</span>
                 <span className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
                   {s.status !== 'OK' ? (
                     <span className="badge bad">{STATUS_SHORT[s.status]}</span>

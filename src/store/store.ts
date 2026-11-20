@@ -42,7 +42,10 @@ export function normalizeData(raw: unknown): AppData {
   const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   let swimmers = arr<Swimmer>(d.swimmers).filter((s) => s && s.id);
   let meets = arr<Meet>(d.meets).filter((m) => m && m.id);
-  let swims = arr<Swim>(d.swims).filter((s) => s && s.id && s.swimmerId);
+  let swims = arr<Swim>(d.swims)
+    .filter((s) => s && s.id && s.swimmerId)
+    // Disqualification ou forfait gardé avec un temps 0 (fichier LENEX lu par une ancienne version) : sans temps
+    .map((s) => (s.status !== 'OK' && s.timeCs === 0 ? { ...s, timeCs: null } : s));
   let goals = arr<Goal>(d.goals).filter((g) => g && g.id);
   let selectedSwimmerId = d.settings?.selectedSwimmerId;
   // Exemple de démonstration gardé par un navigateur depuis une ancienne version : retiré

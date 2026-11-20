@@ -475,7 +475,8 @@ export function MeetDetail({ id }: { id: string }) {
                           {s.timeCs != null || s.status !== 'OK' ? (
                             <>
                               <span className="time-big">
-                                {s.status === 'OK' || s.status === 'DSQ' ? formatTime(s.timeCs) : ''}
+                                {/* Disqualification : son temps seulement s'il existe (pas le « 0.00 » d'un fichier LENEX) */}
+                                {s.status === 'OK' || (s.status === 'DSQ' && (s.timeCs ?? 0) > 0) ? formatTime(s.timeCs) : ''}
                               </span>
                               <span className="hstack" style={{ gap: 4 }}>
                                 {s.status !== 'OK' ? (

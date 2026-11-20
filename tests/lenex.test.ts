@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deflateRawSync } from 'node:zlib';
 import { lenexTime, parseLenex, unzipFirst } from '../src/lib/lenex';
 import { parseLiveDates, parseMeetList } from '../src/lib/liveResults';
@@ -104,6 +104,110 @@ describe('LENEX', () => {
     expect(a.swims[0]).toMatchObject({ eventNo: 3, distance: 400, stroke: 'FREE', date: '2026-10-10', startTime: '09:41', timeCs: 38933, points: 206, place: 11, heat: 1, lane: 4, entryCs: 40000, round: 'TIM' });
     expect(a.swims[1]).toMatchObject({ eventNo: 27, round: 'HEAT', date: '2026-10-11', timeCs: 8462, splits: [4011], heat: 2 });
     expect(a.swims[2]).toMatchObject({ stroke: 'BACK', status: 'DSQ', timeCs: 10132, comment: '6.4.c - Ne pas toucher le mur lors du virage' });
+  });
+});
+
+// Disqualification et forfait avec un temps nul (« 00:00:00.00 ») ou sans temps, comme dans certains fichiers Splash
+const LEF_ZERO = `<?xml version="1.0" encoding="UTF-8"?>
+<LENEX version="3.0">
+  <MEETS>
+    <MEET city="Ville Fictive" name="Challenge fictif" course="SCM" nation="BEL">
+      <SESSIONS>
+        <SESSION date="2026-10-11" daytime="09:00" number="1">
+          <EVENTS>
+            <EVENT eventid="21" daytime="09:30" gender="F" number="8" round="TIM"><SWIMSTYLE distance="100" relaycount="1" stroke="BACK" /></EVENT>
+            <EVENT eventid="22" daytime="10:15" gender="F" number="12" round="TIM"><SWIMSTYLE distance="50" relaycount="1" stroke="FLY" /></EVENT>
+            <EVENT eventid="23" daytime="11:00" gender="F" number="16" round="TIM"><SWIMSTYLE distance="200" relaycount="1" stroke="FREE" /></EVENT>
+            <EVENT eventid="24" daytime="11:40" gender="F" number="20" round="TIM"><SWIMSTYLE distance="100" relaycount="1" stroke="BREAST" /></EVENT>
+          </EVENTS>
+        </SESSION>
+      </SESSIONS>
+      <CLUBS>
+        <CLUB name="Club Exemple Natation" code="CEN">
+          <ATHLETES>
+            <ATHLETE firstname="Zoé" lastname="Exemple" birthdate="2014-03-02" gender="F">
+              <RESULTS>
+                <RESULT comment="SW 6.5 - Nage sur le ventre" eventid="21" status="DSQ" swimtime="00:00:00.00" resultid="601" entrytime="00:00:00.00">
+                  <SPLITS><SPLIT distance="50" swimtime="00:00:00.00" /></SPLITS>
+                </RESULT>
+                <RESULT eventid="22" status="DNS" swimtime="00:00:00.00" resultid="602" />
+                <RESULT eventid="23" status="DSQ" resultid="603" />
+                <RESULT eventid="24" swimtime="00:00:00.00" resultid="604" />
+              </RESULTS>
+            </ATHLETE>
+          </ATHLETES>
+        </CLUB>
+      </CLUBS>
+    </MEET>
+  </MEETS>
+</LENEX>`;
+
+/** localStorage minimal (les tests tournent sous Node). */
+function memoryStorage(): Storage {
+  const m = new Map<string, string>();
+  return {
+    get length() {
+      return m.size;
+    },
+    clear: () => m.clear(),
+    getItem: (k) => m.get(k) ?? null,
+    key: (i) => [...m.keys()][i] ?? null,
+    removeItem: (k) => void m.delete(k),
+    setItem: (k, v) => void m.set(k, String(v)),
+  };
+}
+
+describe('LENEX : disqualification ou forfait au temps nul', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('un temps « 00:00:00.00 » n’est pas un temps', () => {
+    expect(lenexTime('00:00:00.00')).toBeNull();
+    expect(lenexTime('00:00:00.01')).toBe(1);
+  });
+
+  it('la disqualification et le forfait restent, sans temps ; une course nagée au temps nul est ignorée', () => {
+    const swims = parseLenex(LEF_ZERO)!.athletes[0].swims;
+    expect(swims.map((s) => `${s.distance}${s.stroke}:${s.status}:${s.timeCs}`)).toEqual([
+      '100BACK:DSQ:undefined',
+      '50FLY:DNS:undefined',
+      '200FREE:DSQ:undefined',
+    ]);
+    expect(swims[0]).toMatchObject({ comment: 'SW 6.5 - Nage sur le ventre', splits: undefined, entryCs: undefined });
+  });
+
+  it('direct : la disqualification enregistrée sans temps, une seule fois, et le « 0 » déjà gardé effacé', async () => {
+    vi.stubGlobal('localStorage', memoryStorage());
+    vi.stubGlobal('indexedDB', undefined);
+    // Téléphone : la disqualification lue par une ancienne version, avec un temps 0
+    localStorage.setItem(
+      'nageo:data:v1',
+      JSON.stringify({
+        version: 1,
+        swimmers: [{ id: 'z', firstName: 'Zoé', lastName: 'Exemple', gender: 'F', birthYear: 2014, relation: 'followed', color: 0, favorite: false, createdAt: 1 }],
+        meets: [{ id: 'm', name: 'Challenge fictif', city: 'Ville Fictive', startDate: '2026-10-11', course: 'SCM', createdAt: 1 }],
+        swims: [
+          { id: 'old', swimmerId: 'z', meetId: 'm', context: 'competition', date: '2026-10-11', distance: 100, stroke: 'BACK', course: 'SCM', timeCs: 0, status: 'DSQ', round: 'TIM', eventNo: 8, source: 'live', createdAt: 1, updatedAt: 1 },
+          { id: 'plan', swimmerId: 'z', meetId: 'm', context: 'competition', date: '2026-10-11', distance: 200, stroke: 'FREE', course: 'SCM', timeCs: null, status: 'OK', round: 'TIM', eventNo: 16, source: 'live', createdAt: 1, updatedAt: 1 },
+        ],
+        goals: [],
+        settings: {},
+      }),
+    );
+    vi.resetModules();
+    const store = await import('../src/store/store');
+    expect(store.getState().swims.find((s) => s.id === 'old')).toMatchObject({ status: 'DSQ', timeCs: null });
+
+    const l = parseLenex(LEF_ZERO)!;
+    const r = store.actions.importClubResults('z', [{ meet: l.meet, source: 'live', swims: l.athletes[0].swims }]);
+    const mine = store.getState().swims.filter((s) => s.swimmerId === 'z');
+    // 100 m dos : déjà là ; 50 m papillon : forfait ajouté ; 200 m libre : le programme devient la disqualification
+    expect(r.added).toBe(2);
+    expect(mine.map((s) => `${s.distance}${s.stroke}:${s.status}:${s.timeCs}`).sort()).toEqual([
+      '100BACK:DSQ:null',
+      '200FREE:DSQ:null',
+      '50FLY:DNS:null',
+    ]);
+    expect(mine.some((s) => s.timeCs === 0)).toBe(false);
   });
 });
 
