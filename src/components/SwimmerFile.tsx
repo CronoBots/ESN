@@ -6,17 +6,18 @@ import { Icon } from './Icon';
 import { TimelineMeetCard, useTimeline } from './MeetTimeline';
 import { navigate } from '../router';
 import { achievements, chronoCompare, pointsFor, swimmerSummary } from '../lib/stats';
-import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, seasonLabel, todayISO } from '../lib/dates';
+import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, seasonLabel, seasonOf, todayISO } from '../lib/dates';
 import { courseLabel, eventLabel, STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
 import { rankCategory, rankLabel } from '../lib/rankings';
-import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, strokeProfile, topRanks } from '../lib/profile';
+import { bestTimesTable, careerSpan, clubRecordsHeld, pointsTrend, seasonsSummary, strokeProfile, topRanks, type PointsTrend } from '../lib/profile';
+import { qualificationHighlights, qualifyingSummary } from '../lib/qualifying';
 import { groupsLabel, publishedMeet, upcomingClubEvents } from '../lib/clubCalendar';
 import { swimrankingsUrl } from '../lib/swimrankings';
 import { capitalize, deName } from '../lib/text';
-import { LevelGoals, useLevelGoals } from './Levels';
-import { AllroundCard, QualifyingGoals } from './Qualifying';
+import { gapLabel, LevelGoals, useLevelGoals } from './Levels';
+import { AllroundCard, championshipShort, QualifyingGoals, useQualifying } from './Qualifying';
 import { SwimmerMedals } from './Medals';
 import { ClubEventCard, useClubCalendar } from './ClubCalendar';
 import { awaitingMeets, findResultsNow, useSyncStatus } from '../screens/autoResults';
@@ -123,6 +124,14 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
     : undefined;
   const strengths = strokeProfile(summary.strokePoints);
   const otherRank = ranks.find((r) => r !== sigRank);
+  // Progression saison par saison et qualifications aux championnats (temps limites publiés)
+  const trend = useMemo(() => pointsTrend(seasons, seasonOf(today)), [seasons, today]);
+  const qualifying = useQualifying();
+  const quals = useMemo(
+    () => (qualifying ? qualificationHighlights(qualifyingSummary(qualifying, swimmer, mine, today)) : null),
+    [qualifying, swimmer, mine, today],
+  );
+  const closest = quals?.closest;
 
   return (
     <>
@@ -142,6 +151,37 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
           </div>
           {!home && <FollowButton swimmer={swimmer} />}
         </div>
+
+        {quals && (quals.qualified.length > 0 || closest) && (
+          <div className="hero-quals">
+            {quals.qualified.slice(0, 2).map(({ championship: c, events }) => (
+              <button key={c.id} className="hero-qual" onClick={() => navigate('/championships')}>
+                <Icon name="check" />
+                <span className="hero-parts">
+                  <span>{swimmer.gender === 'F' ? 'Qualifiée' : 'Qualifié'}</span>
+                  <span>{championshipShort(c)}</span>
+                  <span>
+                    {events.length}&nbsp;épreuve{events.length > 1 ? 's' : ''}
+                  </span>
+                  {c.provisional && <span>limites {c.limitsEdition}</span>}
+                </span>
+              </button>
+            ))}
+            {closest && (
+              <button
+                className="hero-qual near"
+                onClick={() => navigate(`/event/${id}/${closest.championship.course}/${closest.distance}/${closest.stroke}`)}
+              >
+                <Icon name="stopwatch" />
+                <span className="hero-parts">
+                  <span>À {gapLabel(closest.next!.gapCs!)} de la limite</span>
+                  <span>{eventLabel(closest.distance, closest.stroke)}</span>
+                  <span>{championshipShort(closest.championship)}</span>
+                </span>
+              </button>
+            )}
+          </div>
+        )}
 
         {signature && (
           <button
@@ -198,6 +238,8 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
             <span>RP cette saison</span>
           </div>
         </div>
+
+        {trend && <HeroTrend trend={trend} />}
 
         {strengths.length > 0 && (
           <div className="hero-strokes">
@@ -638,3 +680,88 @@ function sinceLabel(at: number): string {
   return `il y a ${d} jour${d > 1 ? 's' : ''}`;
 }
 
+/** « 2025-2026 » → « 2025-26 » */
+const seasonShort = (s: string) => `${s.slice(0, 4)}-${s.slice(7, 9)}`;
+/** +38, −12 (vrai signe moins), = */
+const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `\u2212${-n}` : '=');
+
+/** Progression de l'en-tête : gain de points d'une saison sur l'autre, saison en cours à part, courbe des saisons. */
+function HeroTrend({ trend }: { trend: PointsTrend }) {
+  const w = 180;
+  const h = 44;
+  const pad = 5;
+  const vals = trend.seasons.map((s) => s.points);
+  const min = Math.min(...vals);
+  const span = Math.max(...vals) - min || 1;
+  const x = (i: number) => pad + (i * (w - 2 * pad)) / (vals.length - 1);
+  const y = (v: number) => pad + (h - 2 * pad) * (1 - (v - min) / span);
+  const pt = (i: number) => `${x(i).toFixed(1)},${y(vals[i]).toFixed(1)}`;
+  const line = vals.map((_, i) => pt(i)).join(' ');
+  // Saison en cours : dernier tronçon en pointillé et point creux (pas encore une saison complète)
+  const solid = trend.ongoing ? vals.slice(0, -1).map((_, i) => pt(i)).join(' ') : line;
+  const area = `M${x(0).toFixed(1)},${h} L${line.split(' ').join(' L')} L${x(vals.length - 1).toFixed(1)},${h} Z`;
+  const last = trend.seasons[trend.seasons.length - 1];
+  // Sans progression calculable (une saison terminée seulement) : la meilleure saison terminée
+  const done = trend.ongoing ? trend.seasons[trend.seasons.length - 2] : last;
+  return (
+    <div className="hero-trend">
+      <div className="hero-trend-text">
+        <div className="hero-kicker">Progression</div>
+        {trend.delta != null ? (
+          <>
+            <div className="hero-trend-delta">
+              <b className="tnum">{signed(trend.delta)}</b>&nbsp;pts
+            </div>
+            <div className="hero-trend-sub">
+              {seasonShort(trend.season!)} vs {seasonShort(trend.previous!)}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="hero-trend-delta">
+              <b className="tnum">{done.points}</b>&nbsp;pts
+            </div>
+            <div className="hero-trend-sub">saison {seasonShort(done.season)}</div>
+          </>
+        )}
+        {trend.ongoing && <div className="hero-trend-sub">en cours&nbsp;: {trend.ongoing.points}&nbsp;pts</div>}
+      </div>
+      <div className="hero-trend-chart">
+        <svg
+          className="hero-spark"
+          viewBox={`0 0 ${w} ${h}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`Meilleurs points par saison : ${trend.seasons.map((s) => `${seasonShort(s.season)} ${s.points}`).join(', ')}`}
+        >
+          <path d={area} fill="rgba(255, 255, 255, 0.14)" />
+          <polyline points={solid} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          {trend.ongoing && (
+            <polyline
+              points={`${pt(vals.length - 2)} ${pt(vals.length - 1)}`}
+              fill="none"
+              stroke="#fff"
+              strokeWidth="2"
+              strokeDasharray="3 3"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          <circle
+            cx={x(vals.length - 1)}
+            cy={y(last.points)}
+            r="3.5"
+            fill={trend.ongoing ? '#1f4dbf' : '#fff'}
+            stroke="#fff"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        <div className="hero-trend-axis" aria-hidden="true">
+          <span>{seasonShort(trend.seasons[0].season)}</span>
+          <span>{seasonShort(last.season)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}

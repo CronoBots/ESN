@@ -96,6 +96,36 @@ export function seasonsSummary(mine: Swim[], swimmer: Swimmer, pbFlags: Map<stri
     .map(([season, e]) => ({ season, meets: e.meets.size, races: e.races, pbs: e.pbs, bestPoints: e.best }));
 }
 
+export interface PointsTrend {
+  /** Meilleurs points de chaque saison nagée, de la plus ancienne à la plus récente (6 au plus). */
+  seasons: { season: string; points: number }[];
+  /** Progression d'une saison sur la précédente (points) ; null : une seule saison terminée à comparer. */
+  delta: number | null;
+  /** Saison de cette progression, et celle à laquelle elle est comparée. */
+  season?: string;
+  previous?: string;
+  /** Saison en cours, pas encore au niveau de la précédente : montrée à part (« en cours »), sans fausse baisse. */
+  ongoing?: { season: string; points: number };
+}
+
+/**
+ * Progression de l'en-tête : meilleurs points saison par saison (au moins deux saisons avec des points).
+ * Tant que la saison en cours (`current`) n'a pas dépassé la précédente, la progression est celle de la
+ * dernière saison terminée : en novembre, une saison à peine commencée n'est pas une baisse.
+ */
+export function pointsTrend(seasons: SeasonLine[], current: string, max = 6): PointsTrend | null {
+  const list = seasons
+    .filter((s) => s.bestPoints != null)
+    .map((s) => ({ season: s.season, points: s.bestPoints! }))
+    .reverse()
+    .slice(-max);
+  if (list.length < 2) return null;
+  const [prev2, prev, last] = [list[list.length - 3], list[list.length - 2], list[list.length - 1]];
+  if (last.season === current && last.points <= prev.points)
+    return { seasons: list, delta: prev2 ? prev.points - prev2.points : null, ...(prev2 ? { season: prev.season, previous: prev2.season } : {}), ongoing: last };
+  return { seasons: list, delta: last.points - prev.points, season: last.season, previous: prev.season };
+}
+
 export interface StrokeStrength {
   stroke: Stroke;
   /** Meilleurs points sur cette nage (toutes distances, 25 et 50 m) ; null : jamais nagée en compétition. */

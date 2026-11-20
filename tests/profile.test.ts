@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestTimesTable, careerSpan, clubRecordsHeld, seasonsSummary, strokeProfile, topRanks } from '../src/lib/profile';
+import { bestTimesTable, careerSpan, clubRecordsHeld, pointsTrend, seasonsSummary, strokeProfile, topRanks } from '../src/lib/profile';
 import type { NationalRank, Swim, Swimmer } from '../src/store/types';
 
 // Nageurs et courses fictifs
@@ -91,5 +91,29 @@ describe('fiche d’un nageur', () => {
     expect(p[2]).toEqual({ stroke: 'BREAST', points: null, ratio: 0, best: false });
     // Une seule nage avec des points : rien à comparer
     expect(strokeProfile([{ stroke: 'FREE', points: 400 }, { stroke: 'BACK', points: null }])).toEqual([]);
+  });
+
+  it('progression : meilleurs points par saison, de la plus ancienne à la plus récente', () => {
+    const line = (season: string, bestPoints: number | null) => ({ season, meets: 1, races: 1, pbs: 0, bestPoints });
+    // seasonsSummary donne la plus récente d'abord
+    const seasons = [line('2026-2027', 330), line('2025-2026', 310), line('2024-2025', null), line('2023-2024', 250)];
+    expect(pointsTrend(seasons, '2026-2027')).toEqual({
+      seasons: [
+        { season: '2023-2024', points: 250 },
+        { season: '2025-2026', points: 310 },
+        { season: '2026-2027', points: 330 },
+      ],
+      delta: 20,
+      season: '2026-2027',
+      previous: '2025-2026',
+    });
+    // Saison en cours encore sous la précédente : progression de la dernière saison terminée, la saison en cours à part
+    const early = [line('2026-2027', 290), line('2025-2026', 310), line('2023-2024', 250)];
+    expect(pointsTrend(early, '2026-2027')).toMatchObject({ delta: 60, season: '2025-2026', previous: '2023-2024', ongoing: { season: '2026-2027', points: 290 } });
+    expect(pointsTrend([line('2026-2027', 290), line('2025-2026', 310)], '2026-2027')).toMatchObject({ delta: null, ongoing: { points: 290 } });
+    // Saison en cours sans course : rien de « en cours »
+    expect(pointsTrend([line('2025-2026', 310), line('2024-2025', 280)], '2026-2027')).toMatchObject({ delta: 30, season: '2025-2026' });
+    expect(pointsTrend([line('2026-2027', 330)], '2026-2027')).toBeNull();
+    expect(pointsTrend(Array.from({ length: 9 }, (_, i) => line(`${2026 - i}-${2027 - i}`, 300 - i)), '2026-2027')?.seasons).toHaveLength(6);
   });
 });

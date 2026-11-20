@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { activeChampionships, allroundStatus, limitStatus, parseQualifying, qualifyingSummary } from '../src/lib/qualifying';
+import { activeChampionships, allroundStatus, limitStatus, parseQualifying, qualificationHighlights, qualifyingSummary } from '../src/lib/qualifying';
 import type { Swim } from '../src/store/types';
 
 // Copie figée des limites 2026 : les tests ne dépendent pas des mises à jour du fichier publié
@@ -141,5 +141,20 @@ describe('situation d’un nageur', () => {
     const r = qualifyingSummary(data, tom, swims, TODAY);
     expect(r.qualified.map((s) => `${s.championship.id} ${s.distance}-${s.stroke}`)).toEqual(['bk-11-14-2027 400-FREE']);
     expect(r.close.slice(0, 2).map((s) => `${s.distance}-${s.stroke}`)).toEqual(['200-BACK', '200-IM']);
+  });
+
+  it('en-tête de la fiche : championnats qualifiés, sinon la limite la plus proche', () => {
+    const tom = { id: 'tom', gender: 'M' as const, birthYear: 2013 };
+    const qualified = [swim('tom', 400, 'FREE', 'SCM', 29000, '2026-10-01'), swim('tom', 200, 'BACK', 'SCM', 15700, '2026-10-01')];
+    const h = qualificationHighlights(qualifyingSummary(data, tom, qualified, TODAY));
+    expect(h.qualified.map((q) => `${q.championship.id} ${q.events.length}`)).toEqual(['bk-11-14-2027 1']);
+    expect(h.closest).toBeUndefined();
+    // Pas qualifié : la limite la plus proche (0.34 s au 200 m dos)
+    const near = qualificationHighlights(qualifyingSummary(data, tom, [qualified[1]], TODAY));
+    expect(near.qualified).toEqual([]);
+    expect(near.closest).toMatchObject({ distance: 200, stroke: 'BACK' });
+    // Trop loin (plus de 10 %) : rien
+    const far = qualificationHighlights(qualifyingSummary(data, tom, [swim('tom', 200, 'BACK', 'SCM', 19000, '2026-10-01')], TODAY));
+    expect(far).toEqual({ qualified: [] });
   });
 });

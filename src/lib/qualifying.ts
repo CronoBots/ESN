@@ -251,6 +251,26 @@ export interface QualifyingSummary {
   close: LimitStatus[];
 }
 
+export interface QualificationHighlights {
+  /** Championnats où le nageur est qualifié, avec ses épreuves ; le plus d'épreuves d'abord. */
+  qualified: { championship: Championship; events: LimitStatus[] }[];
+  /** Sans qualification : la limite la plus proche, si elle est à portée (écart relatif au plus `maxGap`). */
+  closest?: LimitStatus;
+}
+
+/** L'essentiel des qualifications pour l'en-tête d'une fiche : où il est qualifié, sinon ce qui s'en approche le plus. */
+export function qualificationHighlights(s: QualifyingSummary, maxGap = 0.1): QualificationHighlights {
+  const by = new Map<string, { championship: Championship; events: LimitStatus[] }>();
+  for (const q of s.qualified) {
+    const e = by.get(q.championship.id) ?? { championship: q.championship, events: [] };
+    e.events.push(q);
+    by.set(q.championship.id, e);
+  }
+  const qualified = [...by.values()].sort((a, b) => b.events.length - a.events.length || (a.championship.until < b.championship.until ? -1 : 1));
+  const near = s.close[0];
+  return { qualified, ...(!qualified.length && near && relativeLimitGap(near) <= maxGap ? { closest: near } : {}) };
+}
+
 /** Toutes les épreuves d'un nageur, sur les championnats encore à venir. */
 export function qualifyingSummary(
   data: QualifyingData,
