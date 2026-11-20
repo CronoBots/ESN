@@ -3,7 +3,7 @@ import type { Meet, Swim, Swimmer } from '../store/types';
 import { Section, Segmented } from './ui';
 import { isSettled, loadEventSheet } from '../lib/liveResults';
 import { overallRanking, type EventSheet, type SheetRow } from '../lib/heatSheet';
-import { normName } from '../lib/results';
+import { normName, swimmerNames } from '../lib/results';
 import { formatDate, todayISO } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { placeLabel } from '../lib/text';
@@ -16,11 +16,12 @@ export function displayName(name: string): string {
 
 export const fullYear = (yy?: string) => (yy ? (Number(yy) < 40 ? `20${yy}` : `19${yy}`) : undefined);
 
-/** La ligne du nageur suivi : nom, prénom et année de naissance. */
+/** La ligne du nageur suivi : nom, prénom (le sien ou l'un de ses autres noms) et année de naissance. */
 function isSwimmer(row: SheetRow, sw: Swimmer): boolean {
   const n = normName(row.name);
-  if (!n.includes(normName(sw.lastName)) || !n.includes(normName(sw.firstName))) return false;
-  return !(row.yy && sw.birthYear && row.yy !== String(sw.birthYear % 100).padStart(2, '0'));
+  return swimmerNames(sw).some(
+    (x) => n.includes(normName(x.lastName)) && n.includes(normName(x.firstName)) && !(row.yy && x.birthYear && row.yy !== String(x.birthYear % 100).padStart(2, '0')),
+  );
 }
 
 function HeatRow({ row, mine, lead, time, sub, pts }: { row: SheetRow; mine: boolean; lead: string | number; time: string; sub: string; pts?: number }) {

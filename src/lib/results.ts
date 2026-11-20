@@ -60,6 +60,17 @@ export function closeSwimmer(
   return x.length >= 4 && editDistance(x, y) <= (x.length >= 8 ? 2 : 1);
 }
 
+/**
+ * Noms sous lesquels chercher un nageur dans une compétition : le sien, puis ses autres noms de la
+ * liste du club (« DUPONT, Emma » pour « DUPONT LAMBERT Emma »), même année de naissance s'il n'y en a pas.
+ */
+export function swimmerNames<T extends { firstName: string; lastName: string; birthYear?: number; aliases?: { firstName: string; lastName: string; birthYear?: number }[] }>(
+  sw: T,
+): Omit<T, 'aliases'>[] {
+  const { aliases, ...main } = sw;
+  return [main, ...(aliases ?? []).map((a) => ({ ...main, firstName: a.firstName, lastName: a.lastName, birthYear: a.birthYear ?? sw.birthYear }))];
+}
+
 /** Clés de recherche d'un nageur (nom|prénom, dans les deux sens). */
 export function nameKeys(p: { firstName: string; lastName: string }): string[] {
   const f = normName(p.firstName);

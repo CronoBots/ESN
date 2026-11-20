@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { AppData, Goal, LiveSyncSettings, Meet, NationalRank, Settings, Swim, Swimmer } from './types';
-import { closeSwimmer, sameSwimmer, type ReportMeet, type ReportSwim } from '../lib/results';
+import { closeSwimmer, sameSwimmer, swimmerNames, type ReportMeet, type ReportSwim } from '../lib/results';
 import type { Roster } from '../lib/roster';
 import { CLUB } from '../club';
 import type { ParsedAthlete, ParsedSwim } from '../lib/swimrankings';
@@ -695,8 +695,8 @@ export const actions = {
     setState((s) => {
       const swimmers = [...s.swimmers];
       for (const c of list) {
-        // Déjà dans la liste, éventuellement écrit autrement sur la feuille (une lettre près)
-        if (swimmers.some((sw) => closeSwimmer(c, sw))) continue;
+        // Déjà dans la liste, éventuellement écrit autrement sur la feuille (une lettre près, ou l'un de ses autres noms)
+        if (swimmers.some((sw) => swimmerNames(sw).some((n) => closeSwimmer(c, n)))) continue;
         const sw: Swimmer = {
           id: uid(),
           firstName: c.firstName,

@@ -4,7 +4,7 @@ import type { Swim, Swimmer } from '../store/types';
 import { makeISO, monthFromToken, todayISO } from './dates';
 import { parseLenex, unzipFirst, type LenexAthlete, type LenexMeet } from './lenex';
 import { computePbFlags } from './stats';
-import { closeSwimmer, nameKeys, normName, sameSwimmer, type ReportMeet } from './results';
+import { closeSwimmer, nameKeys, normName, sameSwimmer, swimmerNames, type ReportMeet } from './results';
 import { findSwimmerEntry, findSwimmerResult, lapsToSplits, parseSheetHeader } from './resultSheet';
 import { estimateHeatStarts, parseResultSheet, parseStartSheet, splitName, type EventSheet, type SheetRow } from './heatSheet';
 
@@ -393,8 +393,10 @@ export async function readMeetPdfs(
     if (!header.distance || !header.stroke || !isValidEvent(header.distance, header.stroke, course)) return;
     if (members) candidates.push(...clubRows(text, isResult, header.gender, members));
     for (const sw of swimmers) {
+      // Son nom, puis ses autres noms de la liste du club
+      const names = swimmerNames(sw);
       // Tri rapide (nom ou prénom sur la feuille) ; la lecture de la ligne tolère une lettre d'écart dans le nom
-      if (!(flat.includes(normName(sw.lastName)) || flat.includes(normName(sw.firstName))) || (header.gender && header.gender !== sw.gender)) continue;
+      if (!names.some((n) => flat.includes(normName(n.lastName)) || flat.includes(normName(n.firstName))) || (header.gender && header.gender !== sw.gender)) continue;
       const base = {
         eventNo: header.eventNo ?? no,
         distance: header.distance,
@@ -407,11 +409,10 @@ export async function readMeetPdfs(
       let swim: PdfSwim | null = null;
       if (isResult) {
         // Seulement une ligne de l'ESN : rien d'un autre club (nageur parti, homonyme)
-        const r = findSwimmerResult([text], sw, header, CLUB.match);
-        if (r && (r.timeCs != null || r.status !== 'OK'))
-          swim = { ...base, timeCs: r.timeCs, status: r.status, place: r.place, points: r.points, splits: lapsToSplits(r.laps) };
+        const r = names.map((n) => findSwimmerResult([text], n, header, CLUB.match)).find((x) => x && (x.timeCs != null || x.status !== 'OK'));
+        if (r) swim = { ...base, timeCs: r.timeCs, status: r.status, place: r.place, points: r.points, splits: lapsToSplits(r.laps) };
       } else {
-        const e = findSwimmerEntry(text, sw, CLUB.match);
+        const e = names.map((n) => findSwimmerEntry(text, n, CLUB.match)).find(Boolean);
         // Heure de passage : départ estimé de sa série
         const heatStart = e?.heat ? estimateHeatStarts(parseStartSheet(text), header.distance).heats.find((h) => h.heat === e.heat)?.start : undefined;
         if (e) swim = { ...base, startTime: heatStart ?? base.startTime, status: 'OK', entryCs: e.entryCs, heat: e.heat, lane: e.lane };
@@ -659,11 +660,13 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
       const index = new Map<string, LenexAthlete[]>();
       for (const x of l.athletes) for (const k of nameKeys(x)) index.set(k, [...(index.get(k) ?? []), x]);
       for (const sw of pending) {
-        // Nom identique, sinon à une lettre près (« VERBRUGGEN » / « VERBRUGEN ») avec même prénom et même année
+        // Nom identique (le sien, puis ses autres noms de la liste du club), sinon à une lettre près
+        // (« VERBRUGGEN » / « VERBRUGEN ») avec même prénom et même année
         // Seulement s'il nage pour l'ESN dans cette compétition : rien d'un autre club (nageur parti, homonyme)
+        const names = swimmerNames(sw);
         const a =
-          (index.get(nameKeys(sw)[0]) ?? []).find((x) => sameSwimmer(x, sw) && swimsForClub(x)) ??
-          l.athletes.find((x) => closeSwimmer(x, sw) && swimsForClub(x));
+          names.map((n) => (index.get(nameKeys(n)[0]) ?? []).find((x) => sameSwimmer(x, n) && swimsForClub(x))).find(Boolean) ??
+          l.athletes.find((x) => swimsForClub(x) && names.some((n) => closeSwimmer(x, n)));
         if (!a) continue;
         const report = toImport(l, a);
         found.set(sw.id, [...(found.get(sw.id) ?? []), { ...report, meet: { ...report.meet, liveId: m.id } }]);

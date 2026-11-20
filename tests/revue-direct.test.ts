@@ -235,3 +235,43 @@ describe('fin de recherche : un nageur renommé pendant la recherche reste à re
     expect(app.shouldAutoSyncLive()).toBe(true);
   });
 });
+
+describe('autres noms de la liste du club : reconnus dans le direct', () => {
+  const meetRow =
+    '<tr class=""><td class="tdStatus"><a href="/7401/"><span class="badge badge-finished">Finished</span></a></td><td class="tdDate"><a href="/7401/"><span class="dateLong">10 - 11 Jan 2026</span></a></td><td class="tdCourse"><a href="/7401/"><span class="course">25m</span></a></td><td class="tdName"><a href="/7401/"><span class="name">Meeting fictif</span></a></td><td class="tdCity"><a href="/7401/">Liège <span class="nation">BEL</span></a></td></tr>';
+
+  it('fichier de résultats : « FICTIF, Alice » rattachée à FICTIF EXEMPLE Alice, sans fiche en double', async () => {
+    site['/?nation=BEL'] = meetRow;
+    site['/7401/results.lxf'] = () => zip('results.lef', LEF);
+    const alice = swimmer('a1', 'Alice', 'FICTIF EXEMPLE', { member: true });
+    const chloe = swimmer('c1', 'Chloé', 'EXEMPLE', { member: true });
+    const sync = { enabled: true, processed: {}, engine: 0 };
+
+    // Sans autre nom : ni son temps, et une nouvelle fiche « FICTIF Alice » (doublon)
+    let app = await fresh();
+    app.actions.replaceAll(data([alice, chloe], sync));
+    let r = await app.syncLive({ force: true });
+    expect(app.getState().swims.filter((s) => s.swimmerId === 'a1')).toHaveLength(0);
+    expect(r.newMembers.map((s) => s.lastName)).toEqual(['FICTIF']);
+
+    // Avec l'autre nom de la liste du club
+    app = await fresh();
+    app.actions.replaceAll(data([{ ...alice, aliases: [{ lastName: 'FICTIF', firstName: 'Alice', birthYear: 2015 }] }, chloe], sync));
+    r = await app.syncLive({ force: true });
+    expect(app.getState().swims.filter((s) => s.swimmerId === 'a1').map((s) => s.timeCs)).toEqual([8462]);
+    expect(r.newMembers).toEqual([]);
+    expect(app.getState().swimmers).toHaveLength(2);
+  });
+
+  it('feuilles PDF : résultat sous l’autre prénom (année de naissance de la fiche)', async () => {
+    const meet = { id: '7402', status: 'finished' as const, name: 'Meeting fictif', course: 'SCM' as const, startDate: '2026-01-10', endDate: '2026-01-11' };
+    site['/7402/'] = '<a href="ResultList_1.pdf">1</a>';
+    site['/7402/ResultList_1.pdf'] = 'Epreuve 1 10-01-26 - 09:30 Dames, 50m Dos\n 1. FICTIF, Alice 15 Esn 40.12 250';
+    const alix = swimmer('a1', 'Alix', 'FICTIF');
+    let app = await fresh();
+    expect((await app.readMeetPdfs(meet, [alix], /seraing|\besn\b/i))!.found.get('a1')).toBeUndefined();
+    app = await fresh();
+    const r = (await app.readMeetPdfs(meet, [{ ...alix, aliases: [{ lastName: 'FICTIF', firstName: 'Alice' }] }], /seraing|\besn\b/i))!;
+    expect(r.found.get('a1')?.map((s) => s.timeCs)).toEqual([4012]);
+  });
+});
