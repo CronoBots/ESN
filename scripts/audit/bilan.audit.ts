@@ -131,6 +131,30 @@ describe('bilan de la récupération', () => {
     } else {
       let ok = 0;
       const issues: string[] = [];
+      // Écarts expliqués : course nagée pour un autre club (relevé complet local historique/, retirée à la
+      // publication) ou temps de passage officiel (400 m d'un 800 m…, que l'application ne compte pas comme course)
+      const explained = { club: [] as string[], split: [] as string[] };
+      const local = existsSync('historique')
+        ? readdirSync('historique')
+            .filter((x) => x.endsWith('.txt') && !x.startsWith('_'))
+            .map((x) => readFileSync(`historique/${x}`, 'utf8'))
+            .map((t) => ({ h: historyHeader(t), lines: t.split(/\r?\n/).filter((l) => l.split('\t').length >= 7) }))
+        : [];
+      const otherClub = (h: { lastName: string; firstName: string; birthYear?: number }, pb: ParsedSwim) => {
+        for (const l of local.find((x) => x.h && sameMember(x.h, h))?.lines ?? []) {
+          const c = l.split('\t');
+          if (c[2].trim().replace(/M$/, '') !== formatTime(pb.timeCs) || !c[7]?.trim() || CLUB.match.test(c[7])) continue;
+          const s = parseSwimrankings(c.slice(0, 7).join('\t')).swims[0];
+          if (s && s.distance === pb.distance && s.stroke === pb.stroke && s.course === pb.course && s.date === pb.date) return c[7].trim();
+        }
+        return null;
+      };
+      const longer = (pub: ParsedSwim[], pb: ParsedSwim) =>
+        pub.find(
+          (o) =>
+            pb.stroke === 'FREE' && o.stroke === 'FREE' && o.course === pb.course && o.date === pb.date &&
+            ((pb.distance === 400 && (o.distance === 800 || o.distance === 1500)) || (pb.distance === 800 && o.distance === 1500)),
+        );
       for (const f of readdirSync('controle').filter((x) => x.endsWith('.txt'))) {
         const text = readFileSync(`controle/${f}`, 'utf8');
         const h = historyHeader(text);
@@ -144,16 +168,28 @@ describe('bilan de la récupération', () => {
           const same = pub.filter((s) => s.distance === pb.distance && s.stroke === pb.stroke && s.course === pb.course);
           const best = same.reduce<ParsedSwim | undefined>((b, s) => (!b || s.timeCs < b.timeCs ? s : b), undefined);
           const ev = `${eventLabel(pb.distance, pb.stroke)} ${pb.course === 'LCM' ? '50 m' : '25 m'}`;
+          const club = best?.timeCs === pb.timeCs ? null : otherClub(h, pb);
+          const lap = best?.timeCs === pb.timeCs || club ? undefined : longer(pub, pb);
           if (best && best.timeCs === pb.timeCs) ok++;
+          else if (club) explained.club.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} nagé pour ${club}`);
+          else if (lap) explained.split.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} = temps de passage officiel de son ${lap.distance} m (pas une course)`);
           else if (!best) issues.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} absent de l'historique (aucune course de cette épreuve)`);
           else if (best.timeCs > pb.timeCs)
             issues.push(`${who(h)} · ${ev} : record swimrankings ${formatTime(pb.timeCs)} (${pb.date}) manque, l'historique s'arrête à ${formatTime(best.timeCs)} (autre club ? course non relevée ?)`);
           else issues.push(`${who(h)} · ${ev} : l'historique a ${formatTime(best.timeCs)} (${best.date}), plus rapide que le record swimrankings ${formatTime(pb.timeCs)}`);
         }
       }
-      say(`${ok} meilleurs temps identiques ; ${issues.length} écart(s).`);
+      const nExpl = explained.club.length + explained.split.length;
+      say(`${ok} meilleurs temps identiques ; ${nExpl} écart(s) expliqué(s) ; ${issues.length} écart(s) à vérifier.`);
+      if (issues.length) say('### À vérifier');
       issues.forEach((i) => say(`- ${i}`));
-      summary.push(`Contrôle des meilleurs temps : ${ok} identiques, ${issues.length} écart(s)`);
+      say(`### Expliqués : nagés pour un autre club (${explained.club.length})`);
+      explained.club.forEach((i) => say(`- ${i}`));
+      say(`### Expliqués : temps de passage officiels (${explained.split.length})`);
+      explained.split.forEach((i) => say(`- ${i}`));
+      summary.push(
+        `Contrôle des meilleurs temps : ${ok} identiques, ${nExpl} écarts expliqués (${explained.club.length} autre club, ${explained.split.length} passages officiels), ${issues.length} à vérifier`,
+      );
     }
     say();
 
