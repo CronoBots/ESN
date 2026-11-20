@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * Relais du direct : le planificateur de GitHub (schedule) ne garantit pas ses passages (aucun pendant
- * plus d'une heure le 20/11/2026 au matin). Lancé une fois (à la main, par la session ou par son propre
- * créneau), ce script reste actif jusqu'à ~6 heures : toutes les 2 minutes, il regarde si la page du
+ * plus d'une heure le 20/11/2026 au matin). Lancé une fois (à la main ou par un de ses créneaux), ce
+ * script reste actif jusqu'à ~6 heures : de 6 h à 22 h, toutes les 2 minutes, il regarde si la page du
  * livetiming des compétitions du jour a changé (le site la réécrit à chaque publication) et, si oui,
  * relance le déploiement (« Déployer sur GitHub Pages »), qui recopie les feuilles dans le site.
+ * Avant de s'arrêter, il lance son successeur tant qu'une compétition est à suivre aujourd'hui ou demain.
  *
  *   node scripts/live-relay.mjs     (GH_TOKEN et GITHUB_REPOSITORY fournis par GitHub Actions)
  */
@@ -50,14 +51,28 @@ function deploy() {
   execFileSync('gh', ['workflow', 'run', 'deploy.yml', '--ref', 'main', '-R', process.env.GITHUB_REPOSITORY ?? 'CronoBots/ESN'], { stdio: 'inherit' });
 }
 
+/** Date en Belgique (« 2026-11-20 »), décalée de `days` jours. */
+const brusselsDay = (days = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(new Date(Date.now() + days * 86400000));
+
+/** Compétitions du club (avec livetiming) en cours ce jour-là, veille comprise. */
+function followedOn(day) {
+  const calendar = JSON.parse(readFileSync(CALENDAR, 'utf8'));
+  const prev = (iso) => new Date(Date.parse(`${iso}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  return activeEvents(withLinks(calendar, foundLinks(calendar)), day).filter((e) => prev(e.start) <= day && (e.end ?? e.start) >= day);
+}
+
 let deployed = null;
 let lastDeploy = 0;
-while (Date.now() < UNTIL && brusselsHour() >= 6 && brusselsHour() < 22) {
-  const calendar = JSON.parse(readFileSync(CALENDAR, 'utf8'));
-  const events = activeEvents(withLinks(calendar, foundLinks(calendar)));
-  if (!events.length) {
-    console.log('Aucune compétition à suivre aujourd’hui.');
+while (Date.now() < UNTIL) {
+  const events = followedOn(brusselsDay());
+  if (!events.length && !followedOn(brusselsDay(1)).length) {
+    console.log('Aucune compétition à suivre aujourd’hui ni demain.');
     break;
+  }
+  // La nuit (22 h - 6 h) : en attente, sans rien interroger
+  if (!events.length || brusselsHour() < 6 || brusselsHour() >= 22) {
+    await sleep(10 * 60000);
+    continue;
   }
   const versions = await Promise.all(events.map((e) => pageVersion(e.live)));
   const now = versions.join('|');
@@ -73,5 +88,16 @@ while (Date.now() < UNTIL && brusselsHour() >= 6 && brusselsHour() < 22) {
     }
   }
   await sleep(EVERY);
+}
+
+// Relève : tant qu'une compétition est à suivre aujourd'hui ou demain, un nouveau relais est lancé ; il
+// attend la fin de celui-ci (une seule exécution à la fois) et prend le relais, sans dépendre du planificateur
+if (process.env.GITHUB_ACTIONS && (followedOn(brusselsDay()).length || followedOn(brusselsDay(1)).length)) {
+  try {
+    execFileSync('gh', ['workflow', 'run', 'live-relay.yml', '--ref', 'main', '-R', process.env.GITHUB_REPOSITORY ?? 'CronoBots/ESN'], { stdio: 'inherit' });
+    console.log('Relais suivant lancé.');
+  } catch (e) {
+    console.warn(`Relais suivant non lancé : ${e.message}`);
+  }
 }
 console.log('Fin du relais.');
