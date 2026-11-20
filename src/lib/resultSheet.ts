@@ -32,6 +32,8 @@ export interface SheetHeader {
   distance?: number;
   stroke?: Stroke;
   round: Round;
+  /** Colonne du temps d'engagement avant le temps nagé (« I-TIM  S-TIME », feuilles de la fédération). */
+  entryColumn?: boolean;
 }
 
 export interface SheetResult {
@@ -140,9 +142,11 @@ export function parseSheetHeader(texts: string[]): SheetHeader {
         }
       }
     }
-    // Tour sur la ligne du titre de la feuille : « Liste des séries Eliminatoires » (séries d'une épreuve avec
-    // finale), « Liste des résultats Finale » ; « Liste des séries » seule ou « Finale directe » : classement au temps
-    if (h.round === 'TIM' && /liste\s+des\s+(s[ée]ries|r[ée]sultats)/i.test(l) && !/finale\s+directe/i.test(l)) {
+    // Tour sur la ligne du titre de la feuille : « Liste des séries Eliminatoires », « Liste résultats
+    // Eliminatoires » (séries d'une épreuve avec finale), « Liste des résultats Finale » ; « Liste des séries »
+    // seule ou « Finale directe » : classement au temps
+    if (/\bI-TIME?\b|\bS-TIME\b|temps\s+d['’]?engag|tps\.?\s+engag/i.test(l)) h.entryColumn = true;
+    if (h.round === 'TIM' && /liste\s+(des\s+)?(s[ée]ries|r[ée]sultats)/i.test(l) && !/finale\s+directe/i.test(l)) {
       if (/demi[-\s]?finale/i.test(l)) h.round = 'SEMI';
       else if (/[ée]liminatoire/i.test(l)) h.round = 'HEAT';
       else if (/\bfinale\b/i.test(l)) h.round = 'FINAL';
@@ -247,7 +251,17 @@ function readLine(line: string, sw: SheetSwimmer, header: SheetHeader): SheetRes
   });
   if (!times.length) return { status, place, laps: [], verified: false, line: raw };
 
-  const main = times[0];
+  // Temps d'engagement avant le temps nagé (colonnes « I-TIM  S-TIME ») : le second, sauf engagement « NT ».
+  // Sans en-tête lisible : celui dont les temps au tour qui suivent font la somme.
+  const lapSum = (i: number) => times.slice(i + 1).reduce((a, t) => a + t.cs, 0);
+  const lapCount0 = header.distance ? header.distance / 50 : 0;
+  let first = 0;
+  if (times.length >= 2) {
+    const nt = rest.slice(0, times[0].idx).some((t) => /^NT$/i.test(t));
+    if (header.entryColumn && !nt) first = 1;
+    else if (lapCount0 >= 2 && times.length >= 3 && Math.abs(lapSum(0) - times[0].cs) > 2 && Math.abs(lapSum(1) - times[1].cs) <= 2) first = 1;
+  }
+  const main = times[first];
   const pts = ints.find((x) => x.idx > main.idx && x.n > 0 && x.n <= 1200 && x.idx <= main.idx + 2);
   const laps = times.filter((t) => t.idx > main.idx).map((t) => t.cs);
   const res: SheetResult = { status, place, timeCs: main.cs, points: pts?.n, laps, verified: false, line: raw };

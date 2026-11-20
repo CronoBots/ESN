@@ -151,6 +151,24 @@ Benjamin 12
     expect(findSwimmerResult([sheet], { firstName: 'Eva', lastName: 'Dupont-Lambert', birthYear: 2013, gender: 'F' }, h)).toBeNull();
   });
 
+  it('feuille de résultats de la fédération : temps d’engagement (I-TIM) avant le temps nagé (S-TIME)', () => {
+    const fed = `Championnats de Belgique Test 2026
+Bastogne, 20 - 22/11/2026
+Epreuve 1   Garçons, 100m Brasse   Jeunesse/Jeugd 2
+20/11/2026 - 8:30   Liste résultats Eliminatoires
+Points: AQUA 2026
+QU PL NAME   YB   CLUB   COUNTRY   I-TIM   S-TIME   WN   50m   100m
+Q 1. MARTIN, Lucas   12   Club Exemple   BEL   1:08.98   1:08.96   32.54   36.42
+25. DUPONT, Hugo   12   Esn   BEL   1:21.75   1:21.15   37.69   43.46
+26. DURAND, Paul   13   Esn   BEL   NT   1:22.40   38.10   44.30`;
+    const h = parseSheetHeader([fed]);
+    expect(h).toMatchObject({ eventNo: 1, round: 'HEAT', entryColumn: true, date: '2026-11-20', startTime: '08:30' });
+    expect(findSwimmerResult([fed], { firstName: 'Hugo', lastName: 'Dupont', birthYear: 2012, gender: 'M' }, h)).toMatchObject({ place: 25, timeCs: 8115, laps: [3769, 4346], verified: true });
+    expect(findSwimmerResult([fed], { firstName: 'Lucas', lastName: 'Martin', birthYear: 2012, gender: 'M' }, h)).toMatchObject({ place: 1, timeCs: 6896 });
+    // Engagement « NT » : le premier temps est le temps nagé
+    expect(findSwimmerResult([fed], { firstName: 'Paul', lastName: 'Durand', birthYear: 2013, gender: 'M' }, h)).toMatchObject({ place: 26, timeCs: 8240 });
+  });
+
   it('liste les feuilles publiées sur la page de la compétition', () => {
     const docs = parseMeetDocs(
       '<a href="StartList_1.pdf">x</a><a href="StartList_2.pdf">x</a><a href="ResultList_1.pdf">x</a><a href="EntryStatistics.pdf">x</a>',

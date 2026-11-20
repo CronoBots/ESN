@@ -64,6 +64,20 @@ describe('import des résultats : doublons', () => {
     expect(mine().map((s) => `${s.round}:${s.place}:${s.eventNo}`).sort()).toEqual(['FINAL:1:52', 'HEAT:2:12']);
   });
 
+  it('résultat en direct corrigé (feuille republiée ou mieux lue) : la course est mise à jour, pas doublée', async () => {
+    const { mine, add } = await withSwimmer();
+    add([{ eventNo: 1, distance: 100, stroke: 'BREAST', course: 'SCM', round: 'TIM', timeCs: 8175, status: 'OK', place: 25, date: '2026-03-14' }]);
+    const r = add([
+      { eventNo: 1, distance: 100, stroke: 'BREAST', course: 'SCM', round: 'HEAT', timeCs: 8115, status: 'OK', place: 25, splits: [3769], date: '2026-03-14' },
+    ]);
+    expect(r.added).toBe(0);
+    expect(mine()).toHaveLength(1);
+    expect(mine()[0]).toMatchObject({ timeCs: 8115, round: 'HEAT', place: 25, splits: [3769] });
+    // La finale (autre numéro d'épreuve) reste une autre course
+    add([{ eventNo: 41, distance: 100, stroke: 'BREAST', course: 'SCM', round: 'FINAL', timeCs: 8090, status: 'OK', place: 6, date: '2026-03-14' }]);
+    expect(mine()).toHaveLength(2);
+  });
+
   it('import-6 : la liste de départ de la finale, après le résultat des séries, va au programme', async () => {
     const { mine, add } = await withSwimmer();
     add([{ eventNo: 13, distance: 100, stroke: 'FREE', course: 'SCM', round: 'HEAT', timeCs: 7512, status: 'OK', place: 5, date: '2026-03-14' }]);

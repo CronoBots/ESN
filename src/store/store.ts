@@ -814,6 +814,43 @@ export const actions = {
               continue;
             }
           }
+          // Résultat déjà lu pour cette épreuve de la même compétition en direct (séries et finale ont des
+          // numéros d'épreuve différents) : la feuille officielle la plus récente fait foi (temps corrigé par
+          // l'organisateur, ou lecture corrigée par une nouvelle version de l'application)
+          if (rs.timeCs != null && rs.eventNo != null && meet.liveId) {
+            const prev = [...refreshed, ...mine].find(
+              (x) =>
+                x.meetId === meet!.id &&
+                x.source === 'live' &&
+                x.eventNo === rs.eventNo &&
+                x.distance === rs.distance &&
+                x.stroke === rs.stroke &&
+                x.timeCs != null,
+            );
+            if (prev) {
+              const fixed =
+                prev.timeCs !== rs.timeCs ||
+                prev.status !== rs.status ||
+                (rs.place != null && rs.place !== prev.place) ||
+                (!!rs.round && rs.round !== prev.round) ||
+                (!!rs.splits?.length && !prev.splits?.length);
+              if (fixed) {
+                const corrected: Swim = {
+                  ...prev,
+                  timeCs: rs.timeCs,
+                  status: rs.status,
+                  place: rs.place ?? prev.place,
+                  round: rs.round ?? prev.round,
+                  splits: rs.splits?.length ? rs.splits : prev.splits,
+                  updatedAt: now,
+                };
+                const i = refreshed.findIndex((x) => x.id === prev.id);
+                if (i >= 0) refreshed[i] = corrected;
+                else refreshed.push(corrected);
+              }
+              continue;
+            }
+          }
           const dup = findDuplicate([...mine, ...addedSwims], candidate);
           if (dup) {
             // Course déjà connue (historique swimrankings, import précédent) : les résultats officiels la
