@@ -4809,31 +4809,129 @@ button.meet-nav-btn:active {
 }
 
 /* En-tête de la fiche (accueil et page d'un nageur) : distinctions sous les chiffres */
+/* Chaque distinction à la largeur de son contenu : côte à côte quand elles tiennent, sinon l'une sous l'autre */
 .hero-badges {
   position: relative;
   z-index: 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
-.hero-badges span {
+/* Une distinction : pastille en verre, pictogramme sur disque blanc, chiffre clé en gras, ouvre son détail */
+.hero-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
+  gap: 7px;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 5px 9px 5px 6px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.hero-badges svg {
+.hero-badge:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.hero-badge:active {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.hero-badge:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.hero-badge-ico {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--brand-solid);
+}
+
+.hero-badge-ico svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Or du trophée : 3,6:1 sur blanc (pictogramme) */
+.hero-badge-ico.record {
+  color: #a87700;
+}
+
+.hero-badge-ico.level {
+  color: var(--lvl-mistral);
+}
+
+.hero-badge-txt {
+  min-width: 0;
+}
+
+.hero-badge-txt b {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hero-badge-sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.92;
+}
+
+.hero-badge-chev {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+  margin-left: -1px;
+  opacity: 0.75;
+}
+
+/* Niveau FFBN atteint : étiquette blanche à la couleur du niveau (lisible sur le bleu) */
+.hero-lvl {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hero-lvl b {
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.hero-lvl.lvl-mistral {
+  color: var(--lvl-mistral);
+}
+
+.hero-lvl.lvl-trident {
+  color: var(--lvl-trident);
+}
+
+.hero-lvl.lvl-requin {
+  color: var(--lvl-requin);
 }
 
 /* Bouton cœur (suivre) sur fond bleu */

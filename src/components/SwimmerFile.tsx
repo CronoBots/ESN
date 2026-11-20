@@ -268,20 +268,56 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
 
         {(held.length > 0 || levelTotal > 0 || otherRank) && (
           <div className="hero-badges">
+            {/* Distinctions, de la plus parlante à la plus courante ; chacune ouvre son détail */}
+            {otherRank && (
+              <button
+                className="hero-badge"
+                onClick={() => navigate(`/event/${id}/${otherRank.course}/${otherRank.distance}/${otherRank.stroke}`)}
+                aria-label={`${rankLabel(otherRank.rank)} en Belgique au ${eventLabel(otherRank.distance, otherRank.stroke)} en ${courseLabel(otherRank.course)} : voir l’épreuve`}
+              >
+                <span className="hero-badge-ico rank" aria-hidden="true">
+                  <Icon name="ranking" />
+                </span>
+                <span className="hero-badge-txt">
+                  <b>{rankLabel(otherRank.rank)}</b> en Belgique
+                  <span className="hero-badge-sub">
+                    {eventLabel(otherRank.distance, otherRank.stroke)} · {courseLabel(otherRank.course)}
+                  </span>
+                </span>
+                <Icon name="chevronRight" className="hero-badge-chev" />
+              </button>
+            )}
             {held.length > 0 && (
-              <span>
-                <Icon name="trophy" /> {held.length} record{held.length > 1 ? 's' : ''} du club
-              </span>
+              <button className="hero-badge" onClick={() => navigate('/club-records')} aria-label={`${held.length} record${held.length > 1 ? 's' : ''} du club : voir les records du club`}>
+                <span className="hero-badge-ico record" aria-hidden="true">
+                  <Icon name="trophy" />
+                </span>
+                <span className="hero-badge-txt">
+                  <b>{held.length}</b> record{held.length > 1 ? 's' : ''} du club
+                </span>
+                <Icon name="chevronRight" className="hero-badge-chev" />
+              </button>
             )}
             {levelTotal > 0 && (
-              <span>
-                <Icon name="target" /> {LEVELS.filter((l) => reached[l]).map((l) => `${reached[l]} ${l}`).join(' · ')}
-              </span>
-            )}
-            {otherRank && (
-              <span>
-                <Icon name="ranking" /> {rankLabel(otherRank.rank)} en Belgique · {eventLabel(otherRank.distance, otherRank.stroke)} {courseLabel(otherRank.course)}
-              </span>
+              <button
+                className="hero-badge"
+                onClick={openFor('/levels')}
+                aria-label={`Niveaux FFBN : ${[...LEVELS].reverse().filter((l) => reached[l]).map((l) => `${reached[l]} ${l}`).join(', ')} : voir les niveaux`}
+              >
+                <span className="hero-badge-ico level" aria-hidden="true">
+                  <Icon name="target" />
+                </span>
+                <span className="hero-badge-txt">Niveaux FFBN</span>
+                {[...LEVELS]
+                  .reverse()
+                  .filter((l) => reached[l])
+                  .map((l) => (
+                    <span key={l} className={`hero-lvl lvl-${l.toLowerCase()}`} aria-hidden="true">
+                      <b>{reached[l]}</b> {l}
+                    </span>
+                  ))}
+                <Icon name="chevronRight" className="hero-badge-chev" />
+              </button>
             )}
           </div>
         )}
