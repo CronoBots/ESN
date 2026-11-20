@@ -1,0 +1,34 @@
+name: Relais du direct
+
+# Les jours de compétition du club : reste actif ~6 heures et relance le déploiement dès que le
+# livetiming de la compétition change (scripts/live-relay.mjs). Le planificateur de GitHub n'étant pas
+# fiable, il est lancé à 6 h, 11 h 50 et 17 h 40 (heure belge d'hiver), et peut être lancé à la main.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '3 5 * * *'
+    - cron: '53 10 * * *'
+    - cron: '43 16 * * *'
+
+permissions:
+  actions: write
+  contents: read
+
+# Un seul relais à la fois ; un nouveau attend la fin du précédent (relève sans trou)
+concurrency:
+  group: live-relay
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            public/data
+            scripts
+      - run: node scripts/live-relay.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
