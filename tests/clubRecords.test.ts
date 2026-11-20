@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGE_BANDS, bandForAge, clubRecords, recordHolders } from '../src/lib/clubRecords';
+import { AGE_BANDS, bandForAge, clubRecords, recordHolders, shortcutSwimmer } from '../src/lib/clubRecords';
 import type { Swim, Swimmer } from '../src/store/types';
 
 const swimmer = (id: string, gender: 'F' | 'M', birthYear: number, extra: Partial<Swimmer> = {}): Swimmer =>
@@ -72,5 +72,18 @@ describe('records du club', () => {
     ];
     const ids = recordHolders(swims, extra);
     expect([...ids].sort()).toEqual(['ana', 'bea', 'dan', 'fay']);
+  });
+
+  it('raccourci d’âge : seulement pour un nageur suivi ou ajouté à la main', () => {
+    const other = swimmer('gil', 'F', 2011, { relation: 'followed', favorite: false });
+    // Aucun nageur suivi : le nageur du club pris par défaut (même choisi automatiquement) n'a pas de raccourci
+    expect(shortcutSwimmer(other)).toBeUndefined();
+    expect(shortcutSwimmer(undefined)).toBeUndefined();
+    // Suivi (cœur), enfant, ou nageur ajouté à la main
+    const fav = { ...other, favorite: true };
+    expect(shortcutSwimmer(fav)).toBe(fav);
+    expect(shortcutSwimmer(swimmers[0])).toBe(swimmers[0]);
+    const own = { ...other, member: false };
+    expect(shortcutSwimmer(own)).toBe(own);
   });
 });

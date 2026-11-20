@@ -5,7 +5,7 @@ import { Empty, NavBar, Section, Segmented, StrokeDot, StrokeTag } from '../comp
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { COURSES, STROKES, distancesFor, eventLabel } from '../lib/events';
-import { AGE_BANDS, ageAt, bandForAge, clubRecords, recordComplete, recordKey } from '../lib/clubRecords';
+import { AGE_BANDS, ageAt, bandForAge, clubRecords, recordComplete, recordKey, shortcutSwimmer } from '../lib/clubRecords';
 import { formatDate } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { pointsFor } from '../lib/stats';
@@ -18,7 +18,8 @@ import { ensureClub, isFollowed } from './Club';
  */
 export function ClubRecords() {
   const data = useData();
-  const selected = useSelectedSwimmer();
+  // Nageur suivi ou ajouté à la main seulement (pas un nageur du club pris par défaut quand on n'en suit aucun)
+  const selected = shortcutSwimmer(useSelectedSwimmer());
   const [course, setCourse] = useState<Course>(data.settings.defaultCourse);
   const [gender, setGender] = useState<Gender>(selected?.gender ?? 'F');
   const [bandId, setBandId] = useState('all');

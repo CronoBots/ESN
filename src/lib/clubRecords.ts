@@ -33,6 +33,15 @@ export function bandForAge(age: number | undefined): AgeBand | undefined {
   return AGE_BANDS.find((b) => b.id !== 'all' && b.id !== 'masters' && b.test(age));
 }
 
+/**
+ * Nageur dont l'âge est proposé en raccourci sur les records du club (« 12 ans · Emma ») : nageur suivi
+ * ou ajouté à la main. Jamais un nageur du club pris par défaut quand on n'en suit aucun (le premier de la
+ * liste du club devient le nageur choisi à son chargement, sans que l'utilisateur l'ait choisi).
+ */
+export function shortcutSwimmer(selected: Swimmer | undefined): Swimmer | undefined {
+  return selected && (selected.favorite || selected.relation === 'child' || !selected.member) ? selected : undefined;
+}
+
 export interface ClubRecord {
   swim: Swim & { timeCs: number };
   swimmer: Swimmer;
