@@ -53,6 +53,28 @@ export function recordComplete(_course: Course, distance: number, _stroke: Strok
 }
 
 /**
+ * Membres du club qui détiennent au moins un record (une épreuve, un bassin, une tranche d'âge,
+ * tous âges compris), comme clubRecords. Sert à n'afficher que les anciens membres qui ont marqué le club.
+ */
+export function recordHolders(swims: Swim[], swimmers: Swimmer[]): Set<string> {
+  const members = new Map(swimmers.filter((s) => s.member).map((s) => [s.id, s]));
+  const best = new Map<string, Swim & { timeCs: number }>();
+  for (const s of swims) {
+    if (!countsForRecords(s, false)) continue;
+    const swimmer = members.get(s.swimmerId);
+    if (!swimmer) continue;
+    const age = ageAt(s, swimmer);
+    for (const band of AGE_BANDS) {
+      if (!band.test(age)) continue;
+      const k = `${s.course}|${swimmer.gender}|${band.id}|${recordKey(s.distance, s.stroke)}`;
+      const cur = best.get(k);
+      if (!cur || s.timeCs < cur.timeCs || (s.timeCs === cur.timeCs && chronoCompare(s, cur) < 0)) best.set(k, s);
+    }
+  }
+  return new Set([...best.values()].map((s) => s.swimmerId));
+}
+
+/**
  * Record de chaque épreuve pour un bassin, un sexe et une tranche d'âge : temps le plus
  * rapide en compétition d'un membre du club (à temps égal, le premier réalisé).
  */

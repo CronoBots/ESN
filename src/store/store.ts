@@ -14,10 +14,11 @@ const DATA_KEY = 'data';
 
 /**
  * Version de la lecture de la liste du club. 2 : anciens membres. 3 : autres noms d'un
- * nageur (fiches en double réunies). Une liste appliquée par une version précédente est
+ * nageur (fiches en double réunies). 4 : autres noms gardés sur la fiche (historique et classements
+ * rattachés sous l'un ou l'autre nom). Une liste appliquée par une version précédente est
  * relue une fois, même inchangée.
  */
-export const ROSTER_PARSER = 3;
+export const ROSTER_PARSER = 4;
 
 const DEFAULT_SETTINGS: Settings = {
   theme: 'auto',
@@ -567,6 +568,7 @@ export const actions = {
             group: m.group,
             member: true,
             former: m.former || undefined,
+            aliases: m.aliases?.length ? m.aliases : undefined,
             birthYear: byAlias >= 0 ? (m.birthYear ?? sw.birthYear) : (sw.birthYear ?? m.birthYear),
             club: sw.club || roster.club,
           };
@@ -587,6 +589,7 @@ export const actions = {
             group: m.group,
             member: true,
             former: m.former || undefined,
+            ...(m.aliases?.length ? { aliases: m.aliases } : {}),
             createdAt: now,
           };
           swimmers.push(sw);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGE_BANDS, bandForAge, clubRecords } from '../src/lib/clubRecords';
+import { AGE_BANDS, bandForAge, clubRecords, recordHolders } from '../src/lib/clubRecords';
 import type { Swim, Swimmer } from '../src/store/types';
 
 const swimmer = (id: string, gender: 'F' | 'M', birthYear: number, extra: Partial<Swimmer> = {}): Swimmer =>
@@ -58,5 +58,19 @@ describe('records du club', () => {
     expect(tie.get('100-FREE')?.swimmer.id).toBe('bea');
     expect(bandForAge(9)?.id).toBe('10');
     expect(bandForAge(30)?.id).toBe('18');
+  });
+
+  it('détenteurs d’au moins un record (toutes tranches d’âge, bassins et sexes)', () => {
+    const extra = [...swimmers, swimmer('eve', 'F', 2000, { former: true }), swimmer('fay', 'F', 2000, { former: true })];
+    const swims = [
+      swim('ana', '2025-11-10', 6500),
+      swim('bea', '2014-03-01', 6300), // record tous âges et 14 ans
+      swim('eve', '2014-03-01', 6400), // battue partout (même âge que bea)
+      swim('fay', '2026-03-01', 9000, { course: 'LCM' }), // seule en 50 m : record
+      swim('dan', '2025-11-10', 5900),
+      swim('cle', '2025-11-10', 5000), // pas membre
+    ];
+    const ids = recordHolders(swims, extra);
+    expect([...ids].sort()).toEqual(['ana', 'bea', 'dan', 'fay']);
   });
 });

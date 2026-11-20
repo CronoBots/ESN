@@ -31,6 +31,8 @@ export interface Swimmer {
   discovered?: boolean;
   /** Ancien membre du club (liste publiée) : à part dans la liste, dans les classements sur option. */
   former?: boolean;
+  /** Autres noms du membre (liste du club) : le même nageur écrit autrement ailleurs (fédération, swimrankings). */
+  aliases?: { lastName: string; firstName: string; birthYear?: number }[];
   createdAt: number;
 }
 

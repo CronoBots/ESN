@@ -15,6 +15,7 @@ import { formatDate, formatDayMonth } from '../lib/dates';
 import { CLUB } from '../club';
 import type { NationalRank, Swim, Swimmer } from '../store/types';
 import { parseRankingsText } from '../lib/rankings';
+import { recordHolders } from '../lib/clubRecords';
 
 /** Liste chiffrée des membres, publiée avec l'application (voir scripts/roster.mjs). */
 const ROSTER_URL = './data/club-roster.json';
@@ -22,8 +23,8 @@ const ROSTER_URL = './data/club-roster.json';
 const HISTORY_URL = './data/club-history.json';
 const RANKINGS_URL = './data/club-rankings.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ».
- * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. */
-const HISTORY_PARSER = 5;
+ * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. 6 : rattaché aussi par les autres noms du membre. */
+const HISTORY_PARSER = 6;
 
 const letters = (s: string) => normName(s);
 
@@ -66,7 +67,8 @@ async function runClubRankings(): Promise<number> {
   const members = getState().swimmers.filter((s) => s.member);
   const list: NationalRank[] = [];
   for (const a of published.athletes) {
-    const sw = members.find((s) => normName(s.lastName) === normName(a.lastName) && normName(s.firstName) === normName(a.firstName) && sameSwimmer(a, s));
+    // Sous le nom de la liste du club, sinon sous l'un de ses autres noms (orthographe de la fédération…)
+    const sw = members.find((s) => sameSwimmer(a, s)) ?? members.find((s) => s.aliases?.some((al) => sameSwimmer(a, al)));
     if (sw) for (const r of parseRankingsText(a.text)) list.push({ swimmerId: sw.id, ...r });
   }
   actions.setRankings(list, enc.iv);
@@ -85,6 +87,8 @@ async function runClubHistory(): Promise<number> {
   if (!history) return 0;
   // Membres du club par nom normalisé (dans les deux ordres, comme sameSwimmer) : une recherche par nageur
   const byName = new Map<string, Swimmer[]>();
+  /** Autres noms : « NOM|Prénom » → membres (avec l'année de naissance de l'autre nom). */
+  const byAlias = new Map<string, { s: Swimmer; birthYear?: number }[]>();
   for (const s of getState().swimmers) {
     if (!s.member) continue;
     for (const k of [`${normName(s.lastName)}|${normName(s.firstName)}`, `${normName(s.firstName)}|${normName(s.lastName)}`]) {
@@ -92,12 +96,20 @@ async function runClubHistory(): Promise<number> {
       if (!list) byName.set(k, [s]);
       else if (!list.includes(s)) list.push(s);
     }
+    for (const al of s.aliases ?? []) {
+      const k = `${normName(al.lastName)}|${normName(al.firstName)}`;
+      byAlias.set(k, [...(byAlias.get(k) ?? []), { s, birthYear: al.birthYear }]);
+    }
   }
   // Lecture des temps par petits paquets : l'écran reste fluide pendant l'import, même sur un téléphone
   const todo: { a: (typeof history.athletes)[number]; swimmerId: string; parsed: ReturnType<typeof parseSwimrankings> }[] = [];
   let slice = performance.now();
   for (const a of history.athletes) {
-    const sw = byName.get(`${normName(a.lastName)}|${normName(a.firstName)}`)?.find((s) => sameSwimmer(a, s));
+    const k = `${normName(a.lastName)}|${normName(a.firstName)}`;
+    // Sous le nom de la liste du club, sinon sous l'un de ses autres noms (orthographe de la fédération…)
+    const sw =
+      byName.get(k)?.find((s) => sameSwimmer(a, s)) ??
+      byAlias.get(k)?.find((x) => !(x.birthYear && a.birthYear && x.birthYear !== a.birthYear))?.s;
     if (!sw) continue;
     // Seulement les courses nagées pour l'ESN (club relevé pour chaque course)
     todo.push({ a, swimmerId: sw.id, parsed: parseSwimrankings(keepClubRaces(a.text, CLUB.match).text) });
@@ -281,6 +293,17 @@ export function openFollow(onDone?: () => void) {
 
 export const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child';
 
+/**
+ * Anciens membres masqués dans la liste du club (choix du club) : ceux qui ne détiennent aucun record du
+ * club (aucune épreuve, aucun bassin, aucune tranche d'âge) ou n'ont aucune course. Toujours retrouvés par
+ * une recherche à leur nom, et affichés s'ils sont suivis.
+ */
+function useHiddenFormer(): (s: Swimmer) => boolean {
+  const { swims, swimmers } = useData();
+  const holders = useMemo(() => recordHolders(swims, swimmers), [swims, swimmers]);
+  return useMemo(() => (s: Swimmer) => !!s.member && !!s.former && !holders.has(s.id) && !isFollowed(s), [holders]);
+}
+
 /** Bouton cœur : suivre / ne plus suivre. */
 export function FollowButton({ swimmer }: { swimmer: Swimmer }) {
   const on = isFollowed(swimmer);
@@ -330,8 +353,9 @@ type ClubFilter = 'all' | 'active' | 'former' | 'followed' | string;
  * (les plus jeunes d'abord). Filtres : actifs, anciens, ou un groupe (A, B, C…) s'il y en a.
  * Dans le sélecteur des nageurs suivis (« all »), les nageurs hors club suivent à part.
  */
-function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: ClubFilter, q: string) {
-  const list = swimmers.filter((s) => matches(s, q)).sort(byYearName);
+function clubSections(swimmers: Swimmer[], groups: RosterGroup[], filter: ClubFilter, q: string, hidden?: (s: Swimmer) => boolean) {
+  // Nageurs masqués (anciens sans record) : retrouvés seulement par une recherche à leur nom
+  const list = swimmers.filter((s) => matches(s, q) && (q.trim() !== '' || !hidden?.(s))).sort(byYearName);
   const members = list.filter((s) => isActiveMember(s) || isFormerMember(s));
   const others = list.filter((s) => !s.member);
   if (groups.some((g) => g.id === filter)) return byBirthYear(members.filter((s) => s.group === filter && !s.former));
@@ -393,7 +417,8 @@ function FollowPicker({ close, onDone }: { close: () => void; onDone?: () => voi
   // Recherche : la frappe reste fluide, la liste suit juste après
   const dq = useDeferredValue(q);
   const full = useProgressive();
-  const all = useMemo(() => clubSections(data.swimmers, groups, 'all', dq), [data.swimmers, groups, dq]);
+  const hidden = useHiddenFormer();
+  const all = useMemo(() => clubSections(data.swimmers, groups, 'all', dq, hidden), [data.swimmers, groups, dq, hidden]);
   const sections = firstGroups(all, (s) => s.items.length, full);
 
   const toggle = (id: string) =>
@@ -487,9 +512,11 @@ export function ClubScreen() {
     return m;
   }, [data.swims]);
 
+  const hidden = useHiddenFormer();
   const members = data.swimmers.filter((s) => s.member);
   const activeMembers = members.filter(isActiveMember);
-  const formerCount = members.length - activeMembers.length;
+  const hiddenCount = members.filter(hidden).length;
+  const formerCount = members.length - activeMembers.length - hiddenCount;
   const followedCount = members.filter(isFollowed).length;
   const choices = ['active', ...(formerCount ? ['former'] : []), ...(followedCount ? ['followed'] : []), ...groups.map((g) => g.id)];
   const active = filter === 'all' || choices.includes(filter) ? filter : 'all';
@@ -500,8 +527,8 @@ export function ClubScreen() {
       const items = members.filter((s) => isFollowed(s) && matches(s, dq)).sort(byYearName);
       return items.length ? [{ id: 'followed', title: 'Suivis', items }] : [];
     }
-    return clubSections(members, groups, active, dq);
-  }, [data.swimmers, groups, active, dq]);
+    return clubSections(members, groups, active, dq, hidden);
+  }, [data.swimmers, groups, active, dq, hidden]);
   const sections = firstGroups(allSections, (s) => s.items.length, full);
   const choose = (v: string) => {
     setFilter(v);
@@ -562,7 +589,7 @@ export function ClubScreen() {
                 {v === 'all' ? (
                   <>
                     Tous
-                    <span className="count">{members.length}</span>
+                    <span className="count">{members.length - hiddenCount}</span>
                   </>
                 ) : v === 'active' ? (
                   <>
@@ -588,7 +615,7 @@ export function ClubScreen() {
         </div>
         <div className="section-foot" style={{ margin: '8px 4px 0' }}>
           {active === 'former'
-            ? 'Anciens membres : nageurs qui ont représenté l’ESN en compétition. Ils restent hors des classements, sauf si vous les y ajoutez.'
+            ? `Anciens membres : nageurs qui ont représenté l’ESN en compétition. Ils restent hors des classements, sauf si vous les y ajoutez.${hiddenCount ? ` Les ${hiddenCount} anciens sans record du club n’apparaissent qu’en les cherchant par leur nom.` : ''}`
             : 'Touchez le cœur d’un nageur pour le suivre : il apparaît sur l’accueil.'}
         </div>
         <div style={{ marginTop: 10 }}>
