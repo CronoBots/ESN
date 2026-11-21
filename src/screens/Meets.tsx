@@ -19,7 +19,6 @@ import { ClubEventRow, GroupsBadge, useClubCalendar } from '../components/ClubCa
 import { MeetOverviewSections, type OverviewSections } from '../components/MeetOverview';
 import { ClubMeetRecap } from '../components/MeetRecap';
 import { meetSummaries } from '../lib/meetRecap';
-import { spacesEnabled } from '../lib/features';
 import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
 
 
@@ -40,7 +39,6 @@ export function Meets() {
   const pbFlags = usePbFlags();
   const swimmer = useSelectedSwimmer();
   // Deux espaces : toutes les compétitions du club (bilan de l'ESN), ou celles de mes nageurs
-  const spaces = spacesEnabled();
   const [view, setViewState] = useState<'club' | 'mine'>(() => {
     try {
       return localStorage.getItem(MEETS_VIEW) === 'mine' ? 'mine' : 'club';
@@ -56,7 +54,7 @@ export function Meets() {
       /* préférence non mémorisée */
     }
   };
-  const clubView = spaces && view === 'club';
+  const clubView = view === 'club';
   const timeline = useTimeline(swimmer);
   const [order, setOrderState] = useState<Order>(readOrder);
   const setOrder = (o: Order) => {
@@ -139,8 +137,7 @@ export function Meets() {
         }
       />
       <main className="page">
-        {spaces && (
-          <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14 }}>
             <Segmented
               value={view}
               onChange={setView}
@@ -150,8 +147,7 @@ export function Meets() {
                 { id: 'mine', label: 'Mes nageurs' },
               ]}
             />
-          </div>
-        )}
+        </div>
         {swimmer && !clubView && <SwimmerChips swimmer={swimmer} />}
 
         {comingUp.length > 0 && (

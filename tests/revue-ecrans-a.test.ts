@@ -223,7 +223,10 @@ describe('liste des compétitions', () => {
       swims: [swim('lina', 'm1', '2025-10-11'), swim('lina', 'm2', '2025-11-15', { status: 'DNS', timeCs: null })],
       settings: { selectedSwimmerId: 'lina' } as AppData['settings'],
     });
+    // Vue « Mes nageurs » (la liste s'ouvre sur « Tout le club » sinon)
+    vi.stubGlobal('localStorage', { getItem: (k: string) => (k === 'esn-competitions-vue' ? 'mine' : null), setItem: () => {}, removeItem: () => {} });
     const page = html(Meets, {});
+    vi.unstubAllGlobals();
     expect(page).toContain('1 compétition nagée par Lina');
   });
 });

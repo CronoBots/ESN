@@ -15,7 +15,6 @@ import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useState } from 'react';
-import { setSpacesPreview, spacesEnabled, spacesLaunched } from '../lib/features';
 
 export const APP_VERSION = '1.0.0';
 
@@ -179,27 +178,7 @@ export function Settings() {
               <span className="label grow">Célébrer les records 🎉</span>
               <Toggle on={s.celebrate} onChange={(v) => actions.updateSettings({ celebrate: v })} label="Animation lors d’un nouveau record" />
             </div>
-            {!spacesLaunched() && (
-              <div className="field">
-                <span className="label grow">Essayer « Mon espace » et « Club »</span>
-                <Toggle
-                  on={spacesEnabled()}
-                  onChange={(v) => {
-                    setSpacesPreview(v);
-                    // La barre du bas change avec la page : retour à l'accueil (Mon espace)
-                    navigate('/', { replace: true });
-                  }}
-                  label="Nouvelle organisation, avant sa mise en ligne pour tous"
-                />
-              </div>
-            )}
           </div>
-          {!spacesLaunched() && (
-            <div className="section-foot">
-              Nouvelle organisation : votre espace (vos nageurs) et celui du club. En ligne pour tous dimanche 22 novembre à 20 h ; vous pouvez
-              l’essayer dès maintenant sur cet appareil.
-            </div>
-          )}
         </Section>
 
         <Section title="Application">
