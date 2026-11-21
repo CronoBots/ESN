@@ -57,7 +57,7 @@ class FakeCaches {
   }
 }
 
-type Net = (r: Req | string) => Promise<Response>;
+type Net = (r: Req | string, init?: RequestInit) => Promise<Response>;
 
 /** Charge une version du service worker (comme le fait vite.config.ts au build). */
 function loadSw(version: string, store: FakeCaches, net: { fetch: Net }) {
@@ -69,7 +69,7 @@ function loadSw(version: string, store: FakeCaches, net: { fetch: Net }) {
     clients: { claim: async () => {} },
   };
   const source = template.replace('__CACHE_VERSION__', version).replace('__PRECACHE_FILES__', JSON.stringify(['./']));
-  new Function('self', 'caches', 'fetch', source)(self, store, (r: Req | string) => net.fetch(r));
+  new Function('self', 'caches', 'fetch', source)(self, store, (r: Req | string, init?: RequestInit) => net.fetch(r, init));
   const lifecycle = async (type: 'install' | 'activate') => {
     const waits: Promise<unknown>[] = [];
     handlers[type]({ waitUntil: (p: Promise<unknown>) => waits.push(p) });
@@ -197,6 +197,17 @@ describe('service worker', () => {
     net.fetch = offline;
     const hors = await sw.request('./', 'navigate').response;
     expect(hors && (await hors.text())).toBe('<p>v2</p>');
+  });
+
+  it('ouverture juste après une mise à jour : la page est redemandée au serveur, jamais l’ancienne copie du navigateur', async () => {
+    const store = new FakeCaches();
+    // Le navigateur garde la page 10 minutes : sans revalidation, il rend encore l'ancienne version (fichiers supprimés)
+    const net = { fetch: (async (_r, init) => new Response(init?.cache === 'no-cache' ? '<p>v2</p>' : '<p>v1 périmée</p>')) as Net };
+    const sw = loadSw('v2', store, net);
+    await sw.lifecycle('install');
+    await sw.lifecycle('activate');
+    expect(await (await sw.request('./', 'navigate').response)!.text()).toBe('<p>v2</p>');
+    expect(await (await sw.request('./?code=fictif', 'navigate').response)!.text()).toBe('<p>v2</p>');
   });
 });
 

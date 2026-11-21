@@ -62,14 +62,19 @@ self.addEventListener('fetch', (event) => {
     // Lien d'accès éventuel dans l'adresse (?code=…) : jamais envoyé au serveur, la page est la même
     const target = url.search ? `${url.origin}${url.pathname}` : req;
     const cached = () => caches.match('./', { ignoreSearch: true }).then((r) => r || caches.match('./index.html'));
-    const network = fetch(target).then((res) => {
-      // Page d'erreur de l'hébergeur (panne) : la copie hors connexion n'est pas remplacée
-      if (res.ok) {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put('./', copy));
-      }
-      return res;
-    });
+    // Page toujours revalidée auprès du serveur (réponse 304 si elle n'a pas changé) : la copie gardée 10 minutes
+    // par le navigateur pouvait encore annoncer la version précédente, dont les fichiers n'existent plus après une
+    // mise à jour (écran d'ouverture figé jusqu'à 10 minutes). Navigateur qui refuserait l'option : requête simple.
+    const network = fetch(target, { cache: 'no-cache' })
+      .catch(() => fetch(target))
+      .then((res) => {
+        // Page d'erreur de l'hébergeur (panne) : la copie hors connexion n'est pas remplacée
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put('./', copy));
+        }
+        return res;
+      });
     // Le service worker reste actif jusqu'à la réponse du réseau, même si la copie en cache est déjà affichée
     event.waitUntil(network.catch(() => {}));
     event.respondWith(
