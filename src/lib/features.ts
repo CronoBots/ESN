@@ -17,3 +17,17 @@ export function spacesEnabled(now = Date.now()): boolean {
     return false;
   }
 }
+
+/** La nouvelle organisation est-elle déjà en ligne pour tous ? (sinon : essai possible dans les réglages) */
+export const spacesLaunched = (now = Date.now()) => now >= SPACES_FROM;
+
+/** Essai sur cet appareil avant la mise en ligne (application installée : pas de lien d'aperçu possible). */
+export function setSpacesPreview(on: boolean) {
+  try {
+    if (on) localStorage.setItem(KEY, '1');
+    else localStorage.removeItem(KEY);
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
