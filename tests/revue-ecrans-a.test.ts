@@ -134,7 +134,7 @@ describe('fiche d’une compétition', () => {
   const arthur = swimmer('arthur', 'Arthur');
   const zoe = swimmer('zoe', 'Zoé');
 
-  it('tuiles du nageur suivi, forfait affiché « FOR »', () => {
+  it('récap du club (tous les nageurs de l’ESN), forfait affiché « FOR »', () => {
     setData({
       swimmers: [lina, arthur, zoe],
       meets: [meet('m1', '2025-10-11')],
@@ -148,11 +148,13 @@ describe('fiche d’une compétition', () => {
       settings: { selectedSwimmerId: 'lina' } as AppData['settings'],
     });
     const page = html(MeetDetail, { id: 'm1' });
-    // Une seule course valide pour Lina (pas les 4 du club)
-    expect(page).toMatch(/tile-label">Courses<\/div><div class="tile-value">1</);
+    // Récap du club : 4 courses nagées (le forfait de Lina n'en est pas une), une ligne par nageur
+    expect(page).toContain('L’ESN à cette compétition');
+    expect(page).toMatch(/tile-label">Courses<\/div><div class="tile-value">4</);
+    expect(page).toMatch(/tile-label">Nageurs<\/div><div class="tile-value">3</);
+    expect(page.match(/id="meet-sw-/g)?.length).toBe(3);
     expect(page).toContain('>FOR<');
     expect(page).not.toContain('>DNS<');
-    expect(page).not.toContain('L’ESN à cette compétition');
   });
 
   it('ne met pas en avant un nageur non suivi', () => {

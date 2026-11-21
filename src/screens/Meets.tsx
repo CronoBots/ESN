@@ -7,7 +7,7 @@ import { navigate } from '../router';
 import { formatDate, formatLongDay, formatRange, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
 import { eventLabel, courseLabel, ROUND_LABEL, STATUS_SHORT } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
-import { chronoCompare, clubMeets, countsForRecords, isValidResult, pointsFor } from '../lib/stats';
+import { chronoCompare, clubMeets, countsForRecords, isValidResult } from '../lib/stats';
 import { buildMeetCalendar, downloadFile, slug } from '../lib/ics';
 import type { Meet, Swim, Swimmer } from '../store/types';
 import { overlay } from '../components/ui';
@@ -286,10 +286,50 @@ export function MeetDetail({ id }: { id: string }) {
   // Courses des nageurs suivis (ou du nageur choisi) : agenda et tuiles. Sans nageur suivi, les tuiles
   // portent sur tout le club (titrées comme telles) et l'agenda ne reçoit que les dates, sans alarme.
   const mine = mineGroups.flatMap((g) => g.swims);
-  const tileSwims = mineGroups.length ? mine : swims;
-  const pbs = tileSwims.filter((s) => pbFlags.get(s.id)?.isPB);
-  const totalGain = pbs.reduce((a, s) => a + -(pbFlags.get(s.id)?.deltaCs ?? 0), 0);
-  const swum = tileSwims.filter(isValidResult);
+
+  // Récap de l'ESN : tous les nageurs du club à cette compétition (pas seulement le nageur choisi)
+  const recap = bySwimmer
+    .map(({ swimmer, swims: list }) => {
+      const done = list.filter(isValidResult);
+      const pbList = done.filter((s) => pbFlags.get(s.id)?.isPB);
+      // Classement : épreuves au temps et finales (pas la place dans les séries)
+      const ranked = done.filter((s) => s.place != null && (s.round === 'TIM' || s.round === 'FINAL')).sort((a, b) => a.place! - b.place!);
+      // Seulement des séries éliminatoires : son meilleur classement des séries
+      const heats = done.filter((s) => s.place != null && (s.round === 'HEAT' || s.round === 'SEMI')).sort((a, b) => a.place! - b.place!);
+      return {
+        swimmer,
+        // Au programme (sans les forfaits) et nagées (disqualifications comprises)
+        total: list.filter((s) => s.status !== 'DNS').length,
+        swum: list.filter((s) => s.status === 'DSQ' || s.status === 'DNF' || (s.status === 'OK' && s.timeCs != null)).length,
+        pbs: pbList.length,
+        gain: pbList.reduce((a, s) => a - (pbFlags.get(s.id)?.deltaCs ?? 0), 0),
+        best: ranked[0] ?? heats[0],
+        podiums: ranked.filter((s) => s.place! <= 3).length,
+        finals: done.filter((s) => s.round === 'FINAL').length,
+        dsq: list.filter((s) => s.status === 'DSQ').length,
+      };
+    })
+    .sort((a, b) => a.swimmer.lastName.localeCompare(b.swimmer.lastName, 'fr') || a.swimmer.firstName.localeCompare(b.swimmer.firstName, 'fr'));
+  const club = {
+    swum: recap.reduce((a, r) => a + r.swum, 0),
+    total: recap.reduce((a, r) => a + r.total, 0),
+    pbs: recap.reduce((a, r) => a + r.pbs, 0),
+    pbSwimmers: recap.filter((r) => r.pbs > 0).length,
+    gain: recap.reduce((a, r) => a + r.gain, 0),
+    podiums: recap.reduce((a, r) => a + r.podiums, 0),
+    finals: recap.reduce((a, r) => a + r.finals, 0),
+  };
+  const placeText = (p: number) => `${p}${p === 1 ? 're' : 'e'}`;
+  const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+
+  /** Aller à une partie de la page (défilement doux seulement sur une courte distance). */
+  const jumpTo = (target: string) => {
+    const el = document.getElementById(target);
+    if (!el) return;
+    const far = Math.abs(el.getBoundingClientRect().top) > 2 * window.innerHeight;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: far || reduce ? 'auto' : 'smooth', block: 'start' });
+  };
 
   const renderGroup = ({ swimmer, swims: list }: { swimmer: Swimmer; swims: Swim[] }) => {
       const days = new Map<string, Swim[]>();
@@ -297,6 +337,7 @@ export function MeetDetail({ id }: { id: string }) {
       return (
         <Section
           key={swimmer.id}
+          id={`meet-sw-${swimmer.id}`}
           title={
             <span className="hstack" style={{ gap: 10 }}>
               <Avatar swimmer={swimmer} size={30} />
@@ -434,37 +475,78 @@ export function MeetDetail({ id }: { id: string }) {
           )}
         </div>
 
-        {swum.length > 0 && mineGroups.length === 0 && <div className="group-title">L’ESN à cette compétition</div>}
-        {swum.length > 0 && (
-          <div className="tiles four" style={{ marginTop: 14 }}>
-            <div className="tile">
-              <div className="tile-label">Courses</div>
-              <div className="tile-value">{swum.length}</div>
-            </div>
-            <div className="tile">
-              <div className="tile-label">Records</div>
-              <div className="tile-value gold">{pbs.length}</div>
-            </div>
-            <div className="tile">
-              <div className="tile-label">Temps gagné</div>
-              <div className="tile-value good tnum">{totalGain > 0 ? formatTime(totalGain) : '—'}</div>
-            </div>
-            <div className="tile">
-              <div className="tile-label">Meilleurs pts</div>
-              <div className="tile-value">
-                {Math.max(
-                  0,
-                  ...swum.map(
-                    (s) =>
-                      pointsFor(
-                        s,
-                        data.swimmers.find((w) => w.id === s.swimmerId),
-                      ) ?? 0,
-                  ),
-                ) || '—'}
+        {/* Récap du club : chiffres de tous les nageurs de l'ESN, puis une ligne par nageur */}
+        {recap.length > 0 && (
+          <Section title="L’ESN à cette compétition" id="meet-club">
+            {club.swum > 0 && (
+              <div className="tiles four">
+                <div className="tile">
+                  <div className="tile-label">Nageurs</div>
+                  <div className="tile-value">{recap.length}</div>
+                  <div className="tile-sub">de l’ESN</div>
+                </div>
+                <div className="tile">
+                  <div className="tile-label">Courses</div>
+                  <div className="tile-value">{club.swum}</div>
+                  <div className="tile-sub">{club.total > club.swum ? `sur ${club.total} au programme` : 'nagées'}</div>
+                </div>
+                <div className="tile">
+                  <div className="tile-label">Records perso</div>
+                  <div className="tile-value gold">{club.pbs}</div>
+                  <div className="tile-sub">
+                    {club.pbs ? `${plural(club.pbSwimmers, 'nageur')} sur ${recap.length}${club.gain > 0 ? ` · −${formatTime(club.gain)}` : ''}` : 'pas encore'}
+                  </div>
+                </div>
+                <div className="tile">
+                  <div className="tile-label">Podiums</div>
+                  <div className="tile-value">{club.podiums}</div>
+                  <div className="tile-sub">{club.finals ? plural(club.finals, 'finale') : 'places 1 à 3'}</div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
+            {recap.length > 1 && (
+              <div className="list" style={{ marginTop: club.swum > 0 ? 12 : 0 }}>
+                {recap.map((r) => (
+                  <button key={r.swimmer.id} className="row" onClick={() => jumpTo(`meet-sw-${r.swimmer.id}`)}>
+                    <Avatar swimmer={r.swimmer} size={36} />
+                    <div className="row-body">
+                      <div className="row-title">{fullName(r.swimmer)}</div>
+                      <div className="row-sub">
+                        {r.swum === 0
+                          ? `${plural(r.total, 'course')} au programme`
+                          : [`${r.swum}${r.total > r.swum ? ` sur ${r.total}` : ''} ${r.swum > 1 || r.total > 1 ? 'courses' : 'course'}`, r.dsq ? `${r.dsq} disq.` : null]
+                              .filter(Boolean)
+                              .join('\u00a0· ')}
+                      </div>
+                      {(r.best || r.finals > 0) && (
+                        <div className="row-sub">
+                          {[
+                            r.best
+                              ? `${r.best.round === 'HEAT' || r.best.round === 'SEMI' ? 'Meilleur classement des séries' : 'Meilleure place'} : ${placeText(r.best.place!)} (${eventLabel(r.best.distance, r.best.stroke)})`
+                              : null,
+                            r.finals ? plural(r.finals, 'finale') : null,
+                          ]
+                            .filter(Boolean)
+                            .join('\u00a0· ')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="row-end">
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                        {r.pbs > 0 ? (
+                          <span className="badge pb">{r.pbs} PB</span>
+                        ) : (
+                          <span className="small muted">{r.swum ? 'Pas de PB' : 'À venir'}</span>
+                        )}
+                        {r.gain > 0 && <span className="small good tnum">−{formatTime(r.gain)}</span>}
+                      </div>
+                      <Icon name="chevronRight" className="chev" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Section>
         )}
 
         {/* Page longue (tous les nageurs de l'ESN, puis la compétition) : raccourcis vers chaque partie */}
@@ -479,18 +561,7 @@ export function MeetDetail({ id }: { id: string }) {
             ]
               .filter((x): x is string[] => !!x)
               .map(([target, label]) => (
-                <button
-                  key={target}
-                  className="chip"
-                  onClick={() => {
-                    const el = document.getElementById(target);
-                    if (!el) return;
-                    // Défilement doux seulement sur une courte distance : sur une longue page, il serait interrompu
-                    const far = Math.abs(el.getBoundingClientRect().top) > 2 * window.innerHeight;
-                    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                    el.scrollIntoView({ behavior: far || reduce ? 'auto' : 'smooth', block: 'start' });
-                  }}
-                >
+                <button key={target} className="chip" onClick={() => jumpTo(target)}>
                   {label}
                 </button>
               ))}
