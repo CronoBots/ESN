@@ -57,8 +57,8 @@ function useSheet(meet: Meet, swim: Swim) {
         .then((s) => alive && setSheet(s))
         .catch(() => alive && setSheet((cur) => cur ?? null));
     load();
-    // Pendant la compétition : séries et résultats rafraîchis toutes les 2 minutes
-    const timer = live ? setInterval(load, 120000) : undefined;
+    // Pendant la compétition : séries et résultats rafraîchis toutes les minutes
+    const timer = live ? setInterval(load, 60000) : undefined;
     return () => {
       alive = false;
       if (timer) clearInterval(timer);

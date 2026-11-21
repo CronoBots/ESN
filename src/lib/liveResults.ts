@@ -213,17 +213,42 @@ export function keepFinal(key: string, body: BodyInit): Promise<void> {
 
 const lenexCache = new Map<string, Promise<LenexMeet | null>>();
 
-/** Empreintes des feuilles d'une copie de livetiming (files.json), relues au plus une fois par minute. */
+/** Empreintes des feuilles d'une copie de livetiming (files.json), gardées 50 secondes (`maxAge`) : relues à chaque rafraîchissement d'une minute. */
 const versionsCache = new Map<string, { at: number; p: Promise<Record<string, string> | null> }>();
-function mirroredVersions(id: string): Promise<Record<string, string> | null> {
+function mirroredVersions(id: string, maxAge = 50000): Promise<Record<string, string> | null> {
   const c = versionsCache.get(id);
-  if (c && Date.now() - c.at < 60000) return c.p;
+  if (c && Date.now() - c.at < maxAge) return c.p;
   const p = fetch(liveUrl(id, 'files.json'), { cache: 'no-cache' })
     .then((r) => (r.ok ? (r.json() as Promise<{ files?: Record<string, string> }>) : null))
     .then((d) => d?.files ?? null)
     .catch(() => null);
   versionsCache.set(id, { at: Date.now(), p });
   return p;
+}
+
+/** Empreinte des feuilles des compétitions copiées en cours (null : une liste illisible). */
+async function mirroredSignature(meets: LiveMeet[], maxAge?: number): Promise<string | null> {
+  const parts: string[] = [];
+  for (const m of meets) {
+    if (!isMirrored(m.id) || m.status !== 'live') continue;
+    const v = await mirroredVersions(m.id, maxAge);
+    if (!v) return null;
+    parts.push(`${m.id}:${Object.keys(v).sort().map((f) => `${f}=${v[f]}`).join(',')}`);
+  }
+  return parts.join('|');
+}
+
+/** Empreinte des feuilles lues par la dernière recherche. */
+let syncedSignature: string | null = null;
+
+/**
+ * Compétition copiée avec le site en cours : une feuille a-t-elle été publiée (ou corrigée) depuis la dernière
+ * recherche ? Vérification légère (liste des empreintes, quelques Ko, souvent inchangée), faite toutes les
+ * minutes tant que l'application est à l'écran : un résultat est lu dès sa copie, sans attendre 5 minutes.
+ */
+export async function mirroredChanged(today = todayISO()): Promise<boolean> {
+  const sig = await mirroredSignature(await listMirroredMeets(today), 0);
+  return !!sig && sig !== syncedSignature;
 }
 
 /**
@@ -476,7 +501,8 @@ export function sheetFromLenex(l: LenexMeet, eventNo: number): EventSheet | null
 export function loadEventSheet(liveId: string, eventNo: number, live: boolean, settled = false): Promise<EventSheet | null> {
   const key = `${liveId}/${eventNo}`;
   const cached = sheetCache.get(key);
-  if (cached && (!live || Date.now() - cached.at < 120000)) return cached.p;
+  // En direct : relue au bout de 50 secondes (rafraîchissement de l'écran toutes les minutes)
+  if (cached && (!live || Date.now() - cached.at < 50000)) return cached.p;
   const kept = liveUrl(liveId, `epreuve-${eventNo}.json`);
   const p = (async () => {
     const saved = settled ? await readFinal(kept) : null;
@@ -613,6 +639,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
   // live.swimrankings.net indisponible : les compétitions copiées avec le site sont quand même lues
   const [live, mirrored] = await Promise.all([listLiveMeets().catch((e: unknown) => e as Error), listMirroredMeets(today)]);
   if (live instanceof Error && !mirrored.length) throw live;
+  // Feuilles copiées lues par cette recherche (les mêmes empreintes, gardées 50 secondes)
+  const signature = await mirroredSignature(mirrored);
   const all = mergeMeetLists(live instanceof Error ? [] : live, mirrored);
   const meets = all.filter((m) => m.status !== 'upcoming' && (!m.startDate || m.startDate <= today));
   // Nouvelle version de la recherche : toutes les compétitions sont relues (sans doublon)
@@ -722,6 +750,7 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
     }
     actions.updateLiveSync({ processed: next, lastCheck: Date.now(), engine: SYNC_ENGINE });
   });
+  syncedSignature = signature;
   if (added.length) {
     const flags = computePbFlags(getState().swims, getState().settings.includeTraining);
     result.pbs = added.filter((s) => flags.get(s.id)?.isPB).length;

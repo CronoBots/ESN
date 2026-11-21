@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { getState, useData } from './store/store';
 import { useRoute, navigate } from './router';
 import { UiHost, overlay } from './components/ui';
-import { isSyncing, shouldAutoSyncLive, syncLive, type LiveSyncResult } from './lib/liveResults';
+import { isSyncing, mirroredChanged, shouldAutoSyncLive, syncLive, type LiveSyncResult } from './lib/liveResults';
 import { Icon, type IconName } from './components/Icon';
 import { Home } from './screens/Home';
 import { Meets, MeetDetail } from './screens/Meets';
@@ -109,16 +109,21 @@ export function App() {
     };
     const run = () => {
       // hors-ligne ou site indisponible : nouvel essai à la prochaine ouverture
-      // Jour de compétition au calendrier du club : toutes les 5 minutes, pour la trouver et suivre les résultats
+      // Jour de compétition au calendrier du club : toutes les 5 minutes, pour la trouver et suivre les résultats ;
+      // application à l'écran : aussi dès qu'une nouvelle feuille de la compétition est copiée avec le site (vérifié chaque minute)
       loadClubCalendar()
-        .then((cal) => {
-          if (!isSyncing() && shouldAutoSyncLive(isClubCompetitionDay(cal, todayISO()))) return syncLive().then(notify);
+        .then(async (cal) => {
+          if (isSyncing()) return;
+          const day = isClubCompetitionDay(cal, todayISO());
+          const due =
+            shouldAutoSyncLive(day) || (day && document.visibilityState === 'visible' && getState().swimmers.length > 0 && (await mirroredChanged()));
+          if (due && !isSyncing()) return syncLive().then(notify);
         })
         .catch(() => {});
     };
     const t = setTimeout(run, 1500);
     // Pendant une compétition, vérification régulière tant que l'app est ouverte
-    const every = setInterval(run, 5 * 60 * 1000);
+    const every = setInterval(run, 60 * 1000);
     const onVisible = () => document.visibilityState === 'visible' && run();
     window.addEventListener('online', run);
     document.addEventListener('visibilitychange', onVisible);
