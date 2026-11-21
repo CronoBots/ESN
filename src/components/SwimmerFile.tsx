@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 import { TimelineMeetCard, useTimeline } from './MeetTimeline';
 import { navigate } from '../router';
 import { achievements, chronoCompare, pointsFor, swimmerSummary } from '../lib/stats';
-import { formatDate, formatRange, formatShortWeekday, relativeDay, sportAge, seasonLabel, seasonOf, seasonShort, todayISO } from '../lib/dates';
+import { formatDate, formatRange, formatShortWeekday, meetBadge, sportAge, seasonLabel, seasonOf, seasonShort, todayISO } from '../lib/dates';
 import { courseLabel, eventLabel, STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
@@ -15,7 +15,7 @@ import { bestTimesTable, careerSpan, clubRecordsHeld, pointsTrend, seasonsSummar
 import { qualificationHighlights, qualifyingSummary } from '../lib/qualifying';
 import { groupsLabel, publishedMeet, upcomingClubEvents } from '../lib/clubCalendar';
 import { swimrankingsUrl } from '../lib/swimrankings';
-import { capitalize, deName } from '../lib/text';
+import { deName } from '../lib/text';
 import { gapLabel, LevelGoals, useLevelGoals } from './Levels';
 import { recordComplete } from '../lib/clubRecords';
 import { AllroundCard, championshipShort, QualifyingGoals, useQualifying } from './Qualifying';
@@ -425,7 +425,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                       </div>
                     </div>
                     <span className="badge first" style={{ height: 24, fontSize: 12 }}>
-                      {capitalize(relativeDay(upcoming.startDate))}
+                      {meetBadge(upcoming.startDate, today)}
                     </span>
                   </div>
                 </div>
@@ -474,7 +474,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                     </div>
                   </div>
                   <span className="badge first" style={{ height: 24, fontSize: 12 }}>
-                    {clubMeet.meet.startDate <= today ? 'En cours' : capitalize(relativeDay(clubMeet.meet.startDate))}
+                    {meetBadge(clubMeet.meet.startDate, today)}
                   </span>
                 </div>
                 <div className="club-event-meta">

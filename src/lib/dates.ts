@@ -95,6 +95,13 @@ export function relativeDay(iso: string, ref = todayISO()): string {
   return diff > 0 ? `dans ${txt}` : `il y a ${txt}`;
 }
 
+/** Badge d'une compétition : « En cours » dès son premier jour (jamais « Hier »), sinon « Demain », « Dans 3 jours »… */
+export function meetBadge(startDate: string, today = todayISO()): string {
+  if (startDate <= today) return 'En cours';
+  const t = relativeDay(startDate, today);
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 /**
  * Saison sportive (septembre → août) : 2026-11-14 → "2026-2027".
  */
