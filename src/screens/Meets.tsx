@@ -17,6 +17,9 @@ import { findResultsNow } from './autoResults';
 import { capitalize, deName } from '../lib/text';
 import { ClubEventRow, GroupsBadge, useClubCalendar } from '../components/ClubCalendar';
 import { MeetOverviewSections, type OverviewSections } from '../components/MeetOverview';
+import { ClubMeetRecap } from '../components/MeetRecap';
+import { meetSummaries } from '../lib/meetRecap';
+import { spacesEnabled } from '../lib/features';
 import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
 
 
@@ -30,10 +33,30 @@ function readOrder(): Order {
   }
 }
 
+const MEETS_VIEW = 'esn-competitions-vue';
+
 export function Meets() {
   const data = useData();
   const pbFlags = usePbFlags();
   const swimmer = useSelectedSwimmer();
+  // Deux espaces : toutes les compétitions du club (bilan de l'ESN), ou celles de mes nageurs
+  const spaces = spacesEnabled();
+  const [view, setViewState] = useState<'club' | 'mine'>(() => {
+    try {
+      return localStorage.getItem(MEETS_VIEW) === 'mine' ? 'mine' : 'club';
+    } catch {
+      return 'club';
+    }
+  });
+  const setView = (v: 'club' | 'mine') => {
+    setViewState(v);
+    try {
+      localStorage.setItem(MEETS_VIEW, v);
+    } catch {
+      /* préférence non mémorisée */
+    }
+  };
+  const clubView = spaces && view === 'club';
   const timeline = useTimeline(swimmer);
   const [order, setOrderState] = useState<Order>(readOrder);
   const setOrder = (o: Order) => {
@@ -52,6 +75,14 @@ export function Meets() {
       for (const s of swimsOf(data.swims, swimmer.id)) if (s.meetId) map.set(s.meetId, (map.get(s.meetId) ?? 0) + 1);
     return map;
   }, [data.swims, swimmer]);
+
+  // Nageurs de l'ESN engagés à chaque compétition (vue du club)
+  const engagedByMeet = useMemo(() => {
+    const members = new Set(data.swimmers.filter((s) => s.member && !s.former).map((s) => s.id));
+    const sets = new Map<string, Set<string>>();
+    for (const s of data.swims) if (s.meetId && members.has(s.swimmerId)) sets.set(s.meetId, (sets.get(s.meetId) ?? new Set()).add(s.swimmerId));
+    return new Map([...sets].map(([id, set]) => [id, set.size]));
+  }, [data.swims, data.swimmers]);
 
   // Compétitions où au moins un membre actuel de l'ESN a nagé ou est inscrit. Celles des seuls anciens
   // membres (souvent déjà dans un autre club) restent sur leur fiche, pas dans ces listes.
@@ -100,13 +131,28 @@ export function Meets() {
       <NavBar
         title="Compétitions"
         subtitle={
-          swimmer && pastCount > 0
+          clubView
+            ? 'Calendrier et résultats de l’ESN'
+            : swimmer && pastCount > 0
             ? `${pastCount} compétition${pastCount > 1 ? 's' : ''} nagée${pastCount > 1 ? 's' : ''} par ${swimmer.firstName}`
             : undefined
         }
       />
       <main className="page">
-        {swimmer && <SwimmerChips swimmer={swimmer} />}
+        {spaces && (
+          <div style={{ marginBottom: 14 }}>
+            <Segmented
+              value={view}
+              onChange={setView}
+              ariaLabel="Compétitions affichées"
+              options={[
+                { id: 'club', label: 'Tout le club' },
+                { id: 'mine', label: 'Mes nageurs' },
+              ]}
+            />
+          </div>
+        )}
+        {swimmer && !clubView && <SwimmerChips swimmer={swimmer} />}
 
         {comingUp.length > 0 && (
           <Section title="À venir">
@@ -127,11 +173,18 @@ export function Meets() {
                       </div>
                       <div className="tl-badges">
                         <span className="badge first">{ongoing ? 'En cours' : capitalize(relativeDay(m.startDate))}</span>
-                        {n > 0 && swimmer && (
-                          <span className="badge">
-                            {n} épreuve{n > 1 ? 's' : ''} au programme
-                          </span>
-                        )}
+                        {clubView
+                          ? (engagedByMeet.get(m.id) ?? 0) > 0 && (
+                              <span className="badge">
+                                {engagedByMeet.get(m.id)} nageur{(engagedByMeet.get(m.id) ?? 0) > 1 ? 's' : ''} de l’ESN
+                              </span>
+                            )
+                          : n > 0 &&
+                            swimmer && (
+                              <span className="badge">
+                                {n} épreuve{n > 1 ? 's' : ''} au programme
+                              </span>
+                            )}
                         {planned && planned.groups.length > 0 && <GroupsBadge groups={planned.groups} names={cal!.groupNames} />}
                       </div>
                     </div>
@@ -150,6 +203,10 @@ export function Meets() {
         )}
 
 
+        {clubView ? (
+          <ClubPastMeets clubMeetIds={clubMeetIds} />
+        ) : (
+          <>
         {seasons.length === 0 ? (
           <Section title={upcoming.length ? 'Résultats' : undefined}>
             <div className="card">
@@ -228,6 +285,9 @@ export function Meets() {
           </Section>
         )}
 
+          </>
+        )}
+
         {data.meets.length === 0 && seasons.length === 0 && (
           <div className="section-foot" style={{ marginTop: 12 }}>
             Les compétitions apparaissent toutes seules : programme dès la publication des listes de départ, puis résultats.
@@ -235,6 +295,64 @@ export function Meets() {
         )}
       </main>
     </>
+  );
+}
+
+/** Vue du club : toutes les compétitions passées de l'ESN par saison, avec leur bilan en une ligne. */
+function ClubPastMeets({ clubMeetIds }: { clubMeetIds: Set<string> }) {
+  const data = useData();
+  const pbFlags = usePbFlags();
+  const today = todayISO();
+  const [all, setAll] = useState(false);
+  const summaries = useMemo(() => meetSummaries(data.swims, data.swimmers, pbFlags), [data.swims, data.swimmers, pbFlags]);
+  const past = useMemo(
+    () =>
+      data.meets
+        .filter((m) => m.startDate <= today && clubMeetIds.has(m.id) && (summaries.get(m.id)?.swum ?? 0) > 0)
+        .sort((a, b) => (a.startDate < b.startDate ? 1 : -1)),
+    [data.meets, clubMeetIds, summaries, today],
+  );
+  const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+  const recent = past.filter((m) => m.startDate >= yearAgo);
+  const shown = all || recent.length === 0 ? past : recent;
+  const seasons = new Map<string, Meet[]>();
+  for (const m of shown) seasons.set(seasonOf(m.startDate), [...(seasons.get(seasonOf(m.startDate)) ?? []), m]);
+  const plural = (n: number, w: string) => `${n} ${w}${n > 1 ? 's' : ''}`;
+  if (!past.length) return null;
+  return (
+    <Section title="Résultats du club">
+      {[...seasons.entries()].map(([season, meets]) => (
+        <Fragment key={season}>
+          <div className="group-head">{seasonLabel(season)}</div>
+          <div className="list">
+            {meets.map((m) => {
+              const r = summaries.get(m.id)!;
+              return (
+                <button key={m.id} className="row" onClick={() => navigate(`/meet/${m.id}`)}>
+                  <DateBlock iso={m.startDate} accent={(m.endDate ?? m.startDate) >= today} />
+                  <div className="row-body">
+                    <div className="row-title">{m.name}</div>
+                    <div className="row-sub">{[formatRange(m.startDate, m.endDate), m.city, courseLabel(m.course)].filter(Boolean).join('\u00a0· ')}</div>
+                    <div className="row-sub">
+                      {[plural(r.swimmers, 'nageur'), plural(r.swum, 'course'), r.pbs ? `${plural(r.pbs, 'record')} perso` : null, r.podiums ? plural(r.podiums, 'podium') : null]
+                        .filter(Boolean)
+                        .join('\u00a0· ')}
+                    </div>
+                  </div>
+                  <Icon name="chevronRight" className="chev" />
+                </button>
+              );
+            })}
+          </div>
+        </Fragment>
+      ))}
+      {shown.length < past.length && (
+        <button className="btn ghost block" style={{ marginTop: 10 }} onClick={() => setAll(true)}>
+          Voir les {past.length - shown.length} compétitions plus anciennes
+        </button>
+      )}
+      <div className="section-foot">Compétitions des nageurs actuels de l’ESN, avec le bilan du club : touchez-en une pour le récap complet.</div>
+    </Section>
   );
 }
 
@@ -286,41 +404,6 @@ export function MeetDetail({ id }: { id: string }) {
   // Courses des nageurs suivis (ou du nageur choisi) : agenda et tuiles. Sans nageur suivi, les tuiles
   // portent sur tout le club (titrées comme telles) et l'agenda ne reçoit que les dates, sans alarme.
   const mine = mineGroups.flatMap((g) => g.swims);
-
-  // Récap de l'ESN : tous les nageurs du club à cette compétition (pas seulement le nageur choisi)
-  const recap = bySwimmer
-    .map(({ swimmer, swims: list }) => {
-      const done = list.filter(isValidResult);
-      const pbList = done.filter((s) => pbFlags.get(s.id)?.isPB);
-      // Classement : épreuves au temps et finales (pas la place dans les séries)
-      const ranked = done.filter((s) => s.place != null && (s.round === 'TIM' || s.round === 'FINAL')).sort((a, b) => a.place! - b.place!);
-      // Seulement des séries éliminatoires : son meilleur classement des séries
-      const heats = done.filter((s) => s.place != null && (s.round === 'HEAT' || s.round === 'SEMI')).sort((a, b) => a.place! - b.place!);
-      return {
-        swimmer,
-        // Au programme (sans les forfaits) et nagées (disqualifications comprises)
-        total: list.filter((s) => s.status !== 'DNS').length,
-        swum: list.filter((s) => s.status === 'DSQ' || s.status === 'DNF' || (s.status === 'OK' && s.timeCs != null)).length,
-        pbs: pbList.length,
-        gain: pbList.reduce((a, s) => a - (pbFlags.get(s.id)?.deltaCs ?? 0), 0),
-        best: ranked[0] ?? heats[0],
-        podiums: ranked.filter((s) => s.place! <= 3).length,
-        finals: done.filter((s) => s.round === 'FINAL').length,
-        dsq: list.filter((s) => s.status === 'DSQ').length,
-      };
-    })
-    .sort((a, b) => a.swimmer.lastName.localeCompare(b.swimmer.lastName, 'fr') || a.swimmer.firstName.localeCompare(b.swimmer.firstName, 'fr'));
-  const club = {
-    swum: recap.reduce((a, r) => a + r.swum, 0),
-    total: recap.reduce((a, r) => a + r.total, 0),
-    pbs: recap.reduce((a, r) => a + r.pbs, 0),
-    pbSwimmers: recap.filter((r) => r.pbs > 0).length,
-    gain: recap.reduce((a, r) => a + r.gain, 0),
-    podiums: recap.reduce((a, r) => a + r.podiums, 0),
-    finals: recap.reduce((a, r) => a + r.finals, 0),
-  };
-  const placeText = (p: number) => `${p}${p === 1 ? 're' : 'e'}`;
-  const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
   /** Aller à une partie de la page (défilement doux seulement sur une courte distance). */
   const jumpTo = (target: string) => {
@@ -475,79 +558,8 @@ export function MeetDetail({ id }: { id: string }) {
           )}
         </div>
 
-        {/* Récap du club : chiffres de tous les nageurs de l'ESN, puis une ligne par nageur */}
-        {recap.length > 0 && (
-          <Section title="L’ESN à cette compétition" id="meet-club">
-            {club.swum > 0 && (
-              <div className="tiles four">
-                <div className="tile">
-                  <div className="tile-label">Nageurs</div>
-                  <div className="tile-value">{recap.length}</div>
-                  <div className="tile-sub">de l’ESN</div>
-                </div>
-                <div className="tile">
-                  <div className="tile-label">Courses</div>
-                  <div className="tile-value">{club.swum}</div>
-                  <div className="tile-sub">{club.total > club.swum ? `sur ${club.total} au programme` : 'nagées'}</div>
-                </div>
-                <div className="tile">
-                  <div className="tile-label">Records perso</div>
-                  <div className="tile-value gold">{club.pbs}</div>
-                  <div className="tile-sub">
-                    {club.pbs ? `${plural(club.pbSwimmers, 'nageur')} sur ${recap.length}${club.gain > 0 ? ` · −${formatTime(club.gain)}` : ''}` : 'pas encore'}
-                  </div>
-                </div>
-                <div className="tile">
-                  <div className="tile-label">Podiums</div>
-                  <div className="tile-value">{club.podiums}</div>
-                  <div className="tile-sub">{club.finals ? plural(club.finals, 'finale') : 'places 1 à 3'}</div>
-                </div>
-              </div>
-            )}
-            {recap.length > 1 && (
-              <div className="list" style={{ marginTop: club.swum > 0 ? 12 : 0 }}>
-                {recap.map((r) => (
-                  <button key={r.swimmer.id} className="row" onClick={() => jumpTo(`meet-sw-${r.swimmer.id}`)}>
-                    <Avatar swimmer={r.swimmer} size={36} />
-                    <div className="row-body">
-                      <div className="row-title">{fullName(r.swimmer)}</div>
-                      <div className="row-sub">
-                        {r.swum === 0
-                          ? `${plural(r.total, 'course')} au programme`
-                          : [`${r.swum}${r.total > r.swum ? ` sur ${r.total}` : ''} ${r.swum > 1 || r.total > 1 ? 'courses' : 'course'}`, r.dsq ? `${r.dsq} disq.` : null]
-                              .filter(Boolean)
-                              .join('\u00a0· ')}
-                      </div>
-                      {(r.best || r.finals > 0) && (
-                        <div className="row-sub">
-                          {[
-                            r.best
-                              ? `${r.best.round === 'HEAT' || r.best.round === 'SEMI' ? 'Meilleur classement des séries' : 'Meilleure place'} : ${placeText(r.best.place!)} (${eventLabel(r.best.distance, r.best.stroke)})`
-                              : null,
-                            r.finals ? plural(r.finals, 'finale') : null,
-                          ]
-                            .filter(Boolean)
-                            .join('\u00a0· ')}
-                        </div>
-                      )}
-                    </div>
-                    <div className="row-end">
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                        {r.pbs > 0 ? (
-                          <span className="badge pb">{r.pbs} PB</span>
-                        ) : (
-                          <span className="small muted">{r.swum ? 'Pas de PB' : 'À venir'}</span>
-                        )}
-                        {r.gain > 0 && <span className="small good tnum">−{formatTime(r.gain)}</span>}
-                      </div>
-                      <Icon name="chevronRight" className="chev" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </Section>
-        )}
+        {/* Récap du club : chiffres de tous les nageurs de l'ESN, records, limites, finales, puis une ligne par nageur */}
+        <ClubMeetRecap meet={meet} onJump={(id) => jumpTo(`meet-sw-${id}`)} />
 
         {/* Page longue (tous les nageurs de l'ESN, puis la compétition) : raccourcis vers chaque partie */}
         {(bySwimmer.length > 2 || overview) && (

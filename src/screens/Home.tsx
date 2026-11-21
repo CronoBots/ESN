@@ -9,6 +9,8 @@ import { ClubWeekendCard } from './ClubWeekend';
 import { clubSummary, openFollow, openFollowPicker, useRosterAvailable } from './Club';
 import type { Swimmer } from '../store/types';
 import { SwimmerFile } from '../components/SwimmerFile';
+import { LiveBanner } from '../components/LiveBanner';
+import { spacesEnabled } from '../lib/features';
 
 export function Home() {
   const data = useData();
@@ -20,7 +22,7 @@ export function Home() {
   if (noChild) {
     return (
       <>
-        <NavBar title="Accueil" brand={<BrandLogo height={88} />} />
+        <NavBar title={spacesEnabled() ? 'Mon espace' : 'Accueil'} brand={<BrandLogo height={88} />} />
         <main className="page">
           <Empty
             icon="person"
@@ -31,14 +33,14 @@ export function Home() {
                 <button className="btn block" onClick={() => openFollowPicker()}>
                   <Icon name="heart" /> Choisir les nageurs suivis
                 </button>
-                <button className="btn ghost block" onClick={() => navigate('/club')}>
-                  <Icon name="users" /> Voir les nageurs du club
+                <button className="btn ghost block" onClick={() => navigate(spacesEnabled() ? '/esn' : '/club')}>
+                  <Icon name="users" /> {spacesEnabled() ? 'Voir l’espace du club' : 'Voir les nageurs du club'}
                 </button>
               </div>
             }
           />
           {/* La vie du club, même sans nageur suivi */}
-          <ClubWeekendCard />
+          {spacesEnabled() ? <LiveBanner /> : <ClubWeekendCard />}
         </main>
       </>
     );
@@ -47,7 +49,7 @@ export function Home() {
   if (!swimmer) {
     return (
       <>
-        <NavBar title="Accueil" brand={<BrandLogo height={88} />} />
+        <NavBar title={spacesEnabled() ? 'Mon espace' : 'Accueil'} brand={<BrandLogo height={88} />} />
         <main className="page">
           <Empty
             icon="person"
@@ -66,8 +68,9 @@ export function Home() {
 
   return (
     <>
-      <NavBar title="Accueil" wide brand={<BrandLogo height={88} />} />
+      <NavBar title={spacesEnabled() ? 'Mon espace' : 'Accueil'} wide brand={<BrandLogo height={88} />} />
       <main className="page wide">
+        {spacesEnabled() && <LiveBanner />}
         {swimmers.length > 0 && (
           <div className="switcher" role="tablist" aria-label="Choisir un nageur">
             {swimmers.map((s) => (
@@ -94,7 +97,9 @@ export function Home() {
 }
 
 function HomeContent({ swimmer }: { swimmer: Swimmer }) {
-  // L'accueil EST la fiche complète du nageur choisi (rien à chercher ailleurs), puis la vie du club
+  // L'accueil EST la fiche complète du nageur choisi (rien à chercher ailleurs). Avec les deux espaces,
+  // la vie du club est dans l'onglet Club ; sinon elle suit la fiche.
+  if (spacesEnabled()) return <SwimmerFile swimmer={swimmer} home afterHero={<InstallBanner />} />;
   return (
     <SwimmerFile swimmer={swimmer} home afterHero={<InstallBanner />}>
       <ClubWeekendCard />
@@ -104,7 +109,7 @@ function HomeContent({ swimmer }: { swimmer: Swimmer }) {
 }
 
 /** Accès aux nageurs du club (ou à leur chargement s'il n'a pas encore pu se faire). */
-function ClubCard() {
+export function ClubCard() {
   const data = useData();
   const available = useRosterAvailable();
   const club = data.settings.club;

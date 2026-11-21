@@ -18,16 +18,27 @@ import { Onboarding } from './screens/Onboarding';
 import { LevelsScreen } from './screens/Levels';
 import { ChampionshipsScreen } from './screens/Championships';
 import { ClubScreen, ensureClub, refreshClubRoster } from './screens/Club';
+import { ClubHome } from './screens/ClubHome';
+import { spacesEnabled } from './lib/features';
 import { resultsMessage } from './screens/autoResults';
 import { loadClubCalendar } from './components/ClubCalendar';
 import { isClubCompetitionDay } from './lib/clubCalendar';
 import { todayISO } from './lib/dates';
 import type { Course, Stroke } from './store/types';
 
-const TABS: { id: string; path: string; label: string; icon: IconName }[] = [
+type Tab = { id: string; path: string; label: string; icon: IconName };
+const TABS: Tab[] = [
   { id: 'home', path: '/', label: 'Accueil', icon: 'home' },
   { id: 'meets', path: '/meets', label: 'Compétitions', icon: 'calendar' },
   { id: 'progress', path: '/progress', label: 'Progression', icon: 'chart' },
+  { id: 'records', path: '/records', label: 'Records', icon: 'trophy' },
+  { id: 'settings', path: '/settings', label: 'Réglages', icon: 'gear' },
+];
+/** Deux espaces : le mien (mes nageurs ; la progression est dans leur fiche) et celui du club. */
+const SPACE_TABS: Tab[] = [
+  { id: 'home', path: '/', label: 'Mon espace', icon: 'person' },
+  { id: 'club', path: '/esn', label: 'Club', icon: 'users' },
+  { id: 'meets', path: '/meets', label: 'Compétitions', icon: 'calendar' },
   { id: 'records', path: '/records', label: 'Records', icon: 'trophy' },
   { id: 'settings', path: '/settings', label: 'Réglages', icon: 'gear' },
 ];
@@ -38,6 +49,12 @@ let lastTab = 'home';
 
 function activeTab(path: string[]): string {
   const p = path[0] ?? '';
+  if (spacesEnabled()) {
+    // Pages du club ouvertes depuis l'espace du club : l'onglet Club reste en surbrillance
+    if (p === 'esn') return (lastTab = 'club');
+    if (p === 'progress') return (lastTab = 'home');
+    if (p === 'club' || p === 'club-weekend' || p === 'club-records' || p === 'rankings') return lastTab === 'records' ? 'records' : (lastTab = 'club');
+  }
   if (p === 'swim' || p === 'swimmer' || p === 'club' || p === 'event' || p === 'club-weekend' || p === 'levels' || p === 'championships') return lastTab;
   if (p === 'meets' || p === 'meet') lastTab = 'meets';
   else if (p === 'records' || p === 'rankings' || p === 'club-records') lastTab = 'records';
@@ -82,6 +99,8 @@ function Screen({ path }: { path: string[] }) {
       return <About />;
     case 'club':
       return <ClubScreen />;
+    case 'esn':
+      return <ClubHome />;
     default:
       return <Home />;
   }
@@ -182,11 +201,12 @@ export function App() {
   }
 
   const tab = activeTab(route.path);
+  const tabs = spacesEnabled() ? SPACE_TABS : TABS;
 
   return (
     <div className="app">
       <nav className="sidebar" aria-label="Navigation principale">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} className={`side-item${tab === t.id ? ' active' : ''}`} onClick={() => navigate(t.path)} aria-current={tab === t.id ? 'page' : undefined}>
             <Icon name={t.icon} />
             {t.label}
@@ -203,7 +223,7 @@ export function App() {
       </div>
       <div className="tabbar-fade" aria-hidden="true" />
       <nav className="tabbar" aria-label="Navigation principale">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} className={`tab${tab === t.id ? ' active' : ''}`} onClick={() => navigate(t.path)} aria-current={tab === t.id ? 'page' : undefined}>
             <Icon name={t.icon} />
             {t.label}

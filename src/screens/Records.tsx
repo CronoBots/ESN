@@ -3,6 +3,8 @@ import { actions, useData } from '../store/store';
 import { fullName, hasClubMembers, isFormerMember, mySwimmers, swimsOf, useSelectedSwimmer } from '../store/hooks';
 import { Avatar, Empty, NavBar, Row, Section, Segmented, StrokeDot, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { ClubRecordsHub } from '../components/ClubRecordsHub';
+import { spacesEnabled } from '../lib/features';
 import { navigate } from '../router';
 import { COURSES, STROKES, STROKE_BY_ID, distancesFor, eventLabel, courseLabel } from '../lib/events';
 import { countsForRecords, pointsFor, chronoCompare } from '../lib/stats';
@@ -32,9 +34,29 @@ export function SwimmerChips({ swimmer }: { swimmer: Swimmer }) {
   );
 }
 
+const RECORDS_VIEW = 'esn-records-vue';
+
 export function Records() {
   const data = useData();
   const swimmer = useSelectedSwimmer();
+  // Deux espaces : mes nageurs, ou le club (records et classements de l'ESN)
+  const spaces = spacesEnabled();
+  const [view, setViewState] = useState<'mine' | 'club'>(() => {
+    try {
+      return localStorage.getItem(RECORDS_VIEW) === 'club' ? 'club' : 'mine';
+    } catch {
+      return 'mine';
+    }
+  });
+  const setView = (v: 'mine' | 'club') => {
+    setViewState(v);
+    try {
+      localStorage.setItem(RECORDS_VIEW, v);
+    } catch {
+      /* préférence non mémorisée */
+    }
+  };
+  const clubView = spaces && view === 'club';
   const [course, setCourse] = useState<Course>(data.settings.defaultCourse);
   const [scope, setScope] = useState<'all' | 'season'>('all');
   const include = data.settings.includeTraining;
@@ -71,7 +93,7 @@ export function Records() {
     <>
       <NavBar
         title="Records"
-        subtitle={swimmer ? `Meilleurs temps ${deName(swimmer.firstName)}` : undefined}
+        subtitle={clubView ? 'Records et classements de l’ESN' : swimmer ? `Meilleurs temps ${deName(swimmer.firstName)}` : undefined}
         right={
           <button className="icon-btn" onClick={() => navigate('/rankings')} aria-label="Classements">
             <Icon name="ranking" />
@@ -79,7 +101,22 @@ export function Records() {
         }
       />
       <main className="page">
-        {!swimmer ? (
+        {spaces && (
+          <div style={{ marginBottom: 14 }}>
+            <Segmented
+              value={view}
+              onChange={setView}
+              ariaLabel="Records affichés"
+              options={[
+                { id: 'mine', label: 'Mes nageurs' },
+                { id: 'club', label: 'Club' },
+              ]}
+            />
+          </div>
+        )}
+        {clubView ? (
+          <ClubRecordsHub />
+        ) : !swimmer ? (
           <Empty icon="trophy" title="Aucun nageur" text="Ajoutez un nageur pour voir ses records." />
         ) : (
           <>
@@ -191,7 +228,7 @@ export function Records() {
             </div>
           </>
         )}
-        {hasClubMembers(data.swimmers) && (
+        {!spaces && hasClubMembers(data.swimmers) && (
           <Section title="Le club">
             <div className="list">
               <Row icon="trophy" iconBg="#f5a400" title="Records du club" sub="Meilleurs temps de l’ESN, par épreuve et par âge" chevron onClick={() => navigate('/club-records')} />
