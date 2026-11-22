@@ -13,7 +13,7 @@ import {
   type QualifyingData,
 } from '../lib/qualifying';
 import { courseLabel, eventLabel } from '../lib/events';
-import { formatDate, formatRange, todayISO } from '../lib/dates';
+import { todayISO, formatDate, formatRange, swimDate } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { navigate } from '../router';
 import { Empty, Section, StrokeTag } from './ui';
@@ -195,7 +195,7 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
                 <div className="row-body">
                   <div className="row-title">{e.events.map(eventName).join(' ou ')}</div>
                   <div className="row-sub">
-                    {e.best ? `${formatTime(e.best.timeCs)} · ${courseLabel(e.best.course)} · ${formatDate(e.best.date)}` : 'Pas encore de temps sur la période'}
+                    {e.best ? `${formatTime(e.best.timeCs)} · ${courseLabel(e.best.course)} · ${swimDate(e.best)}` : 'Pas encore de temps sur la période'}
                   </div>
                 </div>
                 <div className="row-end">

@@ -6,7 +6,7 @@ import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { COURSES, STROKES, distancesFor, eventLabel } from '../lib/events';
 import { AGE_BANDS, ageAt, bandForAge, clubRecords, recordComplete, recordKey, shortcutSwimmer } from '../lib/clubRecords';
-import { formatDate } from '../lib/dates';
+import { swimDate } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { pointsFor } from '../lib/stats';
 import type { Course, Gender } from '../store/types';
@@ -110,7 +110,7 @@ export function ClubRecords() {
                             {age != null ? ` · à ${age} ans` : ''}
                             {swimmer.former ? ' · ancien membre' : ''}
                           </div>
-                          <div className="row-sub">{[formatDate(swim.date), meet?.name].filter(Boolean).join('\u00a0· ')}</div>
+                          <div className="row-sub">{[swimDate(swim), meet?.name].filter(Boolean).join('\u00a0· ')}</div>
                           {!recordComplete(course, d, st.id) && <div className="row-sub record-partial">Meilleur temps connu : anciens membres pas encore relevés</div>}
                         </div>
                         <div className="row-end">

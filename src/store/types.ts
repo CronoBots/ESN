@@ -53,6 +53,12 @@ export interface Meet {
   createdAt: number;
 }
 
+/** Dates d'une compétition (AAAA-MM-JJ), du premier au dernier jour. */
+export interface DayRange {
+  from: string;
+  to: string;
+}
+
 export interface Swim {
   id: string;
   swimmerId: string;
@@ -60,6 +66,11 @@ export interface Swim {
   context: SwimContext;
   /** AAAA-MM-JJ */
   date: string;
+  /**
+   * Jour de la course non relevé (ancienne course ajoutée d'après la page d'une compétition de plusieurs jours) :
+   * dates de la compétition, affichées à la place du jour. `date` reste un jour de la compétition (tri, âge, saison).
+   */
+  dayRange?: DayRange;
   /** HH:MM (heure de passage prévue) */
   startTime?: string;
   distance: number;

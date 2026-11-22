@@ -1,5 +1,5 @@
-import type { Course, Gender, Round, Stroke } from '../store/types';
-import { makeISO, monthFromToken } from './dates';
+import type { Course, DayRange, Gender, Round, Stroke } from '../store/types';
+import { isValidISO, makeISO, monthFromToken } from './dates';
 import { parseTime } from './time';
 import { isValidEvent } from './events';
 
@@ -27,6 +27,8 @@ export interface ParsedSwim {
   note?: string;
   points?: number;
   date: string;
+  /** Jour non relevé : dates de la compétition (13e colonne de l'historique du club, « AAAA-MM-JJ/AAAA-MM-JJ »). */
+  dayRange?: DayRange;
   city?: string;
   meet?: string;
   /** Vrai si le bassin n'a pas été trouvé (25 m supposé). */
@@ -382,7 +384,12 @@ export function parseSwimrankings(text: string): ParseResult {
   // Disqualification, forfait, abandon : « DSQ », « DNS » ou « DNF » à la place du temps, raison de la
   // disqualification en 12e colonne ; ligne commencée par « @@ » dans l'historique publié : les versions
   // d'avant le 20 nov. 2026 (lecture de toutes les colonnes) l'ignorent, comme les autres lignes « @@ »
-  const columns = new Map<string, { city?: string; meet?: string; place?: string; round?: string; splits?: string }>();
+  // Jour non relevé : dates de la compétition en 13e colonne (« AAAA-MM-JJ/AAAA-MM-JJ »)
+  const dayRangeOf = (s: string | undefined): DayRange | undefined => {
+    const m = /^(\d{4}-\d{2}-\d{2})\/(\d{4}-\d{2}-\d{2})$/.exec((s ?? '').trim());
+    return m && isValidISO(m[1]) && isValidISO(m[2]) && m[1] < m[2] ? { from: m[1], to: m[2] } : undefined;
+  };
+  const columns = new Map<string, { city?: string; meet?: string; place?: string; round?: string; splits?: string; days?: string }>();
   const statusSwims = new Map<string, ParsedSwim>();
   for (const line of text.split(/\r?\n/)) {
     const c = line.split('\t');
@@ -397,6 +404,7 @@ export function parseSwimrankings(text: string): ParseResult {
       const key = `${event.distance}|${event.stroke}|${pool}|${status}|${date.iso}`;
       const note = cleanText(c[11] ?? '') || undefined;
       const round = roundFromText(c[9]);
+      const dayRange = dayRangeOf(c[12]);
       if (!statusSwims.has(key))
         statusSwims.set(key, {
           distance: event.distance,
@@ -409,6 +417,7 @@ export function parseSwimrankings(text: string): ParseResult {
           ...(course?.t === 'COURSE' ? {} : { courseGuessed: true }),
           ...(round ? { round } : {}),
           ...(note ? { note } : {}),
+          ...(dayRange ? { dayRange } : {}),
         });
       continue;
     }
@@ -422,6 +431,7 @@ export function parseSwimrankings(text: string): ParseResult {
         place: c[8],
         round: c[9],
         splits: c[10],
+        days: c[12],
       });
     }
   }
@@ -436,6 +446,8 @@ export function parseSwimrankings(text: string): ParseResult {
       if (round) s.round = round;
       const sp = splitsFromText(c?.splits, s.distance, s.timeCs);
       if (sp) Object.assign(s, sp);
+      const dayRange = dayRangeOf(c?.days);
+      if (dayRange) s.dayRange = dayRange;
     }
   }
 

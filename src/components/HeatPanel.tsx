@@ -4,7 +4,7 @@ import { Section, Segmented } from './ui';
 import { isSettled, loadEventSheet } from '../lib/liveResults';
 import { overallRanking, type EventSheet, type SheetRow } from '../lib/heatSheet';
 import { normName, swimmerNames } from '../lib/results';
-import { formatDate, todayISO } from '../lib/dates';
+import { todayISO, swimDate } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import { placeLabel } from '../lib/text';
 
@@ -121,7 +121,7 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
         <div className="tile">
           <div className="tile-label">Heure estimée</div>
           <div className="tile-value tnum">{heat?.start ? `≈ ${heat.start}` : swim.startTime ?? '—'}</div>
-          <div className="tile-sub">{swim.date ? formatDate(swim.date) : ''}</div>
+          <div className="tile-sub">{swim.date ? swimDate(swim) : ''}</div>
         </div>
         <div className="tile">
           <div className="tile-label">Engagement</div>
@@ -131,7 +131,7 @@ export function HeatPanel({ meet, swim, swimmer, pb }: { meet: Meet; swim: Swim;
         <div className="tile">
           <div className="tile-label">Record perso</div>
           <div className="tile-value tnum">{pb?.timeCs != null ? formatTime(pb.timeCs) : '—'}</div>
-          <div className="tile-sub">{pb ? formatDate(pb.date) : 'pas encore de temps'}</div>
+          <div className="tile-sub">{pb ? swimDate(pb) : 'pas encore de temps'}</div>
         </div>
       </div>
 

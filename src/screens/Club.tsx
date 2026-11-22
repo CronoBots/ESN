@@ -24,8 +24,9 @@ const HISTORY_URL = './data/club-history.json';
 const RANKINGS_URL = './data/club-rankings.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ».
  * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. 6 : rattaché aussi par les autres noms du membre.
- * 7 : disqualifications, forfaits et abandons (DSQ, DNS, DNF, sans temps), avec la raison de la disqualification. */
-const HISTORY_PARSER = 7;
+ * 7 : disqualifications, forfaits et abandons (DSQ, DNS, DNF, sans temps), avec la raison de la disqualification.
+ * 8 : jour non relevé, dates de la compétition affichées à la place (13e colonne). */
+const HISTORY_PARSER = 8;
 
 const letters = (s: string) => normName(s);
 
@@ -149,7 +150,20 @@ async function runClubHistory(): Promise<number> {
           // Raison de la disqualification relevée depuis
           const note = historyNote(ps);
           if (note && !swim.notes) extra.notes = note;
+          // Jour non relevé (dates de la compétition affichées), ou relevé depuis : comme l'historique publié
+          if (swim.source === 'swimrankings' && `${swim.dayRange?.from}/${swim.dayRange?.to}` !== `${ps.dayRange?.from}/${ps.dayRange?.to}`)
+            extra.dayRange = ps.dayRange;
           if (Object.keys(extra).length) actions.updateSwim(swim.id, extra);
+          // La compétition couvre au moins ses dates connues
+          const m0 = ps.dayRange && swim.meetId ? meetsById.get(swim.meetId) : undefined;
+          if (m0 && ps.dayRange && (ps.dayRange.from < m0.startDate || ps.dayRange.to > (m0.endDate ?? m0.startDate))) {
+            const span = {
+              startDate: ps.dayRange.from < m0.startDate ? ps.dayRange.from : m0.startDate,
+              endDate: ps.dayRange.to > (m0.endDate ?? m0.startDate) ? ps.dayRange.to : (m0.endDate ?? m0.startDate),
+            };
+            actions.updateMeet(m0.id, span);
+            meetsById.set(m0.id, { ...m0, ...span });
+          }
         }
         if (!ps.meet) continue;
         const meet = swim?.meetId ? meetsById.get(swim.meetId) : undefined;

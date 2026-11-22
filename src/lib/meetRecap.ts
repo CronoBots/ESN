@@ -66,7 +66,8 @@ const byName = (a: Swimmer, b: Swimmer) => a.lastName.localeCompare(b.lastName, 
  */
 export function meetRecap(meetId: string, allSwims: Swim[], swimmers: Swimmer[], pbFlags: Map<string, PbInfo>, day?: string): MeetRecap {
   const atMeet = allSwims.filter((s) => s.meetId === meetId);
-  const days = [...new Set(atMeet.map((s) => s.date))].sort();
+  // Une course au jour non relevé (dates de la compétition seulement) : pas de récap jour par jour
+  const days = atMeet.some((s) => s.dayRange) ? [] : [...new Set(atMeet.map((s) => s.date))].sort();
   const swims = day ? atMeet.filter((s) => s.date === day) : atMeet;
   const byId = new Map(swimmers.map((s) => [s.id, s]));
   const groups = new Map<string, Swim[]>();

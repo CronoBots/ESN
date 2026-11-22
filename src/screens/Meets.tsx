@@ -4,7 +4,7 @@ import { fullName, sortSwimmers, swimsOf, usePbFlags, useSelectedSwimmer } from 
 import { PbDelta, PlaceLabel, Avatar, Empty, NavBar, Row, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
-import { formatDate, formatLongDay, formatRange, relativeDay, seasonLabel, seasonOf, todayISO } from '../lib/dates';
+import { todayISO, formatDate, formatRange, swimDate, swimLongDay, swimDayKey, relativeDay, seasonOf, seasonLabel } from '../lib/dates';
 import { eventLabel, courseLabel, ROUND_LABEL, STATUS_SHORT } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { chronoCompare, clubMeets, countsForRecords, isValidResult } from '../lib/stats';
@@ -412,7 +412,7 @@ export function MeetDetail({ id }: { id: string }) {
 
   const renderGroup = ({ swimmer, swims: list }: { swimmer: Swimmer; swims: Swim[] }) => {
       const days = new Map<string, Swim[]>();
-      for (const s of list) days.set(s.date, [...(days.get(s.date) ?? []), s]);
+      for (const s of list) days.set(swimDayKey(s), [...(days.get(swimDayKey(s)) ?? []), s]);
       return (
         <Section
           key={swimmer.id}
@@ -436,7 +436,7 @@ export function MeetDetail({ id }: { id: string }) {
           <div className="list">
             {[...days.entries()].map(([day, ds]) => (
               <div key={day}>
-                <div className="group-head">{capitalize(formatLongDay(day))}</div>
+                <div className="group-head">{swimLongDay(ds[0])}</div>
                 {ds.map((s) => {
                   const pb = pbFlags.get(s.id);
                   const prev = bestOf(swimmer.id, s);
@@ -460,7 +460,7 @@ export function MeetDetail({ id }: { id: string }) {
                           {s.eventNo ? `${s.eventNo}. ` : ''}
                           {eventLabel(s.distance, s.stroke)}
                         </div>
-                        <div className="row-sub">{sub.join('\u00a0· ') || (rank ? null : formatDate(s.date))}</div>
+                        <div className="row-sub">{sub.join('\u00a0· ') || (rank ? null : swimDate(s))}</div>
                         {rank && <div className="row-sub">{rank}</div>}
                       </div>
                       <div className="row-end">

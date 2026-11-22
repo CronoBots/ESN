@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 import { navigate } from '../router';
 import { AGE_BANDS, clubRecords, recordComplete, type ClubRecord } from '../lib/clubRecords';
 import { courseLabel, eventLabel } from '../lib/events';
-import { formatDate, todayISO, addDays } from '../lib/dates';
+import { todayISO, swimDate, addDays } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import type { Course, Gender } from '../store/types';
 
@@ -44,7 +44,7 @@ export function ClubRecordsHub() {
                 <div className="row-body">
                   <div className="row-title">{fullName(swimmer)}</div>
                   <div className="row-sub">
-                    {eventLabel(swim.distance, swim.stroke)} {courseLabel(swim.course)} · {band} · {formatDate(swim.date)}
+                    {eventLabel(swim.distance, swim.stroke)} {courseLabel(swim.course)} · {band} · {swimDate(swim)}
                   </div>
                 </div>
                 <span className="row-end">

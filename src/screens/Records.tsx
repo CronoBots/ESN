@@ -7,7 +7,7 @@ import { ClubRecordsHub } from '../components/ClubRecordsHub';
 import { navigate } from '../router';
 import { COURSES, STROKES, STROKE_BY_ID, distancesFor, eventLabel, courseLabel } from '../lib/events';
 import { countsForRecords, pointsFor, chronoCompare } from '../lib/stats';
-import { formatDate, seasonLabel, seasonOf, todayISO, sportAge } from '../lib/dates';
+import { todayISO, swimDate, seasonOf, seasonLabel, sportAge } from '../lib/dates';
 import { formatTime } from '../lib/time';
 import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
 import { findResultsNow } from './autoResults';
@@ -193,7 +193,7 @@ export function Records() {
                                 })()}
                               </div>
                               <div className="row-sub">
-                                {formatDate(s.date)}
+                                {swimDate(s)}
                                 {entry!.count > 1 ? ` · ${entry!.count} courses` : ''}
                               </div>
                               {(() => {
@@ -396,7 +396,7 @@ export function Rankings() {
                           .filter(Boolean)
                           .join('\u00a0· ')}
                       </div>
-                      <div className="row-sub">{formatDate(r.best.date)}</div>
+                      <div className="row-sub">{swimDate(r.best)}</div>
                     </div>
                     <div className="row-end" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                       <span className="time-big">{formatTime(r.best.timeCs)}</span>

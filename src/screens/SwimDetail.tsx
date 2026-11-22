@@ -5,7 +5,7 @@ import { Empty, NavBar, Row, Section, StrokeTag, overlay } from '../components/u
 import { Icon } from '../components/Icon';
 import { SwimBadges } from '../components/SwimRow';
 import { eventLabel, ROUND_LABEL, STATUS_LABEL, courseLabel } from '../lib/events';
-import { formatDate, formatLongDay } from '../lib/dates';
+import { formatLongDay, swimDate } from '../lib/dates';
 import { formatDelta, formatTime, pacePer100, speed } from '../lib/time';
 import { personalBests, pointsFor, swimKey } from '../lib/stats';
 import { HeatPanel } from '../components/HeatPanel';
@@ -62,7 +62,7 @@ export function SwimDetail({ id }: { id: string }) {
     if (!swimmer || !t) return;
     const txt = `${swimmer.firstName} a nagé le ${eventLabel(swim.distance, swim.stroke)} (${courseLabel(swim.course)}) en ${formatTime(t)}${
       pb?.isPB && pb.deltaCs != null ? ` — nouveau record personnel (${formatDelta(pb.deltaCs)}) ! 🎉` : ''
-    }${meet ? ` · ${meet.name}` : ''} · ${formatDate(swim.date)}`;
+    }${meet ? ` · ${meet.name}` : ''} · ${swimDate(swim)}`;
     try {
       if (navigator.share) await navigator.share({ text: txt });
       else {
@@ -202,7 +202,7 @@ export function SwimDetail({ id }: { id: string }) {
 
         <Section title="Détails">
           <div className="list">
-            <Row title="Date" value={`${formatDate(swim.date)}${swim.startTime ? ` · ${swim.startTime}` : ''}`} />
+            <Row title="Date" value={`${swimDate(swim)}${swim.startTime ? ` · ${swim.startTime}` : ''}`} />
             {swim.context === 'competition' ? (
               <Row
                 title="Compétition"

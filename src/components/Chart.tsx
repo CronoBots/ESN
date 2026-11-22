@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { formatTime } from '../lib/time';
-import { formatDate, fromISO } from '../lib/dates';
+import { formatDate, fromISO, swimDate } from '../lib/dates';
 
 export interface ChartPoint {
   date: string;
+  /** Jour de la course non relevé : dates de la compétition, affichées à la place du jour. */
+  dayRange?: { from: string; to: string };
   cs: number;
   label?: string;
   pb?: boolean;
@@ -238,7 +240,7 @@ export function ProgressChart({
             <span className="readout-value tnum">{p ? formatTime(p.cs) : '—'}</span>
             <span className="readout-body">
               <span className="readout-title">
-                <span className="t">{single ? (p?.label ?? (p ? formatDate(p.date) : '')) : s.label}</span>
+                <span className="t">{single ? (p?.label ?? (p ? swimDate(p) : '')) : s.label}</span>
                 {p?.pb && <span className="badge pb">PB</span>}
               </span>
               <span className="readout-sub">
@@ -246,9 +248,9 @@ export function ProgressChart({
                   ? 'pas encore de temps à cette date'
                   : single
                     ? p.label
-                      ? formatDate(p.date)
+                      ? swimDate(p)
                       : ''
-                    : [formatDate(p.date), p.label].filter(Boolean).join('\u00a0· ')}
+                    : [swimDate(p), p.label].filter(Boolean).join('\u00a0· ')}
               </span>
             </span>
           </div>

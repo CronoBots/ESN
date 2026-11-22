@@ -2,7 +2,7 @@ import type { Meet, Swim } from '../store/types';
 import type { PbInfo } from '../lib/stats';
 import { eventLabel, ROUND_LABEL, STATUS_SHORT, courseLabel } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
-import { formatDate, todayISO } from '../lib/dates';
+import { todayISO, swimDate } from '../lib/dates';
 import { Fragment, type ReactNode } from 'react';
 import { PlaceLabel, StrokeTag } from './ui';
 import { Icon } from './Icon';
@@ -41,7 +41,7 @@ export function SwimRow({
   onClick?: () => void;
 }) {
   const where = showMeet ? meet?.name ?? (swim.context === 'training' ? 'Entraînement' : 'Compétition') : null;
-  const details: ReactNode[] = [formatDate(swim.date)];
+  const details: ReactNode[] = [swimDate(swim)];
   if (showCourse) details.push(courseLabel(swim.course));
   if (swim.round !== 'TIM' && swim.context === 'competition') details.push(ROUND_LABEL[swim.round]);
   if (swim.place) details.push(<PlaceLabel place={swim.place} round={swim.round} />);

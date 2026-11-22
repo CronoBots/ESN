@@ -146,7 +146,8 @@ describe('historique publié : disqualifications et forfaits dans l’applicatio
     // Records : seulement les courses nagées ; médailles : jamais une disqualification, même avec une place
     expect([...personalBests(getState().swims, emma.id, true).values()].every((s) => s.status === 'OK')).toBe(true);
     expect(medalSwims(dsq.map((s) => ({ ...s, place: 1 }) as Swim))).toEqual([]);
-    expect(getState().settings.club?.historyParser).toBe(7);
+    // 7 : disqualifications lues ; 8 : jour non relevé (dates de la compétition)
+    expect(getState().settings.club?.historyParser).toBe(8);
 
     // Relu (même version) : rien en double
     expect(await applyClubHistory()).toBe(0);

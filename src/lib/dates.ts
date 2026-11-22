@@ -70,6 +70,24 @@ export function formatRange(start: string, end?: string): string {
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
 
+/** Course dont le jour n'a pas été relevé : dates de sa compétition (voir Swim.dayRange). */
+type Dated = { date: string; dayRange?: { from: string; to: string } };
+
+/** Date d'une course : « 14 nov. 2026 » ; jour non relevé : dates de la compétition, « 17 – 18 nov. 2018 ». */
+export function swimDate(s: Dated): string {
+  return s.dayRange ? formatRange(s.dayRange.from, s.dayRange.to) : formatDate(s.date);
+}
+
+/** « Samedi 14 novembre » ; jour non relevé : dates de la compétition. */
+export function swimLongDay(s: Dated): string {
+  if (s.dayRange) return formatRange(s.dayRange.from, s.dayRange.to);
+  const t = formatLongDay(s.date);
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Jour d'une course pour la ranger par jour (jour non relevé : à part, sous les dates de la compétition). */
+export const swimDayKey = (s: Dated): string => (s.dayRange ? `${s.dayRange.from}/${s.dayRange.to}` : s.date);
+
 export function daysBetween(a: string, b: string): number {
   return Math.round((fromISO(b).getTime() - fromISO(a).getTime()) / 86400000);
 }

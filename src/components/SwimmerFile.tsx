@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 import { TimelineMeetCard, useTimeline } from './MeetTimeline';
 import { navigate } from '../router';
 import { achievements, chronoCompare, pointsFor, swimmerSummary } from '../lib/stats';
-import { formatDate, formatRange, formatShortWeekday, meetBadge, sportAge, seasonLabel, seasonOf, seasonShort, todayISO } from '../lib/dates';
+import { todayISO, formatShortWeekday, formatRange, swimDate, meetBadge, seasonOf, seasonShort, seasonLabel, sportAge } from '../lib/dates';
 import { courseLabel, eventLabel, STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatTime } from '../lib/time';
 import { LEVELS } from '../lib/levels';
@@ -205,7 +205,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                   <StrokeDot stroke={signature.swim.stroke} /> {eventLabel(signature.swim.distance, signature.swim.stroke)}
                 </span>
                 <span className="hero-sig-when">
-                  {courseLabel(signature.swim.course)} · {formatDate(signature.swim.date)}
+                  {courseLabel(signature.swim.course)} · {swimDate(signature.swim)}
                 </span>
               </span>
               <Icon name="chevronRight" className="hero-sig-chev" />
@@ -546,7 +546,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                         {formatTime(s.timeCs)}
                       </div>
                       <div className="tile-sub good">
-                        {formatDelta(info.deltaCs ?? 0)} · {formatDate(s.date)}
+                        {formatDelta(info.deltaCs ?? 0)} · {swimDate(s)}
                       </div>
                     </button>
                   );
@@ -602,7 +602,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
                         {eventLabel(h.swim.distance, h.swim.stroke)} · {courseLabel(h.course)}
                       </div>
                       <div className="row-sub">
-                        {h.band.id === 'all' ? (recordComplete(h.course, h.swim.distance, h.swim.stroke) ? 'Record absolu du club' : 'Meilleur temps connu du club') : h.band.label} · {formatDate(h.swim.date)}
+                        {h.band.id === 'all' ? (recordComplete(h.course, h.swim.distance, h.swim.stroke) ? 'Record absolu du club' : 'Meilleur temps connu du club') : h.band.label} · {swimDate(h.swim)}
                       </div>
                     </div>
                     <span className="time-big tnum">{formatTime(h.swim.timeCs)}</span>

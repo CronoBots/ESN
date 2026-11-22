@@ -8,7 +8,7 @@ import { ProgressChart, type ChartSeries } from '../components/Chart';
 import { SwimRow } from '../components/SwimRow';
 import { COURSES, distancesFor, eventLabel, courseLabel, isValidEvent } from '../lib/events';
 import { countsForRecords, eventHistory, eventStats, pointsFor } from '../lib/stats';
-import { formatDate } from '../lib/dates';
+import { swimDate } from '../lib/dates';
 import { formatDelta, formatTime, pacePer100 } from '../lib/time';
 import { navigate } from '../router';
 import type { Course, Stroke } from '../store/types';
@@ -79,6 +79,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
       color: COMPARE_COLORS[0],
       points: valid.map((s) => ({
         date: s.date,
+        dayRange: s.dayRange,
         cs: s.timeCs!,
         pb: pbFlags.get(s.id)?.isPB,
         label: s.meetId ? meetsById.get(s.meetId)?.name : s.context === 'training' ? 'Entraînement' : undefined,
@@ -94,7 +95,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
           color: COMPARE_COLORS[(i + 1) % COMPARE_COLORS.length],
           points: eventHistory(data.swims, id, course, distance, stroke)
             .filter((s) => countsForRecords(s, include))
-            .map((s) => ({ date: s.date, cs: s.timeCs!, label: s.meetId ? meetsById.get(s.meetId)?.name : undefined })),
+            .map((s) => ({ date: s.date, dayRange: s.dayRange, cs: s.timeCs!, label: s.meetId ? meetsById.get(s.meetId)?.name : undefined })),
         } as ChartSeries;
       })
       .filter((s): s is ChartSeries => !!s),
@@ -159,7 +160,7 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
                     {formatTime(best!.timeCs)}
                   </div>
                   <div className="muted small" style={{ marginTop: 2 }}>
-                    {formatDate(best!.date)}
+                    {swimDate(best!)}
                     {best!.meetId && meetsById.get(best!.meetId) ? ` · ${meetsById.get(best!.meetId)!.name}` : ''}
                     {bestPts != null ? ` · ${bestPts} pts` : ''}
                   </div>

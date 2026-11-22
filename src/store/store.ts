@@ -1018,13 +1018,16 @@ export const actions = {
           ? [...s.swims, ...newSwims].find((x) => x.swimmerId === swimmerId && x.date === p.date && x.course === p.course && x.meetId)?.meetId
           : undefined;
         const found = findMeet(meets, meetName, p.date, p.course) ?? meets.find((m) => m.id === sameDay);
+        // Jour non relevé : la compétition couvre au moins ses dates connues
+        const first = p.dayRange && p.dayRange.from < p.date ? p.dayRange.from : p.date;
+        const last = p.dayRange && p.dayRange.to > p.date ? p.dayRange.to : p.date;
         if (found) {
           meetId = found.id;
           const i = meets.indexOf(found);
           meets[i] = {
             ...found,
-            startDate: p.date < found.startDate ? p.date : found.startDate,
-            endDate: p.date > (found.endDate ?? found.startDate) ? p.date : found.endDate,
+            startDate: first < found.startDate ? first : found.startDate,
+            endDate: last > (found.endDate ?? found.startDate) ? last : found.endDate,
           };
         } else {
           const cityMatch = /^(.*?)\s*\(([A-Z]{3})\)$/.exec(p.city ?? '');
@@ -1033,7 +1036,8 @@ export const actions = {
             name: meetName,
             city: cityMatch ? cityMatch[1] : p.city,
             nation: cityMatch ? cityMatch[2] : undefined,
-            startDate: p.date,
+            startDate: first,
+            ...(last !== first ? { endDate: last } : {}),
             course: p.course,
             createdAt: Date.now(),
           };
@@ -1048,6 +1052,7 @@ export const actions = {
           meetId,
           context: 'competition',
           date: p.date,
+          ...(p.dayRange ? { dayRange: p.dayRange } : {}),
           distance: p.distance,
           stroke: p.stroke,
           course: p.course,
