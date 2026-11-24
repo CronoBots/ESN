@@ -209,6 +209,39 @@ describe('LENEX : disqualification ou forfait au temps nul', () => {
     ]);
     expect(mine.some((s) => s.timeCs === 0)).toBe(false);
   });
+
+  it('direct : une course lue « nagée » puis disqualifiée sans temps dans le fichier est corrigée, pas doublée', async () => {
+    vi.stubGlobal('localStorage', memoryStorage());
+    vi.stubGlobal('indexedDB', undefined);
+    const swim = (id: string, distance: number, stroke: string, eventNo: number, timeCs: number, status: string, place?: number) => ({
+      id, swimmerId: 'z', meetId: 'm', context: 'competition', date: '2026-10-11', distance, stroke, course: 'SCM',
+      timeCs, status, place, round: 'TIM', eventNo, source: 'live', createdAt: 1, updatedAt: 1,
+    });
+    localStorage.setItem(
+      'nageo:data:v1',
+      JSON.stringify({
+        version: 1,
+        swimmers: [{ id: 'z', firstName: 'Zoé', lastName: 'Exemple', gender: 'F', birthYear: 2014, relation: 'followed', color: 0, favorite: false, createdAt: 1 }],
+        meets: [{ id: 'm', name: 'Challenge fictif', city: 'Ville Fictive', startDate: '2026-10-11', course: 'SCM', liveId: '777', createdAt: 1 }],
+        // Feuille PDF lue avant le fichier : 100 m dos « nagé » (temps, place) ; 200 m libre déjà disqualifié avec son temps
+        swims: [swim('dos', 100, 'BACK', 8, 9012, 'OK', 4), swim('libre', 200, 'FREE', 16, 15034, 'DSQ')],
+        goals: [],
+        settings: {},
+      }),
+    );
+    vi.resetModules();
+    const store = await import('../src/store/store');
+    const l = parseLenex(LEF_ZERO)!;
+    const r = store.actions.importClubResults('z', [{ meet: { ...l.meet, liveId: '777' }, source: 'live', swims: l.athletes[0].swims }]);
+    const mine = store.getState().swims.filter((s) => s.swimmerId === 'z');
+    expect(r.added).toBe(1); // le forfait du 50 m papillon
+    expect(mine.map((s) => `${s.distance}${s.stroke}:${s.status}:${s.timeCs}`).sort()).toEqual([
+      '100BACK:DSQ:null',
+      '200FREE:DSQ:15034',
+      '50FLY:DNS:null',
+    ]);
+    expect(mine.find((s) => s.id === 'dos')?.place).toBeUndefined();
+  });
 });
 
 describe('liste des compétitions en direct', () => {

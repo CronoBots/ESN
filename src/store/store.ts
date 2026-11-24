@@ -819,8 +819,10 @@ export const actions = {
           }
           // Résultat déjà lu pour cette épreuve de la même compétition en direct (séries et finale ont des
           // numéros d'épreuve différents) : la feuille officielle la plus récente fait foi (temps corrigé par
-          // l'organisateur, ou lecture corrigée par une nouvelle version de l'application)
-          if (rs.timeCs != null && rs.eventNo != null && meet.liveId) {
+          // l'organisateur, ou lecture corrigée par une nouvelle version de l'application). Une disqualification
+          // ou un forfait sans temps (« 00:00:00.00 » dans le fichier LENEX) corrige aussi la course lue « nagée »
+          const noTime = rs.timeCs == null && rs.status !== 'OK';
+          if ((rs.timeCs != null || noTime) && rs.eventNo != null && meet.liveId) {
             const prev = [...refreshed, ...mine].find(
               (x) =>
                 x.meetId === meet!.id &&
@@ -828,7 +830,9 @@ export const actions = {
                 x.eventNo === rs.eventNo &&
                 x.distance === rs.distance &&
                 x.stroke === rs.stroke &&
-                x.timeCs != null,
+                x.timeCs != null &&
+                // Disqualification déjà connue avec son temps : gardée telle quelle
+                (!noTime || x.status === 'OK'),
             );
             if (prev) {
               const fixed =
@@ -840,9 +844,10 @@ export const actions = {
               if (fixed) {
                 const corrected: Swim = {
                   ...prev,
-                  timeCs: rs.timeCs,
+                  timeCs: rs.timeCs ?? null,
                   status: rs.status,
-                  place: rs.place ?? prev.place,
+                  // Disqualification, forfait, abandon : plus de place
+                  place: rs.status === 'OK' ? rs.place ?? prev.place : rs.place,
                   round: rs.round ?? prev.round,
                   splits: rs.splits?.length ? rs.splits : prev.splits,
                   updatedAt: now,
