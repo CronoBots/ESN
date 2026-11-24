@@ -123,6 +123,13 @@ export function pushWaitAdvice({ device, installed }: PushEnv = env()): string {
     : 'Touchez « Autoriser » dans la fenêtre qui s’affiche.';
 }
 
+/** Aucune réponse à la demande d'autorisation. */
+function noAnswerAdvice({ device, installed }: PushEnv): string {
+  return device === 'android' && !installed
+    ? 'Pas de réponse à la demande d’autorisation : touchez la cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser, puis touchez à nouveau l’interrupteur.'
+    : 'Pas de réponse à la demande d’autorisation : si vous avez autorisé entre-temps, touchez à nouveau l’interrupteur.';
+}
+
 /** Autorisation ni donnée ni refusée (fenêtre fermée, ou mise de côté par le navigateur). */
 function dismissedAdvice({ device, installed }: PushEnv): string {
   return device === 'android' && !installed
@@ -188,8 +195,10 @@ async function save(sub: PushSubscription, swimmers: Swimmer[], force = false) {
 export async function enablePush(swimmers: Swimmer[]): Promise<PushState> {
   let permission: NotificationPermission;
   try {
-    permission = await Notification.requestPermission();
+    // Demande mise de côté par le navigateur (Chrome sur Android) : pas de réponse, l'interrupteur est rendu
+    permission = await within(Notification.requestPermission(), 20000, noAnswerAdvice(env()));
   } catch (e) {
+    if (e instanceof PushError) throw e;
     throw new PushError('La demande d’autorisation n’a pas pu s’afficher : réessayez.', errorDetail(e));
   }
   if (permission === 'denied') return 'denied';

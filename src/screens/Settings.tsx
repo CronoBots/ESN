@@ -326,6 +326,13 @@ function SyncNowRow() {
 }
 
 /** Notifications des résultats des nageurs suivis, sur cet appareil. */
+const PUSH_BLOCKED_TITLE: Partial<Record<PushState, string>> = {
+  inapp: 'Ouvrez l’application dans le navigateur',
+  install: 'Installez d’abord l’application',
+  unsupported: 'Notifications indisponibles ici',
+  denied: 'Notifications bloquées sur ce téléphone',
+};
+
 function NotificationsSection() {
   const data = useData();
   const [state, setState] = useState<PushState>(() => pushState());
@@ -362,6 +369,23 @@ function NotificationsSection() {
       setBusy(false);
     }
   };
+  // Interrupteur jamais grisé : s'il ne peut pas s'activer ici, le toucher explique pourquoi et quoi faire
+  const blocked = pushAdvice(state);
+  const tap = (on: boolean) => {
+    if (busy) return;
+    if (on && blocked) {
+      overlay.actions({ title: PUSH_BLOCKED_TITLE[state], message: blocked, actions: [], cancelLabel: 'Compris' });
+      return;
+    }
+    // Aucun nageur suivi : choix dans la liste du club, puis activation (le bouton OK compte comme geste)
+    if (on && !followed.length) {
+      openFollow(() => {
+        if (getState().swimmers.some(isFollowed)) void toggle(true);
+      });
+      return;
+    }
+    void toggle(on);
+  };
   const names = followed.map((s) => s.firstName).join(', ');
   const [prefs, setPrefs] = useState<PushPrefs>(() => pushPrefs());
   const updatePrefs = (p: PushPrefs) => {
@@ -375,9 +399,9 @@ function NotificationsSection() {
           <span className="label grow">Notifications de mes nageurs</span>
           <Toggle
             on={state === 'on'}
-            onChange={(v) => void toggle(v)}
+            onChange={tap}
             label="Recevoir des notifications pour mes nageurs suivis"
-            disabled={busy || state === 'unsupported' || state === 'inapp' || state === 'install' || state === 'denied' || (!followed.length && state !== 'on')}
+            disabled={busy}
           />
         </div>
         {!followed.length && state !== 'on' && <Row icon="users" iconBg="var(--brand-green)" title="Choisir mes nageurs" sub="Dans la liste du club" chevron onClick={() => openFollow()} />}
@@ -405,12 +429,12 @@ function NotificationsSection() {
           </>
         )}
       </div>
-      <div className="section-foot">
+      <div className={`section-foot${problem || blocked ? ' push-warn' : ''}`}>
         {busy && state !== 'on'
           ? pushWaitAdvice()
           : problem
             ? problem.text
-            : (pushAdvice(state) ??
+            : (blocked ??
               (!followed.length
                 ? 'Suivez d’abord un ou plusieurs nageurs pour recevoir leurs résultats.'
                 : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`))}

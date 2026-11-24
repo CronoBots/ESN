@@ -642,6 +642,16 @@ html.pwa .large-brand {
   line-height: 1.4;
 }
 
+/* Notifications impossibles ici : explication mise en avant */
+.section-foot.push-warn {
+  margin: 8px 16px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text);
+  border-left: 3px solid var(--warning);
+}
+
 /* Erreur exacte du navigateur sous les notifications (pour le diagnostic) */
 .push-detail {
   display: block;
