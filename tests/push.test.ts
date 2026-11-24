@@ -55,3 +55,15 @@ describe('activation des notifications : la cause exacte sous l’interrupteur',
     expect(subscribeAdvice(new Error('autre'), 'android')).toMatch(/réessayez/);
   });
 });
+
+describe('notifications : choix par nageur suivi', async () => {
+  const { pushTargets } = await import('../src/lib/push');
+  const sw = (id: string, favorite: boolean) => ({ id, favorite, relation: 'followed', firstName: id, lastName: 'Test', birthYear: 2014 }) as never;
+  const swimmers = [sw('emma', true), sw('lucas', true), sw('autre', false)];
+
+  it('tous les nageurs suivis par défaut, sauf ceux coupés dans les Réglages ; jamais un nageur non suivi', () => {
+    expect(pushTargets({ swimmers, settings: {} }).map((s) => s.id)).toEqual(['emma', 'lucas']);
+    expect(pushTargets({ swimmers, settings: { pushMuted: ['lucas'] } }).map((s) => s.id)).toEqual(['emma']);
+    expect(pushTargets({ swimmers, settings: { pushMuted: ['emma', 'lucas'] } })).toEqual([]);
+  });
+});

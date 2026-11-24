@@ -15,7 +15,7 @@ import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useEffect, useRef, useState } from 'react';
-import { disablePush, enablePush, errorDetail, permissionGranted, pushAdvice, pushPrefs, pushState, pushWaitAdvice, PushError, setPushPrefs, watchPermission, type PushPrefs, type PushState } from '../lib/push';
+import { disablePush, enablePush, errorDetail, permissionGranted, pushAdvice, pushPrefs, pushState, pushTargets, pushWaitAdvice, PushError, refreshPush, setPushPrefs, watchPermission, type PushPrefs, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 declare const __BUILD_TIME__: string | undefined;
@@ -360,7 +360,7 @@ function NotificationsSection() {
     wanted.current = on;
     try {
       if (on) {
-        const next = await enablePush(getState().swimmers);
+        const next = await enablePush(pushTargets(getState()));
         setState(next);
         if (next === 'on') {
           wanted.current = false;
@@ -413,11 +413,21 @@ function NotificationsSection() {
     }
     void toggle(on);
   };
-  const names = followed.map((s) => s.firstName).join(', ');
   const [prefs, setPrefs] = useState<PushPrefs>(() => pushPrefs());
   const updatePrefs = (p: PushPrefs) => {
     setPrefs(p);
-    void setPushPrefs(p, getState().swimmers).catch(() => overlay.toast('Mise à jour impossible pour le moment : réessayez', '⚠️'));
+    void setPushPrefs(p, pushTargets(getState())).catch(() => overlay.toast('Mise à jour impossible pour le moment : réessayez', '⚠️'));
+  };
+  // Choix par nageur suivi (à partir de deux) : notifications coupées pour certains
+  const muted = new Set(data.settings.pushMuted ?? []);
+  const notified = followed.filter((s) => !muted.has(s.id));
+  const names = notified.map((s) => s.firstName).join(', ');
+  const setNotified = (id: string, on: boolean) => {
+    const next = new Set(getState().settings.pushMuted ?? []);
+    if (on) next.delete(id);
+    else next.add(id);
+    actions.updateSettings({ pushMuted: [...next] });
+    void refreshPush(pushTargets(getState())).catch(() => overlay.toast('Mise à jour impossible pour le moment : réessayez', '⚠️'));
   };
   return (
     <Section title="Notifications">
@@ -433,9 +443,20 @@ function NotificationsSection() {
         </div>
         {!followed.length && state !== 'on' && <Row icon="users" iconBg="var(--brand-green)" title="Choisir mes nageurs" sub="Dans la liste du club" chevron onClick={() => openFollow()} />}
         {/* Choix toujours visibles : enregistrés sur le téléphone, appliqués dès l'activation */}
-        <div className="field">
-          <span className="label">Résultats</span>
-          <div style={{ flex: 1, maxWidth: 250, marginLeft: 'auto' }}>
+        {followed.length > 1 &&
+          followed.map((sw) => (
+            <div className="field push-swimmer" key={sw.id}>
+              <Avatar swimmer={sw} size={30} />
+              <span className="label grow">{fullName(sw)}</span>
+              <Toggle on={!muted.has(sw.id)} onChange={(v) => setNotified(sw.id, v)} label={`Notifications pour ${fullName(sw)}`} />
+            </div>
+          ))}
+        {/* Petit écran : le sélecteur passe sous « Résultats » plutôt que d'être coupé */}
+        <div className="field" style={{ flexWrap: 'wrap', paddingBlock: 8 }}>
+          <span className="label" style={{ minWidth: 0 }}>
+            Résultats
+          </span>
+          <div style={{ flex: '1 1 240px', marginLeft: 'auto' }}>
             <Segmented
               value={prefs.results}
               onChange={(v) => updatePrefs({ ...prefs, results: v })}
@@ -461,7 +482,9 @@ function NotificationsSection() {
             : (blocked ??
               (!followed.length
                 ? 'Suivez d’abord un ou plusieurs nageurs pour recevoir leurs résultats.'
-                : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`))}
+                : !notified.length
+                  ? 'Aucun nageur choisi : activez au moins un nageur ci-dessus pour recevoir ses notifications.'
+                  : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`))}
         {problem?.detail && <span className="push-detail">Détail : {problem.detail}</span>}
       </div>
     </Section>

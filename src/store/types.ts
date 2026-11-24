@@ -128,6 +128,8 @@ export interface Settings {
   liveSync: LiveSyncSettings;
   /** Liste des membres du club, déverrouillée avec le code du club. */
   club?: ClubAccess;
+  /** Nageurs suivis dont ce téléphone ne reçoit pas les notifications (identifiants). */
+  pushMuted?: string[];
 }
 
 export interface ClubAccess {

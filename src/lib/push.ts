@@ -192,6 +192,15 @@ function within<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
 
 const followed = (swimmers: Swimmer[]) => swimmers.filter((s) => s.relation === 'child' || s.favorite);
 
+/**
+ * Nageurs dont ce téléphone reçoit les notifications : les nageurs suivis, sauf ceux pour lesquels elles
+ * sont coupées dans les Réglages (un nageur nouvellement suivi est notifié).
+ */
+export function pushTargets(state: { swimmers: Swimmer[]; settings: { pushMuted?: string[] } }): Swimmer[] {
+  const muted = new Set(state.settings.pushMuted ?? []);
+  return followed(state.swimmers).filter((s) => !muted.has(s.id));
+}
+
 function keyBytes(b64: string): Uint8Array {
   const pad = '='.repeat((4 - (b64.length % 4)) % 4);
   const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
