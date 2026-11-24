@@ -1764,6 +1764,29 @@ a.row:active {
   color: var(--warning);
 }
 
+/* Classement officiel de la fédération : rang et sélection (vert = sélectionné) */
+.allround-official {
+  margin: 0 16px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+  font-size: 14px;
+}
+
+.allround-official.good {
+  background: rgba(52, 199, 89, 0.14);
+}
+
+.allround-official.last-year {
+  padding: 8px 12px;
+  color: var(--text-2);
+}
+
+.allround-official-head {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
 /* Repère : total du dernier sélectionné de l'édition précédente, et barre de progression vers lui */
 .allround-bench {
   margin: 0 16px 12px;

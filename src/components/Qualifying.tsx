@@ -19,6 +19,16 @@ import { navigate } from '../router';
 import { Empty, Section, StrokeTag } from './ui';
 import { Icon } from './Icon';
 import { gapLabel } from './Levels';
+import {
+  categoryKey,
+  categoryStats,
+  loadOfficialRanking,
+  officialEntry,
+  rankingClosed,
+  withOfficialBenchmarks,
+  type OfficialEntry,
+  type OfficialRanking,
+} from '../lib/officialRanking';
 
 /** Temps limites publiés avec l'application (data/), relus à chaque ouverture : ils changent chaque saison. */
 const QUALIFYING_URL = './data/qualifying.json';
@@ -155,17 +165,113 @@ function eventName(key: string): string {
 }
 
 /** Accueil : total de points pour un championnat classé aux points (Belgique 11-16 ans). */
+const ordinal = (n: number) => `${n}${n === 1 ? 'er' : 'e'}`;
+
+/**
+ * Classement officiel de la fédération : rang du nageur et sélection (en vert chez la fédération), cette
+ * année ; à défaut, son résultat de l'an dernier.
+ */
+function OfficialBlock({ ranking, entry, c, girl, need, total }: { ranking: OfficialRanking; entry: OfficialEntry | null; c: Championship; girl: boolean; need: number; total: number }) {
+  const today = todayISO();
+  const e = (w: string) => (girl ? `${w}e` : w);
+  const read = `Lu le ${formatDate(ranking.fetched.slice(0, 10))}`;
+  // L'an dernier : une ligne de rappel
+  if (ranking.edition === c.edition - 1) {
+    if (!entry || entry.rank == null || entry.scratched) return null;
+    const stats = categoryStats(ranking, entry.cat, entry.gender);
+    const label = c.allround?.categories.find((x) => categoryKey(x) === entry.cat)?.label.split(' (')[0] ?? entry.cat;
+    return (
+      <div className="allround-official last-year">
+        L’an dernier ({ranking.edition}) : {ordinal(entry.rank)}
+        {stats ? ` sur ${stats.ranked.toLocaleString('fr-BE')} classés` : ''} en {label}, {entry.selected ? e('sélectionné') : e('non sélectionné')}.
+      </div>
+    );
+  }
+  if (ranking.edition !== c.edition) return null;
+  const closed = rankingClosed(ranking, today);
+  const stats = entry ? categoryStats(ranking, entry.cat, entry.gender) : null;
+  let head: string;
+  let text: string;
+  let tone = '';
+  if (!entry) {
+    head = 'Pas trouvé au classement officiel';
+    text = 'Pas encore de temps sur la période, ou nom écrit autrement à la fédération.';
+  } else if (entry.scratched) {
+    head = 'Retiré du classement officiel';
+    text = `Barré au classement de la fédération : ${girl ? 'elle' : 'il'} ne compte plus pour la sélection.`;
+  } else if (entry.rank == null) {
+    head = 'Pas encore classé';
+    text = `Il faut un temps sur au moins ${need} des ${total} épreuves pour figurer au classement de la fédération.`;
+  } else if (entry.selected) {
+    tone = ' good';
+    head = closed ? e('Sélectionné') : `${ordinal(entry.rank)} : dans les sélectionnés à ce jour`;
+    text = closed
+      ? `En vert au classement arrêté de la fédération (${ordinal(entry.rank)}) : participation assurée, à condition que le club l’inscrive.`
+      : `En vert au classement de la fédération. Définitif seulement au classement arrêté le ${formatDate(ranking.period?.to ?? c.window.to)}.`;
+  } else {
+    const last = stats?.last;
+    head = closed ? `Non ${e('sélectionné')} (${ordinal(entry.rank)})` : `${ordinal(entry.rank)} : hors sélection à ce jour`;
+    text = last
+      ? `Le dernier sélectionné est ${ordinal(last.rank)} avec ${last.total.toLocaleString('fr-BE')} points, soit ${(last.total - entry.total).toLocaleString('fr-BE')} de plus (barème de la fédération).${
+          closed ? ' Une place peut se libérer si un sélectionné se retire.' : ''
+        }`
+      : 'Pas encore de sélectionnés au classement de la fédération.';
+  }
+  return (
+    <div className={`allround-official${tone}`}>
+      <div className="allround-bench-head">
+        <b>Classement officiel {ranking.edition}</b>
+        {entry && entry.rank != null && stats && (
+          <b className="tnum nowrap">
+            {ordinal(entry.rank)} / {stats.ranked.toLocaleString('fr-BE')}
+          </b>
+        )}
+      </div>
+      <div className="allround-official-head">{head}</div>
+      <div className="allround-bench-text">
+        {text}
+        {entry && entry.total > 0 ? ` Total à la fédération : ${entry.total.toLocaleString('fr-BE')} points.` : ''} {read}.
+      </div>
+    </div>
+  );
+}
+
+/** Classement officiel de la fédération relu par le robot (null : pas publié). */
+function useOfficialRanking(): OfficialRanking | null {
+  const [r, setR] = useState<OfficialRanking | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadOfficialRanking().then((x) => alive && setR(x));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return r;
+}
+
 export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim[] }) {
   const data = useQualifying();
+  const ranking = useOfficialRanking();
   const status = useMemo(() => {
     if (!data) return null;
     const today = todayISO();
     for (const c of activeChampionships(data, today)) {
-      const s = allroundStatus(c, swimmer, swims, today, (x) => pointsFor(x, swimmer));
+      // Repère : dernier sélectionné du classement arrêté de l'an dernier, lu par le robot s'il est là
+      const s = allroundStatus(withOfficialBenchmarks(c, ranking, today), swimmer, swims, today, (x) => pointsFor(x, swimmer));
       if (s) return s;
     }
     return null;
-  }, [data, swimmer, swims]);
+  }, [data, ranking, swimmer, swims]);
+  // Ligne du nageur au classement officiel (empreinte de son nom, calculée sur le téléphone)
+  const [official, setOfficial] = useState<OfficialEntry | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setOfficial(null);
+    if (ranking) void officialEntry(ranking, swimmer).then((e) => alive && setOfficial(e));
+    return () => {
+      alive = false;
+    };
+  }, [ranking, swimmer]);
   if (!status || !status.events.some((e) => e.best)) return null;
   const c = status.championship;
   const missing = status.events.filter((e) => !e.best);
@@ -176,7 +282,9 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
   const bench = status.benchmark;
   const girl = swimmer.gender === 'F';
   const catShort = status.category.label.split(' (')[0];
-  const lastSelected = `${status.category.selected}e et ${girl ? 'dernière fille sélectionnée' : 'dernier garçon sélectionné'}`;
+  const lastSelected = girl ? 'dernière fille sélectionnée' : 'dernier garçon sélectionné';
+  const lastRank =
+    bench?.rank && bench.rank > status.category.selected ? ` (${bench.rank}e du classement : des nageurs mieux classés n’ont pas participé)` : '';
   return (
     <Section title={c.name.replace(/^Championnats de /, '')} action={<ProvisionalBadge c={c} />}>
       <div className="card allround-card">
@@ -194,6 +302,7 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
         <div className="allround-rule">
           Pas de temps limite : sélection au classement, connue après le {formatDate(c.window.to)}.
         </div>
+        {ranking && <OfficialBlock ranking={ranking} entry={official} c={c} girl={girl} need={need} total={status.events.length} />}
         {bench && (
           <div className="allround-bench">
             <div className="allround-bench-head">
@@ -201,8 +310,8 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
               <b className="tnum nowrap">{bench.points.toLocaleString('fr-BE')} pts</b>
             </div>
             <div className="muted small">
-              {lastSelected} en {catShort} l’an dernier
-              {bench.official !== bench.points && ` (${bench.official.toLocaleString('fr-BE')} au barème de la fédération)`}
+              {lastSelected[0].toUpperCase() + lastSelected.slice(1)} en {catShort} l’an dernier{lastRank}
+              {bench.official !== bench.points && `, ${bench.official.toLocaleString('fr-BE')} points au barème de la fédération`}
             </div>
             <div
               className={`allround-bar${bench.gap >= 0 ? ' above' : ''}`}
@@ -261,10 +370,12 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
         <br />
         <b>Comment se fait la sélection.</b> La fédération classe {girl ? 'toutes les filles' : 'tous les garçons'} de Belgique de la catégorie (âge atteint
         en {c.edition}) sur ce total, avec leur meilleur temps en 25 ou 50 m entre le {formatDate(c.window.from)} et le {formatDate(c.window.to)}.
-        Le classement est arrêté à cette date, puis les {status.category.selected} premiers sont sélectionnés. Personne ne peut donc être sûr
+        Le classement est arrêté à cette date, puis les {status.category.selected} premiers sont sélectionnés (sans compter les nageurs retirés,
+        barrés au classement). Personne ne peut donc être sûr
         d’être qualifié avant : le nombre de points nécessaire dépend des autres nageurs.
         {bench &&
-          ` Le repère ${bench.edition} en donne une idée : c’est le total du ${lastSelected} lors de l’édition ${bench.edition} (classement officiel de la fédération).`}
+          ` Le repère ${bench.edition} en donne une idée : c’est le total ${girl ? 'de la' : 'du'} ${lastSelected} lors de l’édition ${bench.edition} (classement officiel de la fédération).`}
+        {ranking && ` Le classement officiel de la fédération est relu chaque jour par l’application : les sélectionnés y sont en vert.`}
         {bench &&
           bench.official !== bench.points &&
           ` La fédération calcule ses points avec un barème World Aquatics plus ancien, environ ${(Math.round(((c.allround?.pointsScale ?? 1) - 1) * 1000) / 10).toLocaleString('fr-BE')} % plus généreux : le repère est ramené au barème de l’application pour comparer ce qui est comparable.`}

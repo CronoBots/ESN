@@ -18,3 +18,6 @@ playwright-report
 # Robot des notifications (regroupement et cache, générés)
 .notify-build/
 .notify-cache/
+
+# Robot du classement de la fédération (copie locale, générée)
+.belswim-cache/

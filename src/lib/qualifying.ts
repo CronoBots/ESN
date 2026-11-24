@@ -60,10 +60,11 @@ export interface AllroundCategory {
    */
   counted?: number;
   /**
-   * Repère de l'édition précédente : total de points du dernier sélectionné (le `selected`-ième du
-   * classement de la fédération), par sexe. Seulement des totaux, aucun nom.
+   * Repère de l'édition précédente : total de points du dernier sélectionné (en vert au classement de la
+   * fédération), et son rang (plus loin que `selected` quand des nageurs mieux classés n'ont pas participé),
+   * par sexe. Seulement des totaux, aucun nom.
    */
-  previous?: { edition: number; cutoff: Record<Gender, number> };
+  previous?: { edition: number; cutoff: Record<Gender, number>; rank?: Record<Gender, number> };
 }
 
 export interface QualifyingJson {
@@ -239,6 +240,8 @@ export interface AllroundStatus {
     points: number;
     /** Repère tel que publié par la fédération (son barème). */
     official: number;
+    /** Rang du dernier sélectionné au classement de la fédération. */
+    rank?: number;
     gap: number;
     perEvent: number;
   };
@@ -291,7 +294,14 @@ export function allroundStatus(
     complete: events.filter((e) => e.points != null).length >= need,
     benchmark:
       official && cutoff
-        ? { edition: category.previous!.edition, points: cutoff, official, gap: total - cutoff, perEvent: Math.ceil(Math.abs(total - cutoff) / need) }
+        ? {
+            edition: category.previous!.edition,
+            points: cutoff,
+            official,
+            rank: category.previous!.rank?.[swimmer.gender],
+            gap: total - cutoff,
+            perEvent: Math.ceil(Math.abs(total - cutoff) / need),
+          }
         : undefined,
   };
 }

@@ -10,6 +10,8 @@ on:
   # vérification s'arrête tout de suite, sans rien reconstruire.
   schedule:
     - cron: '*/5 5-21 * * *'
+    # Chaque jour : classement officiel des championnats de Belgique 11-16 ans (scripts/belswim-ranking.mjs)
+    - cron: '23 3 * * *'
 
 permissions:
   contents: read
@@ -51,7 +53,7 @@ jobs:
 
   build:
     needs: window
-    if: github.event_name != 'schedule' || needs.window.outputs.active == 'true'
+    if: github.event_name != 'schedule' || needs.window.outputs.active == 'true' || github.event.schedule == '23 3 * * *'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -82,6 +84,25 @@ jobs:
         with:
           path: .live-cache
           key: live-${{ github.run_id }}
+      # Classement officiel de la fédération (11-16 ans) : relu au plus toutes les 6 heures, copie gardée
+      # entre deux déploiements ; seuls les nageurs de l'ESN (par empreinte) et les seuils sont publiés
+      - name: Copie précédente du classement de la fédération
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: .belswim-cache
+          key: belswim-${{ github.run_id }}
+          restore-keys: belswim-
+      - name: Classement officiel 11-16 ans
+        id: belswim
+        continue-on-error: true
+        run: node scripts/belswim-ranking.mjs dist .belswim-cache >> "$GITHUB_OUTPUT"
+      - if: steps.belswim.outputs.changed == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .belswim-cache
+          key: belswim-${{ github.run_id }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
