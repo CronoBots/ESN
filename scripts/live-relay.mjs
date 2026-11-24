@@ -83,11 +83,13 @@ function followedOn(day) {
 }
 
 /**
- * Compétitions du club au calendrier ce jour-là (veille comprise), avec ou sans livetiming copié : les
+ * Compétitions du club au calendrier ce jour-là (3 jours avant compris), avec ou sans livetiming copié : les
  * notifications lisent aussi les résultats de live.swimrankings.net (compétitions signalées par l'application).
  */
 export function clubDayEvents(calendar, day) {
-  return (calendar.events ?? []).filter((e) => typeof e.start === 'string' && prevDay(e.start) <= day && (e.end ?? e.start) >= day);
+  // Dès 3 jours avant : le programme (listes de départ) est notifié dès sa publication
+  const before = (iso) => new Date(Date.parse(`${iso}T12:00:00Z`) - 3 * 86400000).toISOString().slice(0, 10);
+  return (calendar.events ?? []).filter((e) => typeof e.start === 'string' && before(e.start) <= day && (e.end ?? e.start) >= day);
 }
 const clubDay = (day) => clubDayEvents(JSON.parse(readFileSync(CALENDAR, 'utf8')), day).length > 0;
 

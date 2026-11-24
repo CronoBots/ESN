@@ -12,10 +12,10 @@ describe('notifications des résultats', () => {
     expect(a).not.toContain('dupont');
   });
 
-  it('le robot tourne les jours de compétition du club (veille comprise), avec ou sans livetiming copié', () => {
+  it('le robot tourne les jours de compétition du club (dès 3 jours avant, pour le programme), avec ou sans livetiming copié', () => {
     const cal = { events: [{ start: '2026-11-28', end: '2026-11-29', city: 'Testville', name: 'Championnats' }, { start: '2026-12-12', name: 'Un jour' }] };
-    expect(clubDayEvents(cal, '2026-11-26')).toHaveLength(0);
-    expect(clubDayEvents(cal, '2026-11-27')).toHaveLength(1);
+    expect(clubDayEvents(cal, '2026-11-24')).toHaveLength(0);
+    expect(clubDayEvents(cal, '2026-11-25')).toHaveLength(1);
     expect(clubDayEvents(cal, '2026-11-29')).toHaveLength(1);
     expect(clubDayEvents(cal, '2026-11-30')).toHaveLength(0);
     expect(clubDayEvents(cal, '2026-12-12')).toHaveLength(1);

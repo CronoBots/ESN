@@ -15,7 +15,7 @@ import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useState } from 'react';
-import { disablePush, enablePush, pushState, type PushState } from '../lib/push';
+import { disablePush, enablePush, pushPrefs, pushState, setPushPrefs, type PushPrefs, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 
@@ -351,18 +351,46 @@ function NotificationsSection() {
     }
   };
   const names = followed.map((s) => s.firstName).join(', ');
+  const [prefs, setPrefs] = useState<PushPrefs>(() => pushPrefs());
+  const updatePrefs = (p: PushPrefs) => {
+    setPrefs(p);
+    void setPushPrefs(p, getState().swimmers).catch(() => overlay.toast('Mise à jour impossible pour le moment : réessayez', '⚠️'));
+  };
   return (
     <Section title="Notifications">
       <div className="list">
         <div className="field">
-          <span className="label grow">Résultats de mes nageurs</span>
+          <span className="label grow">Notifications de mes nageurs</span>
           <Toggle
             on={state === 'on'}
             onChange={(v) => void toggle(v)}
-            label="Recevoir une notification à chaque résultat de mes nageurs suivis"
+            label="Recevoir des notifications pour mes nageurs suivis"
             disabled={busy || state === 'unsupported' || state === 'install' || state === 'denied' || (!followed.length && state !== 'on')}
           />
         </div>
+        {state === 'on' && (
+          <>
+            <div className="field">
+              <span className="label">Résultats</span>
+              <div style={{ flex: 1, maxWidth: 250, marginLeft: 'auto' }}>
+                <Segmented
+                  value={prefs.results}
+                  onChange={(v) => updatePrefs({ ...prefs, results: v })}
+                  ariaLabel="Résultats notifiés"
+                  options={[
+                    { id: 'all', label: 'Tous' },
+                    { id: 'pb', label: 'Records perso' },
+                    { id: 'none', label: 'Aucun' },
+                  ]}
+                />
+              </div>
+            </div>
+            <div className="field">
+              <span className="label grow">Programme et finales</span>
+              <Toggle on={prefs.entries} onChange={(v) => updatePrefs({ ...prefs, entries: v })} label="Notifier le programme publié et les qualifications en finale" />
+            </div>
+          </>
+        )}
       </div>
       <div className="section-foot">
         {state === 'install'
@@ -373,7 +401,7 @@ function NotificationsSection() {
               ? 'Les notifications sont bloquées pour ESN Compétition dans les réglages du téléphone : autorisez-les, puis revenez ici.'
               : !followed.length
                 ? 'Suivez d’abord un ou plusieurs nageurs (Mon espace) pour recevoir leurs résultats.'
-                : `Une notification à chaque résultat officiel de ${names} : temps, place et record personnel, pendant la compétition. Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`}
+                : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`}
       </div>
     </Section>
   );

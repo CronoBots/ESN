@@ -8,6 +8,22 @@ import { pushRpc, swimmerKey, VAPID_PUBLIC_KEY } from './pushKey';
  */
 
 const ON = 'esn-notifications';
+const KINDS = 'esn-notifications-types';
+
+/** Types de notification : résultats (tous, ou records perso seulement) et programme (engagements, finales). */
+export interface PushPrefs {
+  results: 'all' | 'pb' | 'none';
+  entries: boolean;
+}
+export function pushPrefs(): PushPrefs {
+  try {
+    const p = JSON.parse(read(KINDS) ?? '{}') as Partial<PushPrefs>;
+    return { results: p.results === 'pb' || p.results === 'none' ? p.results : 'all', entries: p.entries !== false };
+  } catch {
+    return { results: 'all', entries: true };
+  }
+}
+const kindsOf = (p: PushPrefs) => [...(p.results === 'all' ? ['results'] : p.results === 'pb' ? ['pb'] : []), ...(p.entries ? ['entries'] : [])];
 const SENT = 'esn-notifications-envoye';
 const LIVE = 'esn-direct-signale';
 
@@ -59,10 +75,11 @@ async function subscription(create: boolean): Promise<PushSubscription | null> {
 /** Envoie l'abonnement et les nageurs suivis (seulement s'ils ont changé, sauf `force`). */
 async function save(sub: PushSubscription, swimmers: Swimmer[], force = false) {
   const keys = (await Promise.all(followed(swimmers).map(swimmerKey))).sort();
+  const kinds = kindsOf(pushPrefs());
   const json = sub.toJSON();
-  const sig = `${json.endpoint}|${keys.join(',')}`;
+  const sig = `${json.endpoint}|${keys.join(',')}|${kinds.join(',')}`;
   if (!force && read(SENT) === sig) return;
-  const res = await pushRpc('esn_push_subscribe', { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_swimmers: keys });
+  const res = await pushRpc('esn_push_subscribe', { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_swimmers: keys, p_kinds: kinds });
   if (!res.ok) throw new Error(`Abonnement refusé (${res.status})`);
   write(SENT, sig);
 }
@@ -122,3 +139,10 @@ export function reportLiveMeet(liveId: string) {
   write(LIVE, JSON.stringify(seen));
   void pushRpc('esn_report_live_meet', { p_live_id: liveId }).catch(() => undefined);
 }
+
+/** Change les types de notification ; l'abonnement est mis à jour tout de suite. */
+export async function setPushPrefs(prefs: PushPrefs, swimmers: Swimmer[]): Promise<void> {
+  write(KINDS, JSON.stringify(prefs));
+  await refreshPush(swimmers);
+}
+

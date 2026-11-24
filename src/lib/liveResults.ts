@@ -675,6 +675,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
         if (!club || !report || report.startDate < recent) return;
         const pdf = await readMeetPdfs(m, pending, club, CLUB.member);
         if (!pdf) return; // rien de publié : on réessaiera
+        // Programme ou résultats de nageurs du club : signalés au robot des notifications (dès la publication)
+        if (!isMirrored(m.id) && (pdf.found.size > 0 || pdf.candidates.length > 0)) reportLiveMeet(m.id);
         candidates.push(...pdf.candidates);
         for (const [id, swims] of pdf.found) found.set(id, [...(found.get(id) ?? []), { meet: report, swims }]);
         if (pdf.complete) processed[m.id] = [...new Set([...(processed[m.id] ?? []), ...pending.map((s) => s.id)])];
