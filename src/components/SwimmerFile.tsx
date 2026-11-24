@@ -161,7 +161,13 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
               <button key={c.id} className="hero-qual" onClick={() => navigate('/championships')}>
                 <Icon name="check" />
                 <span className="hero-parts">
-                  <span>{swimmer.gender === 'F' ? 'Qualifiée' : 'Qualifié'}</span>
+                  <span>
+                    {c.provisional
+                      ? `Limite${events.length > 1 ? 's' : ''} atteinte${events.length > 1 ? 's' : ''}`
+                      : swimmer.gender === 'F'
+                        ? 'Qualifiée'
+                        : 'Qualifié'}
+                  </span>
                   <span>{championshipShort(c)}</span>
                   <span>
                     {events.length}&nbsp;épreuve{events.length > 1 ? 's' : ''}

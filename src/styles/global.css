@@ -1735,6 +1735,35 @@ a.row:active {
   text-align: right;
 }
 
+/* Règle du championnat en tête de carte (pas de temps limite) */
+.allround-rule {
+  margin: 0 16px 10px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Résultat non compté (hors des meilleurs) : estompé et écrit en toutes lettres */
+.allround-skip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.allround-skip .time-big {
+  color: var(--text-3);
+  opacity: 0.5;
+}
+
+.allround-skip > span:last-child {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--warning);
+}
+
 /* Repère : total du dernier sélectionné de l'édition précédente, et barre de progression vers lui */
 .allround-bench {
   margin: 0 16px 12px;

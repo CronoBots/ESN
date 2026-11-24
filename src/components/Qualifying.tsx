@@ -68,7 +68,8 @@ function statusText(s: LimitStatus, today: string): string {
     const level = s.reached.label === 'Limite' ? '' : ` (limite ${s.reached.label})`;
     // Écart à la limite A seulement tant que la période de qualification est ouverte
     const more = s.next?.gapCs != null && today <= c.window.to ? ` · A à ${gapLabel(s.next.gapCs)}` : '';
-    return `Qualifié${level} avec ${formatTime(s.best.timeCs)}${other}${more}`;
+    // Limites de l'édition pas encore publiées : « limite atteinte », pas encore « qualifié »
+    return `${c.provisional ? 'Limite atteinte' : 'Qualifié'}${level} avec ${formatTime(s.best.timeCs)}${other}${more}`;
   }
   const level = s.next && s.next.label !== 'Limite' ? ` pour la limite ${s.next.label}` : '';
   return `Encore ${gapLabel(s.next!.gapCs!)}${level} · record ${formatTime(s.best.timeCs)}${other}`;
@@ -190,6 +191,9 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
             {status.events.length - missing.length} épreuve{status.events.length - missing.length > 1 ? 's' : ''} sur {status.events.length}
           </div>
         </div>
+        <div className="allround-rule">
+          Pas de temps limite : sélection au classement, connue après le {formatDate(c.window.to)}.
+        </div>
         {bench && (
           <div className="allround-bench">
             <div className="allround-bench-head">
@@ -231,9 +235,15 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
                   </div>
                 </div>
                 <div className="row-end">
-                  <span className={`time-big tnum${e.points != null && !e.counted ? ' muted' : ''}`} title={e.points != null && !e.counted ? 'Non compté' : undefined}>
-                    {e.points != null ? e.points : '–'}
-                  </span>
+                  {e.points != null && !e.counted ? (
+                    // Résultat le plus faible, hors des meilleurs comptés : écrit en toutes lettres
+                    <div className="allround-skip">
+                      <span className="time-big tnum">{e.points}</span>
+                      <span>non compté</span>
+                    </div>
+                  ) : (
+                    <span className="time-big tnum">{e.points != null ? e.points : '–'}</span>
+                  )}
                   <Icon name="chevronRight" className="chev" />
                 </div>
               </button>
@@ -244,7 +254,7 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
       <div className="section-foot">
         {need < status.events.length ? `Comptent les ${need} meilleurs résultats sur ${status.events.length}. ` : ''}
         {status.complete
-          ? `Classé avec ${status.total.toLocaleString('fr-BE')} points. `
+          ? `Assez d’épreuves pour figurer au classement, avec ${status.total.toLocaleString('fr-BE')} points. `
           : need < status.events.length
             ? `Un temps sur au moins ${need} épreuves est nécessaire pour être classé : encore ${toSwim} à nager. `
             : `Un temps sur chaque épreuve est nécessaire pour être classé : il manque ${missing.map((e) => e.events.map(eventName).join(' ou ')).join(', ')}. `}
@@ -276,8 +286,52 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
 }
 
 /** Accueil : épreuves qualifiées et limites les plus proches, sur les championnats à venir. */
+/** Badge d'une limite atteinte : « Qualifié » seulement quand les limites de l'édition sont publiées. */
+export function reachedLabel(s: LimitStatus): string {
+  const label = s.reached!.label === 'Limite' ? '' : s.reached!.label;
+  // Court (la limite est écrite sur la ligne) : « Atteinte », « A atteinte » ; « Qualifié » une fois les limites publiées
+  return s.championship.provisional ? (label ? `${label} atteinte` : 'Atteinte') : `Qualifié${label ? ` ${label}` : ''}`;
+}
+
+/**
+ * Sous la liste des temps limites : ces championnats se gagnent au temps (pas de sélection en fin de
+ * période), et pourquoi « limite atteinte » plutôt que « qualifié » tant que les limites sont provisoires.
+ */
+function goalsFoot(summary: { qualified: LimitStatus[] }, shown: Championship[], otherSystem: string | false): string {
+  const n = summary.qualified.length;
+  const parts = [
+    n > 0 ? `${n} limite${n > 1 ? 's' : ''} atteinte${n > 1 ? 's' : ''}.` : 'Pas encore de limite atteinte : voici les plus proches (à 10 % au plus).',
+    `Ces championnats se gagnent au temps limite : un temps sous la limite, nagé pendant la période de qualification, suffit pour être engagé sur l’épreuve, sans attendre la fin de la période${
+      shown.some((c) => c.aOnlyUpTo != null) ? ' (aux championnats Open, la limite B dépend des places restantes)' : ''
+    }.`,
+    `Période : ${shown.map((c) => `${championshipShort(c)}, du ${formatDate(c.window.from)} au ${formatDate(c.window.to)}`).join(' ; ')}.`,
+  ];
+  const prov = shown.find((c) => c.provisional);
+  if (prov) {
+    // La limite atteinte le plus juste : celle qui risque le plus de changer avec les nouvelles limites
+    const tight = summary.qualified
+      .filter((q) => q.championship.provisional)
+      .sort((a, b) => a.reached!.cs - a.best!.timeCs - (b.reached!.cs - b.best!.timeCs))[0];
+    parts.push(
+      `Les limites ${prov.edition} ne sont pas encore publiées : celles de ${prov.limitsEdition} sont reprises. Si elles deviennent plus rapides, une limite atteinte de justesse peut ne plus suffire${
+        tight ? ` (la plus juste : ${eventLabel(tight.distance, tight.stroke)}, ${gapLabel(tight.reached!.cs - tight.best!.timeCs)} d’avance)` : ''
+      }. C’est pourquoi l’application écrit « atteinte », et « qualifié » une fois les limites ${prov.edition} publiées.`,
+    );
+  }
+  if (otherSystem) parts.push(otherSystem);
+  return parts.join(' ');
+}
+
 export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swims: Swim[]; /** Page Championnats : toutes les épreuves */ all?: boolean }) {
   const data = useQualifying();
+  // Championnat classé aux points pour ce nageur (11-16 ans) : il fonctionne autrement, on le dit
+  const otherSystem = useMemo(() => {
+    if (!data || !swimmer.birthYear) return '';
+    const c = activeChampionships(data, todayISO()).find((x) =>
+      x.allround?.categories.some((cat) => x.edition - swimmer.birthYear! >= cat.minAge && x.edition - swimmer.birthYear! <= cat.maxAge),
+    );
+    return c ? `Le championnat ${championshipShort(c)} (plus bas) fonctionne autrement : pas de temps limite, mais une sélection au classement, connue seulement après le ${formatDate(c.window.to)}.` : '';
+  }, [data, swimmer.birthYear]);
   const summary = useMemo(() => {
     if (!data) return null;
     const s = qualifyingSummary(data, swimmer, swims, todayISO());
@@ -287,7 +341,7 @@ export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swi
   if (!summary || (!summary.qualified.length && !summary.close.length)) {
     // Page Championnats : dire pourquoi elle est vide plutôt que n'afficher qu'une note
     return all && summary ? (
-      <Section title="Qualifications">
+      <Section title="Temps limites">
         <div className="card">
           <Empty
             icon="trophy"
@@ -305,7 +359,7 @@ export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swi
   const shown = [...new Map(rows.map((s) => [s.championship.id, s.championship])).values()];
   return (
     <Section
-      title={all ? 'Qualifications' : 'Championnats'}
+      title={all ? 'Temps limites' : 'Championnats'}
       action={
         !all && more > 0 ? (
           <button className="section-link" onClick={() => navigate('/championships')}>
@@ -339,9 +393,12 @@ export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swi
               </div>
               <div className="row-end">
                 {s.reached ? (
-                  <span className="badge good">
-                    <Icon name="check" /> Qualifié{s.reached.label === 'Limite' ? '' : ` ${s.reached.label}`}
-                  </span>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className="badge good">
+                      <Icon name="check" /> {reachedLabel(s)}
+                    </span>
+                    <div className="small muted">{gapLabel(s.reached.cs - s.best!.timeCs)} d’avance</div>
+                  </div>
                 ) : (
                   <div style={{ textAlign: 'right' }}>
                     <div className="time-big tnum">{gapLabel(s.next!.gapCs!)}</div>
@@ -354,14 +411,7 @@ export function QualifyingGoals({ swimmer, swims, all }: { swimmer: Swimmer; swi
           );
         })}
       </div>
-      <div className="section-foot">
-        {summary.qualified.length > 0
-          ? `Qualifié sur ${summary.qualified.length} épreuve${summary.qualified.length > 1 ? 's' : ''}. `
-          : 'Pas encore de limite atteinte : voici les plus proches (à 10 % au plus). '}
-        Championnats de Belgique à venir : {shown.map((c) => `${championshipShort(c)} (${championshipWhen(c)})`).join(', ')}.
-        {shown.some((c) => c.provisional) &&
-          ` Limites ${shown.find((c) => c.provisional)!.limitsEdition} reprises en attendant celles de ${shown.find((c) => c.provisional)!.edition}, pas encore publiées.`}
-      </div>
+      <div className="section-foot">{goalsFoot(summary, shown, all ? otherSystem : false)}</div>
     </Section>
   );
 }
