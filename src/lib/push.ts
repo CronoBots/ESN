@@ -116,18 +116,48 @@ export function pushAdvice(state: PushState, { device, installed }: PushEnv = en
   }
 }
 
+/** Réglage des notifications de l'application installée sur Android (la demande peut ne jamais s'afficher). */
+const ANDROID_APP_SETTINGS =
+  'appui long sur l’icône ESN Compétition › Infos sur l’appli (ⓘ) › Notifications › Autoriser (si ce menu n’existe pas : Paramètres du téléphone › Applications › Chrome › Notifications)';
+
 /** Pendant la demande d'autorisation. */
 export function pushWaitAdvice({ device, installed }: PushEnv = env()): string {
-  return device === 'android' && !installed
-    ? 'Touchez « Autoriser » dans la fenêtre qui s’affiche. Si rien n’apparaît, Chrome a mis la demande de côté : touchez l’icône de cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser.'
-    : 'Touchez « Autoriser » dans la fenêtre qui s’affiche.';
+  if (device !== 'android') return 'Touchez « Autoriser » dans la fenêtre qui s’affiche.';
+  return installed
+    ? `Touchez « Autoriser » dans la fenêtre qui s’affiche. Si rien n’apparaît : ${ANDROID_APP_SETTINGS}, puis revenez ici : l’activation se termine toute seule.`
+    : 'Touchez « Autoriser » dans la fenêtre qui s’affiche. Si rien n’apparaît, Chrome a mis la demande de côté : touchez l’icône de cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser ; l’activation se termine toute seule.';
 }
 
-/** Aucune réponse à la demande d'autorisation. */
+/** Aucune réponse à la demande d'autorisation (fenêtre jamais affichée). */
 function noAnswerAdvice({ device, installed }: PushEnv): string {
-  return device === 'android' && !installed
-    ? 'Pas de réponse à la demande d’autorisation : touchez la cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser, puis touchez à nouveau l’interrupteur.'
-    : 'Pas de réponse à la demande d’autorisation : si vous avez autorisé entre-temps, touchez à nouveau l’interrupteur.';
+  if (device !== 'android') return 'Pas de réponse à la demande d’autorisation : si vous avez autorisé entre-temps, touchez à nouveau l’interrupteur.';
+  return installed
+    ? `Aucune fenêtre d’autorisation ne s’est affichée. Autorisez les notifications dans les réglages du téléphone : ${ANDROID_APP_SETTINGS}. Revenez ensuite ici : l’activation se termine toute seule. Autre solution : ouvrez cronobots.github.io/ESN dans Chrome, touchez l’interrupteur, puis la cloche dans la barre d’adresse › Autoriser.`
+    : 'Aucune fenêtre d’autorisation ne s’est affichée : touchez la cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser ; l’activation se termine toute seule. Sinon : Paramètres du téléphone › Applications › Chrome › Notifications › Autoriser, puis touchez à nouveau l’interrupteur.';
+}
+
+/** Autorisation de notifier déjà accordée sur cet appareil (réglages du téléphone ou du site). */
+export const permissionGranted = () => 'Notification' in window && Notification.permission === 'granted';
+
+/**
+ * Prévient quand l'autorisation de notifier change (accordée dans les réglages, ou demande mise de côté
+ * puis acceptée) ; renvoie la fonction d'arrêt.
+ */
+export function watchPermission(cb: () => void): () => void {
+  let status: PermissionStatus | null = null;
+  let stopped = false;
+  navigator.permissions
+    ?.query({ name: 'notifications' })
+    .then((st) => {
+      if (stopped) return;
+      status = st;
+      st.onchange = cb;
+    })
+    .catch(() => undefined);
+  return () => {
+    stopped = true;
+    if (status) status.onchange = null;
+  };
 }
 
 /** Autorisation ni donnée ni refusée (fenêtre fermée, ou mise de côté par le navigateur). */
@@ -156,7 +186,8 @@ export function subscribeAdvice(e: unknown, device: PushDevice = pushDevice()): 
 
 /** Promesse limitée dans le temps (le service hors connexion peut ne jamais être prêt). */
 function within<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
-  return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new PushError(message, `pas de réponse après ${ms / 1000} s`)), ms))]);
+  const where = (({ device, installed }) => `${device === 'android' ? 'Android' : device === 'ios' ? 'iPhone' : 'ordinateur'} · ${installed ? 'application installée' : 'navigateur'}`)(env());
+  return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new PushError(message, `pas de réponse après ${ms / 1000} s · ${where}`)), ms))]);
 }
 
 const followed = (swimmers: Swimmer[]) => swimmers.filter((s) => s.relation === 'child' || s.favorite);
@@ -196,7 +227,7 @@ export async function enablePush(swimmers: Swimmer[]): Promise<PushState> {
   let permission: NotificationPermission;
   try {
     // Demande mise de côté par le navigateur (Chrome sur Android) : pas de réponse, l'interrupteur est rendu
-    permission = await within(Notification.requestPermission(), 20000, noAnswerAdvice(env()));
+    permission = await within(Notification.requestPermission(), 10000, noAnswerAdvice(env()));
   } catch (e) {
     if (e instanceof PushError) throw e;
     throw new PushError('La demande d’autorisation n’a pas pu s’afficher : réessayez.', errorDetail(e));

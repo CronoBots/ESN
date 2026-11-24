@@ -14,8 +14,8 @@ import { isStandalone, promptInstall } from './Install';
 import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
-import { useEffect, useState } from 'react';
-import { disablePush, enablePush, errorDetail, pushAdvice, pushPrefs, pushState, pushWaitAdvice, PushError, setPushPrefs, type PushPrefs, type PushState } from '../lib/push';
+import { useEffect, useRef, useState } from 'react';
+import { disablePush, enablePush, errorDetail, permissionGranted, pushAdvice, pushPrefs, pushState, pushWaitAdvice, PushError, setPushPrefs, watchPermission, type PushPrefs, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 declare const __BUILD_TIME__: string | undefined;
@@ -349,25 +349,23 @@ function NotificationsSection() {
   const [busy, setBusy] = useState(false);
   /** Dernier échec de l'activation : quoi faire, et l'erreur exacte du navigateur. */
   const [problem, setProblem] = useState<{ text: string; detail?: string } | null>(null);
-  // Retour des réglages du téléphone (autorisation donnée ou retirée) : état relu
-  useEffect(() => {
-    const again = () => {
-      if (document.visibilityState !== 'visible') return;
-      setState(pushState());
-      setProblem(null);
-    };
-    document.addEventListener('visibilitychange', again);
-    return () => document.removeEventListener('visibilitychange', again);
-  }, []);
   const followed = data.swimmers.filter((s) => s.relation === 'child' || s.favorite);
+  /** Activation demandée et pas encore aboutie : reprise toute seule dès que l'autorisation est accordée. */
+  const wanted = useRef(false);
+  const busyRef = useRef(false);
   const toggle = async (on: boolean) => {
+    busyRef.current = true;
     setBusy(true);
     setProblem(null);
+    wanted.current = on;
     try {
       if (on) {
         const next = await enablePush(getState().swimmers);
         setState(next);
-        if (next === 'on') overlay.toast('Notifications activées', '🔔');
+        if (next === 'on') {
+          wanted.current = false;
+          overlay.toast('Notifications activées', '🔔');
+        }
       } else {
         await disablePush();
         setState('off');
@@ -376,9 +374,28 @@ function NotificationsSection() {
       setProblem(e instanceof PushError ? { text: e.message, detail: e.detail } : { text: 'Activation impossible pour le moment : réessayez.', detail: errorDetail(e) });
       setState(pushState());
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
+  // Retour des réglages du téléphone, ou autorisation accordée après coup (demande mise de côté) : état relu,
+  // et l'activation demandée se termine toute seule
+  const resume = useRef(() => {});
+  resume.current = () => {
+    const now = pushState();
+    setState(now);
+    if (wanted.current && !busyRef.current && now === 'off' && permissionGranted()) void toggle(true);
+    else if (!busyRef.current) setProblem(null);
+  };
+  useEffect(() => {
+    const again = () => document.visibilityState === 'visible' && resume.current();
+    document.addEventListener('visibilitychange', again);
+    const stop = watchPermission(() => resume.current());
+    return () => {
+      document.removeEventListener('visibilitychange', again);
+      stop();
+    };
+  }, []);
   // Interrupteur jamais grisé : s'il ne peut pas s'activer ici, le toucher explique pourquoi et quoi faire
   const blocked = pushAdvice(state);
   const tap = (on: boolean) => {
