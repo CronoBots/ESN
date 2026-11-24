@@ -168,6 +168,9 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
   if (!status || !status.events.some((e) => e.best)) return null;
   const c = status.championship;
   const missing = status.events.filter((e) => !e.best);
+  // « Les 4 meilleurs sur 5 » : nombre de résultats comptés et d'épreuves encore à nager pour être classé
+  const need = status.category.counted ?? status.events.length;
+  const toSwim = Math.max(0, need - (status.events.length - missing.length));
   return (
     <Section title={c.name.replace(/^Championnats de /, '')} action={<ProvisionalBadge c={c} />}>
       <div className="card allround-card">
@@ -199,7 +202,9 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
                   </div>
                 </div>
                 <div className="row-end">
-                  <span className="time-big tnum">{e.points != null ? e.points : '–'}</span>
+                  <span className={`time-big tnum${e.points != null && !e.counted ? ' muted' : ''}`} title={e.points != null && !e.counted ? 'Non compté' : undefined}>
+                    {e.points != null ? e.points : '–'}
+                  </span>
                   <Icon name="chevronRight" className="chev" />
                 </div>
               </button>
@@ -208,10 +213,13 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
         </div>
       </div>
       <div className="section-foot">
+        {need < status.events.length ? `Comptent les ${need} meilleurs résultats sur ${status.events.length}. ` : ''}
         {status.complete
           ? `Classé avec ${status.total.toLocaleString('fr-BE')} points. `
-          : `Un temps sur chaque épreuve est nécessaire pour être classé : il manque ${missing.map((e) => e.events.map(eventName).join(' ou ')).join(', ')}. `}
-        Sélection : les {status.category.selected} premiers du classement de la fédération, pour l’âge atteint en {c.edition}. Le nombre
+          : need < status.events.length
+            ? `Un temps sur au moins ${need} épreuves est nécessaire pour être classé : encore ${toSwim} à nager. `
+            : `Un temps sur chaque épreuve est nécessaire pour être classé : il manque ${missing.map((e) => e.events.map(eventName).join(' ou ')).join(', ')}. `}
+        Sélection : les {status.category.selected} premiers du classement de la fédération (par sexe), pour l’âge atteint en {c.edition}. Le nombre
         de points nécessaire n’est connu qu’à la clôture : ce total sert à suivre la progression. Meilleur temps en 25 ou 50 m depuis le{' '}
         {formatDate(c.window.from)}
         {c.provisional ? `, règles de l’édition ${c.limitsEdition}` : ''}.{' '}

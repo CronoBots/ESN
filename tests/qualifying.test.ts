@@ -102,14 +102,14 @@ describe('situation d’un nageur', () => {
           limits: { F: {}, M: {} },
           allround: {
             categories: [
-              { label: 'Jeugd 1 (11-12 ans)', minAge: 11, maxAge: 12, selected: 80, events: [['50-FLY', '100-FLY'], '100-BACK', '200-IM'] },
-              { label: 'Jeugd 2 (13-14 ans)', minAge: 13, maxAge: 14, selected: 96, events: ['100-FLY', '100-BACK', '200-IM', '400-FREE'] },
+              { label: 'Jeunes 1 (11-12 ans)', minAge: 11, maxAge: 12, selected: 70, events: [['50-FLY', '100-FLY'], '100-BACK', '200-IM'] },
+              { label: 'Jeunes 2 (13-14 ans)', minAge: 13, maxAge: 14, selected: 70, events: ['100-FLY', '100-BACK', '200-IM', '400-FREE'] },
             ],
           },
         },
       ],
     }).championships[0];
-    const zoe = { id: 'zoe', gender: 'F' as const, birthYear: 2015 }; // 12 ans en 2027 : Jeugd 1
+    const zoe = { id: 'zoe', gender: 'F' as const, birthYear: 2015 }; // 12 ans en 2027 : Jeunes 1
     const pts = new Map<string, number>();
     const add = (d: number, st: Swim['stroke'], course: Swim['course'], date: string, p: number) => {
       const s = swim('zoe', d, st, course, 1000 + n, date);
@@ -123,10 +123,17 @@ describe('situation d’un nageur', () => {
       add(100, 'BACK', 'SCM', '2026-06-01', 350),
     ];
     const s = allroundStatus(c, zoe, swims, TODAY, (x) => pts.get(x.id) ?? null)!;
-    expect(s.category.label).toBe('Jeugd 1 (11-12 ans)');
+    expect(s.category.label).toBe('Jeunes 1 (11-12 ans)');
     expect(s.events.map((e) => e.points ?? null)).toEqual([330, 350, null]);
     expect(s.total).toBe(680);
     expect(s.complete).toBe(false);
+    // Règlement : « les 2 meilleurs sur 3 » comptent ; deux temps suffisent pour être classé
+    const best2 = { ...c, allround: { categories: c.allround!.categories.map((cat) => ({ ...cat, counted: 2 })) } };
+    const swims3 = [...swims, add(200, 'IM', 'SCM', '2026-09-01', 300)];
+    const s2 = allroundStatus(best2, zoe, swims3, TODAY, (x) => pts.get(x.id) ?? null)!;
+    expect(s2.total).toBe(680); // 350 + 330 ; le 4 nages (300) ne compte pas
+    expect(s2.events.map((e) => e.counted ?? false)).toEqual([true, true, false]);
+    expect(allroundStatus(best2, zoe, swims, TODAY, (x) => pts.get(x.id) ?? null)!.complete).toBe(true);
     // 17 ans : pas concerné
     expect(allroundStatus(c, { ...zoe, birthYear: 2010 }, swims, TODAY, () => 1)).toBeNull();
   });

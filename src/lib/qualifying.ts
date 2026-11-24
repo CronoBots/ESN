@@ -37,14 +37,19 @@ export interface ChampionshipJson {
 }
 
 export interface AllroundCategory {
-  /** « Jeugd 1 (11-12 ans) » */
+  /** « Jeunes 1 (11-12 ans) » (nom du règlement en français) */
   label: string;
   minAge: number;
   maxAge: number;
-  /** Nombre de nageurs sélectionnés (les premiers du classement). */
+  /** Nombre de nageurs sélectionnés (les premiers du classement), par sexe. */
   selected: number;
   /** Épreuves imposées ; un tableau = au choix (le meilleur nombre de points), ex. 50 ou 100 m papillon. */
   events: (string | string[])[];
+  /**
+   * Nombre de meilleurs résultats comptés (« les 4 meilleurs sur 5 ») ; il faut un temps sur au moins
+   * autant d'épreuves pour être classé. Absent : toutes les épreuves.
+   */
+  counted?: number;
 }
 
 export interface QualifyingJson {
@@ -95,6 +100,8 @@ export function parseQualifying(raw: unknown): QualifyingData {
     for (const cat of c.allround?.categories ?? []) {
       if (!cat.label || !(cat.minAge <= cat.maxAge) || !(cat.selected > 0) || !Array.isArray(cat.events) || !cat.events.length)
         throw new Error(`${where} : catégorie du classement invalide`);
+      if (cat.counted != null && !(Number.isInteger(cat.counted) && cat.counted >= 1 && cat.counted <= cat.events.length))
+        throw new Error(`${where} : nombre de résultats comptés invalide`);
       for (const e of cat.events.flat()) if (!EVENT.test(e)) throw new Error(`${where} : épreuve inconnue « ${e} »`);
     }
     return { ...c, limits, provisional: c.limitsEdition < c.edition };
@@ -191,6 +198,8 @@ export interface AllroundEvent {
   events: string[];
   best?: Swim & { timeCs: number };
   points?: number;
+  /** Parmi les meilleurs résultats comptés dans le total. */
+  counted?: boolean;
 }
 
 export interface AllroundStatus {
@@ -198,9 +207,9 @@ export interface AllroundStatus {
   category: AllroundCategory;
   age: number;
   events: AllroundEvent[];
-  /** Somme des points des épreuves nagées. */
+  /** Somme des points des meilleurs résultats comptés. */
   total: number;
-  /** Un temps sur toutes les épreuves imposées : condition pour être classé. */
+  /** Un temps sur assez d'épreuves (toutes, ou le nombre de résultats comptés) : condition pour être classé. */
   complete: boolean;
 }
 
@@ -231,13 +240,20 @@ export function allroundStatus(
     }
     return best;
   });
+  // Seuls les meilleurs résultats comptent (« les 4 meilleurs sur 5 ») ; à défaut, toutes les épreuves
+  const need = category.counted ?? events.length;
+  const best = events
+    .filter((e) => e.points != null)
+    .sort((a, b) => b.points! - a.points!)
+    .slice(0, need);
+  for (const e of best) e.counted = true;
   return {
     championship: c,
     category,
     age,
     events,
-    total: events.reduce((n, e) => n + (e.points ?? 0), 0),
-    complete: events.every((e) => e.points != null),
+    total: best.reduce((n, e) => n + e.points!, 0),
+    complete: events.filter((e) => e.points != null).length >= need,
   };
 }
 

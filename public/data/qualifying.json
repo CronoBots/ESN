@@ -21,7 +21,7 @@
    ],
    "aOnlyUpTo": 16,
    "note": "Limite A : place garantie. Limite B : 17 ans et plus, selon les places restantes. Temps en bassin de 25 ou 50 m.",
-   "source": "https://www.belswim.be/storage/files/file/2540.pdf",
+   "source": "https://www.belswim.be/storage/files/file/2579.pdf",
    "limits": {
     "F": {
      "50-FREE": {
@@ -191,7 +191,7 @@
    ],
    "aOnlyUpTo": 16,
    "note": "Limite A : place garantie. Limite B : selon les places restantes, pas pour les 16 ans et moins. Temps en bassin de 50 m.",
-   "source": "https://www.belswim.be/storage/files/file/2199.pdf",
+   "source": "https://www.belswim.be/storage/files/file/2200.pdf",
    "limits": {
     "F": {
      "50-FREE": {
@@ -351,7 +351,7 @@
     "LCM"
    ],
    "note": "Temps en bassin de 25 ou 50 m. À 11 et 12 ans, le 100 m se gagne par le 200 m 4 nages (et le 100 m libre aussi par le 400 m libre).",
-   "source": "https://www.belswim.be/storage/files/file/2387.pdf",
+   "source": "https://www.belswim.be/storage/files/file/2388.pdf",
    "limits": {
     "F": {
      "100-FREE": {
@@ -478,7 +478,7 @@
     "LCM"
    ],
    "note": "Temps en bassin de 50 m uniquement.",
-   "source": "https://www.belswim.be/storage/files/file/2193.pdf",
+   "source": "https://www.belswim.be/storage/files/file/2390.pdf",
    "limits": {
     "F": {
      "50-FREE": {
@@ -705,8 +705,8 @@
     "SCM",
     "LCM"
    ],
-   "note": "Pas de temps limite : classement aux points World Aquatics (somme des épreuves imposées, meilleur temps en 25 ou 50 m). Sélection des 80 (11-12 ans) ou 96 (13-14 et 15-16 ans) premiers, classement arrêté début novembre.",
-   "source": "https://www.belswim.be/storage/files/file/2464/reglement-bk-zwemmen-korte-baan-jeugd-2026.pdf",
+   "note": "Pas de temps limite : classement aux points World Aquatics (meilleur temps en 25 ou 50 m sur chaque épreuve imposée). Comptent les 4 meilleurs résultats sur 5 à 11-12 ans, les 5 meilleurs sur 6 à 13-14 et 15-16 ans. Sélection des 70 filles et 70 garçons (11-12 et 13-14 ans) ou 91 (15-16 ans) les mieux classés, classement arrêté début novembre.",
+   "source": "https://www.belswim.be/storage/files/file/2491.pdf",
    "limits": {
     "F": {},
     "M": {}
@@ -714,10 +714,10 @@
    "allround": {
     "categories": [
      {
-      "label": "Jeugd 1 (11-12 ans)",
+      "label": "Jeunes 1 (11-12 ans)",
       "minAge": 11,
       "maxAge": 12,
-      "selected": 80,
+      "selected": 70,
       "events": [
        [
         "50-FLY",
@@ -727,13 +727,14 @@
        "100-BREAST",
        "100-FREE",
        "200-IM"
-      ]
+      ],
+      "counted": 4
      },
      {
-      "label": "Jeugd 2 (13-14 ans)",
+      "label": "Jeunes 2 (13-14 ans)",
       "minAge": 13,
       "maxAge": 14,
-      "selected": 96,
+      "selected": 70,
       "events": [
        "100-FLY",
        "100-BACK",
@@ -741,13 +742,14 @@
        "100-FREE",
        "200-IM",
        "400-FREE"
-      ]
+      ],
+      "counted": 5
      },
      {
-      "label": "Jeugd 3 (15-16 ans)",
+      "label": "Jeunes 3 (15-16 ans)",
       "minAge": 15,
       "maxAge": 16,
-      "selected": 96,
+      "selected": 91,
       "events": [
        "100-FLY",
        "100-BACK",
@@ -755,7 +757,8 @@
        "100-FREE",
        "200-IM",
        "400-FREE"
-      ]
+      ],
+      "counted": 5
      }
     ]
    }

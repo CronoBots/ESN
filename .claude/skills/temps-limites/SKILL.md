@@ -14,6 +14,8 @@ Ce sont des données publiques des fédérations (pas de nom de nageur) : le fic
 - **N'invente jamais un temps.** Chaque temps vient du règlement officiel, recopié tel qu'imprimé (virgule → point). Une cellule illisible : demande à l'utilisateur, ne devine pas.
 - Vérifie à quelle colonne (âge, A ou B) appartient chaque temps avec `--positions` : une ligne avec moins de valeurs que de colonnes (ex. 13 et 14 ans seulement) se décale facilement.
 - Garde la source exacte (`source` : l'adresse du PDF) de chaque championnat.
+- **Toujours la version française du règlement** : page française de l'événement sur belswim.be (`https://www.belswim.be/fr/evenements/…`, lien « Règlement » ou « Invitation et règlement – dernière version »). La fédération publie souvent les versions néerlandaise, française (et anglaise) côte à côte (numéros de fichier voisins). Si seule une autre langue existe, utilise-la en attendant et remplace-la dès la version française. Compare les versions : en cas d'écart (nombre de sélectionnés, résultats comptés…), la plus récente fait foi. Noms des catégories en français (« Jeunes 1 (11-12 ans) », pas « Jeugd 1 »).
+- Classement aux points : `selected` = sélectionnés par sexe ; `counted` = nombre de meilleurs résultats comptés (« les 4 meilleurs sur 5 »), absent si toutes les épreuves comptent.
 
 ## Où trouver les règlements
 
@@ -25,7 +27,7 @@ Ce sont des données publiques des fédérations (pas de nom de nageur) : le fic
     - On additionne les points World Aquatics d'épreuves imposées : 100 papillon (50 ou 100 m à 11-12 ans), 100 dos, 100 brasse, 100 libre, 200 4 nages, et 400 libre à partir de 13 ans.
     - Les 80 (11-12 ans) ou 96 (13-14 et 15-16 ans) premiers de l'outil « CB-BK 11-16 25m » sont sélectionnés.
     - Il est dans `qualifying.json` sans `limits`, avec un bloc `allround` (voir le format). L'application affiche le total de points du jeune.
-    - Règlement 2026 : belswim, fichier 2464.
+    - Règlement 2026 : belswim, fichier 2491 (français ; 2464 en néerlandais, plus ancien).
 - **Championnats francophones (FFBN)** : ffbn.be → Disciplines → Natation → « Compétitions et résultats » (invitations).
   - Le site refuse la lecture automatique : ouvre-le dans le navigateur intégré de l'application.
   - Les PDF sont hébergés sur `clubee-websites-prod.s3…` : leur adresse est dans le code de la page.
