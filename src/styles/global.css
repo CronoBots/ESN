@@ -1735,6 +1735,46 @@ a.row:active {
   text-align: right;
 }
 
+/* Repère : total du dernier sélectionné de l'édition précédente, et barre de progression vers lui */
+.allround-bench {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+  font-size: 14px;
+}
+
+.allround-bench-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.allround-bar {
+  height: 8px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: var(--fill-2);
+  overflow: hidden;
+}
+
+.allround-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand-blue);
+}
+
+.allround-bar.above > span {
+  background: #34c759;
+}
+
+.allround-bench-text {
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
 /* La liste fait partie de la carte : pas de seconde carte dedans */
 .allround-card .list {
   background: transparent;

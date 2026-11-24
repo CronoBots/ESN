@@ -33,7 +33,16 @@ export interface ChampionshipJson {
   /** Sexe → « distance-nage » → « A », « B », âge (« 13 ») ou « 18+ » → temps. */
   limits: Record<Gender, Record<string, Record<string, string>>>;
   /** Sélection par classement aux points (pas de temps limite) : épreuves imposées par catégorie d'âge. */
-  allround?: { categories: AllroundCategory[] };
+  allround?: {
+    categories: AllroundCategory[];
+    /** Classement de la fédération (outil « Belswim ranking »), d'où viennent les repères. */
+    ranking?: string;
+    /**
+     * Points de la fédération ÷ `pointsScale` = points au barème de l'application. La fédération utilise un
+     * barème World Aquatics plus ancien, plus généreux (mesuré sur les nageurs de l'ESN classés en 2026 : 2,5 %).
+     */
+    pointsScale?: number;
+  };
 }
 
 export interface AllroundCategory {
@@ -50,6 +59,11 @@ export interface AllroundCategory {
    * autant d'épreuves pour être classé. Absent : toutes les épreuves.
    */
   counted?: number;
+  /**
+   * Repère de l'édition précédente : total de points du dernier sélectionné (le `selected`-ième du
+   * classement de la fédération), par sexe. Seulement des totaux, aucun nom.
+   */
+  previous?: { edition: number; cutoff: Record<Gender, number> };
 }
 
 export interface QualifyingJson {
@@ -103,7 +117,11 @@ export function parseQualifying(raw: unknown): QualifyingData {
       if (cat.counted != null && !(Number.isInteger(cat.counted) && cat.counted >= 1 && cat.counted <= cat.events.length))
         throw new Error(`${where} : nombre de résultats comptés invalide`);
       for (const e of cat.events.flat()) if (!EVENT.test(e)) throw new Error(`${where} : épreuve inconnue « ${e} »`);
+      if (cat.previous && !(Number.isInteger(cat.previous.edition) && cat.previous.cutoff?.F > 0 && cat.previous.cutoff?.M > 0))
+        throw new Error(`${where} : repère de l'édition précédente invalide`);
     }
+    const scale = c.allround?.pointsScale;
+    if (scale != null && !(scale >= 0.8 && scale <= 1.2)) throw new Error(`${where} : échelle des points de la fédération invalide`);
     return { ...c, limits, provisional: c.limitsEdition < c.edition };
   });
   return { updated: String(r.updated ?? ''), championships };
@@ -211,6 +229,19 @@ export interface AllroundStatus {
   total: number;
   /** Un temps sur assez d'épreuves (toutes, ou le nombre de résultats comptés) : condition pour être classé. */
   complete: boolean;
+  /**
+   * Repère : total du dernier sélectionné de l'édition précédente, et écart du nageur (positif : au-dessus),
+   * avec l'écart moyen par résultat compté.
+   */
+  benchmark?: {
+    edition: number;
+    /** Repère au barème de l'application (comparable au total). */
+    points: number;
+    /** Repère tel que publié par la fédération (son barème). */
+    official: number;
+    gap: number;
+    perEvent: number;
+  };
 }
 
 /**
@@ -247,13 +278,21 @@ export function allroundStatus(
     .sort((a, b) => b.points! - a.points!)
     .slice(0, need);
   for (const e of best) e.counted = true;
+  const total = best.reduce((n, e) => n + e.points!, 0);
+  const official = category.previous?.cutoff[swimmer.gender];
+  // Repère ramené au barème de l'application (la fédération compte ~2,5 % de points en plus)
+  const cutoff = official ? Math.round(official / (c.allround.pointsScale ?? 1)) : undefined;
   return {
     championship: c,
     category,
     age,
     events,
-    total: best.reduce((n, e) => n + e.points!, 0),
+    total,
     complete: events.filter((e) => e.points != null).length >= need,
+    benchmark:
+      official && cutoff
+        ? { edition: category.previous!.edition, points: cutoff, official, gap: total - cutoff, perEvent: Math.ceil(Math.abs(total - cutoff) / need) }
+        : undefined,
   };
 }
 

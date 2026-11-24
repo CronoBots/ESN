@@ -25,8 +25,10 @@ Ce sont des données publiques des fédérations (pas de nom de nageur) : le fic
   - 11-14 ans et 15 ans et plus en grand bassin (été) : une limite par âge, au printemps.
   - **Pas de temps limite** pour les championnats de Belgique petit bassin 11-16 ans (novembre) : sélection par classement.
     - On additionne les points World Aquatics d'épreuves imposées : 100 papillon (50 ou 100 m à 11-12 ans), 100 dos, 100 brasse, 100 libre, 200 4 nages, et 400 libre à partir de 13 ans.
-    - Les 80 (11-12 ans) ou 96 (13-14 et 15-16 ans) premiers de l'outil « CB-BK 11-16 25m » sont sélectionnés.
-    - Il est dans `qualifying.json` sans `limits`, avec un bloc `allround` (voir le format). L'application affiche le total de points du jeune.
+    - Règlement 2026 (version française) : les 70 (11-12 et 13-14 ans) ou 91 (15-16 ans) premiers de l'outil « CB-BK 11-16 25m » sont sélectionnés, par sexe ; comptent les 4 meilleurs résultats sur 5 (11-12 ans) ou 5 sur 6.
+    - Il est dans `qualifying.json` sans `limits`, avec un bloc `allround` (voir le format). L'application affiche le total de points du jeune et le repère de l'édition précédente.
+    - **Repère (chaque année, après la clôture du classement début novembre) :** page de l'événement sur belswim.be, lien « Belswim ranking BJK 25m » (`https://www.belswim.be/prestaties/pub_clubs-cbkj25.php`, puis la page d'un club, qui montre tout le classement). Pour chaque catégorie et chaque sexe, relève le **total du dernier sélectionné** (rang = `selected`) et mets-le dans `previous` (`edition` = l'édition qui vient de se clôturer). Seulement des totaux : jamais de nom dans le dépôt.
+    - **`pointsScale` :** la fédération calcule ses points avec un barème World Aquatics plus ancien, plus généreux. Compare, pour les nageurs de l'ESN du classement, le total de la fédération à celui de l'application (mêmes règles, même période) : la moyenne du rapport (sans les nageurs à qui il manque des courses dans l'historique) donne `pointsScale` (1,025 mesuré en 2026 sur 18 nageurs). Le repère affiché est ramené au barème de l'application.
     - Règlement 2026 : belswim, fichier 2491 (français ; 2464 en néerlandais, plus ancien).
 - **Championnats francophones (FFBN)** : ffbn.be → Disciplines → Natation → « Compétitions et résultats » (invitations).
   - Le site refuse la lecture automatique : ouvre-le dans le navigateur intégré de l'application.
@@ -79,7 +81,8 @@ Ce sont des données publiques des fédérations (pas de nom de nageur) : le fic
   - Clés : `A` et `B`, ou l'âge (`"13"`). `"18+"` vaut pour 18 ans et plus.
 - **`limitsEdition` :** édition dont viennent les limites. Plus ancienne que `edition`, ce sont des limites provisoires : l'application les marque « limites 2026 » en attendant les nouvelles.
 - **Championnat par classement aux points**, sans temps limite : `"limits": { "F": {}, "M": {} }` et un bloc `allround` :
-  - `{ "categories": [{ "label": "Jeugd 1 (11-12 ans)", "minAge": 11, "maxAge": 12, "selected": 80, "events": [["50-FLY", "100-FLY"], "100-BACK", "100-BREAST", "100-FREE", "200-IM"] }, …] }`
+  - `{ "categories": [{ "label": "Jeunes 1 (11-12 ans)", "minAge": 11, "maxAge": 12, "selected": 70, "events": [["50-FLY", "100-FLY"], "100-BACK", "100-BREAST", "100-FREE", "200-IM"], "counted": 4, "previous": { "edition": 2026, "cutoff": { "F": 1412, "M": 1027 } } }, …], "ranking": "https://www.belswim.be/prestaties/pub_clubs-cbkj25.php", "pointsScale": 1.025 }`
+  - `previous.cutoff` : total (barème de la fédération) du dernier sélectionné de l'édition précédente, par sexe.
   - Un tableau dans `events` = au choix : le meilleur nombre de points compte.
   - L'application fait la somme des meilleurs points de chaque épreuve sur la période (`window`), dans les bassins de `accepts`.
 

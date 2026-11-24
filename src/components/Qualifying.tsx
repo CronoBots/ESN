@@ -171,6 +171,11 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
   // « Les 4 meilleurs sur 5 » : nombre de résultats comptés et d'épreuves encore à nager pour être classé
   const need = status.category.counted ?? status.events.length;
   const toSwim = Math.max(0, need - (status.events.length - missing.length));
+  // Repère : total du dernier sélectionné de l'édition précédente (ex. « 70e et dernier garçon sélectionné »)
+  const bench = status.benchmark;
+  const girl = swimmer.gender === 'F';
+  const catShort = status.category.label.split(' (')[0];
+  const lastSelected = `${status.category.selected}e et ${girl ? 'dernière fille sélectionnée' : 'dernier garçon sélectionné'}`;
   return (
     <Section title={c.name.replace(/^Championnats de /, '')} action={<ProvisionalBadge c={c} />}>
       <div className="card allround-card">
@@ -185,6 +190,30 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
             {status.events.length - missing.length} épreuve{status.events.length - missing.length > 1 ? 's' : ''} sur {status.events.length}
           </div>
         </div>
+        {bench && (
+          <div className="allround-bench">
+            <div className="allround-bench-head">
+              <b>Repère {bench.edition}</b>
+              <b className="tnum nowrap">{bench.points.toLocaleString('fr-BE')} pts</b>
+            </div>
+            <div className="muted small">
+              {lastSelected} en {catShort} l’an dernier
+              {bench.official !== bench.points && ` (${bench.official.toLocaleString('fr-BE')} au barème de la fédération)`}
+            </div>
+            <div
+              className={`allround-bar${bench.gap >= 0 ? ' above' : ''}`}
+              role="img"
+              aria-label={`${status.total} points sur un repère de ${bench.points}`}
+            >
+              <span style={{ width: `${Math.min(100, Math.round((status.total / bench.points) * 100))}%` }} />
+            </div>
+            <div className="allround-bench-text">
+              {bench.gap >= 0
+                ? `${bench.gap.toLocaleString('fr-BE')} points au-dessus du repère : en bonne voie, sans garantie.`
+                : `Encore ${(-bench.gap).toLocaleString('fr-BE')} points pour l’atteindre, soit environ ${bench.perEvent} points de plus sur chacun des ${need} résultats comptés.`}
+            </div>
+          </div>
+        )}
         <div className="list">
           {status.events.map((e) => {
             const [d, stroke] = (e.best ? `${e.best.distance}-${e.best.stroke}` : e.events[0]).split('-');
@@ -219,13 +248,28 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
           : need < status.events.length
             ? `Un temps sur au moins ${need} épreuves est nécessaire pour être classé : encore ${toSwim} à nager. `
             : `Un temps sur chaque épreuve est nécessaire pour être classé : il manque ${missing.map((e) => e.events.map(eventName).join(' ou ')).join(', ')}. `}
-        Sélection : les {status.category.selected} premiers du classement de la fédération (par sexe), pour l’âge atteint en {c.edition}. Le nombre
-        de points nécessaire n’est connu qu’à la clôture : ce total sert à suivre la progression. Meilleur temps en 25 ou 50 m depuis le{' '}
-        {formatDate(c.window.from)}
-        {c.provisional ? `, règles de l’édition ${c.limitsEdition}` : ''}.{' '}
+        <br />
+        <b>Comment se fait la sélection.</b> La fédération classe {girl ? 'toutes les filles' : 'tous les garçons'} de Belgique de la catégorie (âge atteint
+        en {c.edition}) sur ce total, avec leur meilleur temps en 25 ou 50 m entre le {formatDate(c.window.from)} et le {formatDate(c.window.to)}.
+        Le classement est arrêté à cette date, puis les {status.category.selected} premiers sont sélectionnés. Personne ne peut donc être sûr
+        d’être qualifié avant : le nombre de points nécessaire dépend des autres nageurs.
+        {bench &&
+          ` Le repère ${bench.edition} en donne une idée : c’est le total du ${lastSelected} lors de l’édition ${bench.edition} (classement officiel de la fédération).`}
+        {bench &&
+          bench.official !== bench.points &&
+          ` La fédération calcule ses points avec un barème World Aquatics plus ancien, environ ${(Math.round(((c.allround?.pointsScale ?? 1) - 1) * 1000) / 10).toLocaleString('fr-BE')} % plus généreux : le repère est ramené au barème de l’application pour comparer ce qui est comparable.`}
+        {c.provisional ? ` Règles de l’édition ${c.limitsEdition}, en attendant celles de ${c.edition}.` : ''}{' '}
         <a href={c.source} target="_blank" rel="noreferrer">
           Règlement
         </a>
+        {c.allround?.ranking && (
+          <>
+            {' · '}
+            <a href={c.allround.ranking} target="_blank" rel="noreferrer">
+              Classement de la fédération
+            </a>
+          </>
+        )}
       </div>
     </Section>
   );

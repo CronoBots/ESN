@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17",
+ "updated": "2026-11-24",
  "championships": [
   {
    "id": "obk-25-2026",
@@ -728,7 +728,14 @@
        "100-FREE",
        "200-IM"
       ],
-      "counted": 4
+      "counted": 4,
+      "previous": {
+       "edition": 2026,
+       "cutoff": {
+        "F": 1412,
+        "M": 1027
+       }
+      }
      },
      {
       "label": "Jeunes 2 (13-14 ans)",
@@ -743,7 +750,14 @@
        "200-IM",
        "400-FREE"
       ],
-      "counted": 5
+      "counted": 5,
+      "previous": {
+       "edition": 2026,
+       "cutoff": {
+        "F": 2331,
+        "M": 1834
+       }
+      }
      },
      {
       "label": "Jeunes 3 (15-16 ans)",
@@ -758,9 +772,18 @@
        "200-IM",
        "400-FREE"
       ],
-      "counted": 5
+      "counted": 5,
+      "previous": {
+       "edition": 2026,
+       "cutoff": {
+        "F": 2478,
+        "M": 2339
+       }
+      }
      }
-    ]
+    ],
+    "ranking": "https://www.belswim.be/prestaties/pub_clubs-cbkj25.php",
+    "pointsScale": 1.025
    }
   }
  ]

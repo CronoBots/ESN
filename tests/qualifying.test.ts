@@ -165,3 +165,53 @@ describe('situation d’un nageur', () => {
     expect(far).toEqual({ qualified: [] });
   });
 });
+
+describe('Belgique 11-16 ans : repère de l’édition précédente', () => {
+  it('écart au total du dernier sélectionné de l’an dernier, par sexe, et écart moyen par résultat compté', () => {
+    const c = parseQualifying({
+      updated: '2026-11-24',
+      championships: [
+        {
+          id: 'bk-11-16-test',
+          name: 'Championnats de Belgique 11-16 ans',
+          course: 'SCM',
+          until: '2027-11-30',
+          edition: 2027,
+          limitsEdition: 2026,
+          window: { from: '2026-01-01', to: '2027-11-01' },
+          accepts: ['SCM', 'LCM'],
+          source: 'https://example.org',
+          limits: { F: {}, M: {} },
+          allround: {
+            categories: [{ label: 'Jeunes 2 (13-14 ans)', minAge: 13, maxAge: 14, selected: 70, events: ['100-FLY', '100-BACK', '200-IM'], counted: 2, previous: { edition: 2026, cutoff: { F: 900, M: 700 } } }],
+          },
+        },
+      ],
+    }).championships[0];
+    const leo = { id: 'leo', gender: 'M' as const, birthYear: 2014 }; // 13 ans en 2027
+    const pts = new Map<string, number>();
+    const add = (d: number, st: Swim['stroke'], p: number) => {
+      const s = swim('leo', d, st, 'SCM', 1000 + p, '2026-10-01');
+      pts.set(s.id, p);
+      return s;
+    };
+    const s = allroundStatus(c, leo, [add(100, 'FLY', 280), add(100, 'BACK', 259), add(200, 'IM', 318)], TODAY, (x) => pts.get(x.id) ?? null)!;
+    expect(s.total).toBe(598); // 318 + 280
+    expect(s.benchmark).toEqual({ edition: 2026, points: 700, official: 700, gap: -102, perEvent: 51 });
+    // Barème de la fédération plus généreux : repère ramené à celui de l'application
+    const scaled = { ...c, allround: { ...c.allround!, pointsScale: 1.025 } };
+    expect(allroundStatus(scaled, leo, [add(100, 'FLY', 280), add(200, 'IM', 318)], TODAY, (x) => pts.get(x.id) ?? null)!.benchmark).toEqual({
+      edition: 2026,
+      points: 683, // 700 ÷ 1,025
+      official: 700,
+      gap: -85,
+      perEvent: 43,
+    });
+    // Une fille : repère des filles
+    expect(allroundStatus(c, { ...leo, gender: 'F' }, [], TODAY, () => null)!.benchmark?.points).toBe(900);
+    // Repère invalide refusé à la lecture
+    expect(() =>
+      parseQualifying({ updated: 'x', championships: [{ ...JSON.parse(JSON.stringify(c)), limits: { F: {}, M: {} }, allround: { categories: [{ ...c.allround!.categories[0], previous: { edition: 2026, cutoff: { F: 0, M: 700 } } }] } }] }),
+    ).toThrow(/repère/);
+  });
+});
