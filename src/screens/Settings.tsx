@@ -14,8 +14,8 @@ import { isStandalone, promptInstall } from './Install';
 import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
-import { useState } from 'react';
-import { disablePush, enablePush, pushPrefs, pushState, setPushPrefs, type PushPrefs, type PushState } from '../lib/push';
+import { useEffect, useState } from 'react';
+import { disablePush, enablePush, errorDetail, pushAdvice, pushPrefs, pushState, pushWaitAdvice, PushError, setPushPrefs, type PushPrefs, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 
@@ -330,21 +330,33 @@ function NotificationsSection() {
   const data = useData();
   const [state, setState] = useState<PushState>(() => pushState());
   const [busy, setBusy] = useState(false);
+  /** Dernier échec de l'activation : quoi faire, et l'erreur exacte du navigateur. */
+  const [problem, setProblem] = useState<{ text: string; detail?: string } | null>(null);
+  // Retour des réglages du téléphone (autorisation donnée ou retirée) : état relu
+  useEffect(() => {
+    const again = () => {
+      if (document.visibilityState !== 'visible') return;
+      setState(pushState());
+      setProblem(null);
+    };
+    document.addEventListener('visibilitychange', again);
+    return () => document.removeEventListener('visibilitychange', again);
+  }, []);
   const followed = data.swimmers.filter((s) => s.relation === 'child' || s.favorite);
   const toggle = async (on: boolean) => {
     setBusy(true);
+    setProblem(null);
     try {
       if (on) {
         const next = await enablePush(getState().swimmers);
         setState(next);
         if (next === 'on') overlay.toast('Notifications activées', '🔔');
-        else if (next === 'denied') overlay.toast('Notifications refusées dans les réglages du téléphone', '⚠️');
       } else {
         await disablePush();
         setState('off');
       }
-    } catch {
-      overlay.toast('Activation impossible pour le moment : réessayez', '⚠️');
+    } catch (e) {
+      setProblem(e instanceof PushError ? { text: e.message, detail: e.detail } : { text: 'Activation impossible pour le moment : réessayez.', detail: errorDetail(e) });
       setState(pushState());
     } finally {
       setBusy(false);
@@ -365,9 +377,10 @@ function NotificationsSection() {
             on={state === 'on'}
             onChange={(v) => void toggle(v)}
             label="Recevoir des notifications pour mes nageurs suivis"
-            disabled={busy || state === 'unsupported' || state === 'install' || state === 'denied' || (!followed.length && state !== 'on')}
+            disabled={busy || state === 'unsupported' || state === 'inapp' || state === 'install' || state === 'denied' || (!followed.length && state !== 'on')}
           />
         </div>
+        {!followed.length && state !== 'on' && <Row icon="users" iconBg="var(--brand-green)" title="Choisir mes nageurs" sub="Dans la liste du club" chevron onClick={() => openFollow()} />}
         {state === 'on' && (
           <>
             <div className="field">
@@ -393,15 +406,15 @@ function NotificationsSection() {
         )}
       </div>
       <div className="section-foot">
-        {state === 'install'
-          ? 'Sur iPhone, les notifications ne fonctionnent que dans l’application installée sur l’écran d’accueil (iOS 16.4 ou plus récent) : ouvrez-la depuis son icône, puis activez-les ici.'
-          : state === 'unsupported'
-            ? 'Les notifications ne sont pas disponibles sur ce navigateur.'
-            : state === 'denied'
-              ? 'Les notifications sont bloquées pour ESN Compétition dans les réglages du téléphone : autorisez-les, puis revenez ici.'
-              : !followed.length
-                ? 'Suivez d’abord un ou plusieurs nageurs (Mon espace) pour recevoir leurs résultats.'
-                : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`}
+        {busy && state !== 'on'
+          ? pushWaitAdvice()
+          : problem
+            ? problem.text
+            : (pushAdvice(state) ??
+              (!followed.length
+                ? 'Suivez d’abord un ou plusieurs nageurs pour recevoir leurs résultats.'
+                : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`))}
+        {problem?.detail && <span className="push-detail">Détail : {problem.detail}</span>}
       </div>
     </Section>
   );

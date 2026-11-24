@@ -642,6 +642,15 @@ html.pwa .large-brand {
   line-height: 1.4;
 }
 
+/* Erreur exacte du navigateur sous les notifications (pour le diagnostic) */
+.push-detail {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  opacity: 0.8;
+}
+
 .card {
   background: var(--card);
   border-radius: var(--radius);

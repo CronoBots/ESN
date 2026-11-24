@@ -27,9 +27,20 @@ const kindsOf = (p: PushPrefs) => [...(p.results === 'all' ? ['results'] : p.res
 const SENT = 'esn-notifications-envoye';
 const LIVE = 'esn-direct-signale';
 
-export type PushState = 'unsupported' | 'install' | 'denied' | 'off' | 'on';
+/**
+ * État des notifications sur cet appareil : `inapp` pour le navigateur intégré d'une autre application (lien
+ * ouvert depuis WhatsApp, Facebook…), `install` pour un iPhone hors de l'application installée.
+ */
+export type PushState = 'unsupported' | 'inapp' | 'install' | 'denied' | 'off' | 'on';
 
-const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** Type d'appareil, d'après le navigateur. */
+export type PushDevice = 'ios' | 'android' | 'other';
+export function pushDevice(ua = navigator.userAgent, touchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1): PushDevice {
+  if (/iphone|ipad|ipod/i.test(ua) || touchMac) return 'ios';
+  return /android/i.test(ua) ? 'android' : 'other';
+}
+/** Navigateur intégré à une autre application (vue web Android, Facebook, Instagram, Google…). */
+export const inAppBrowser = (ua = navigator.userAgent) => /; wv\)|FBAN|FBAV|FB_IAB|Instagram|Snapchat|musical_ly|Bytedance|LinkedInApp|Line\/|GSA\//.test(ua);
 const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 
 function read(key: string): string | null {
@@ -50,11 +61,95 @@ function write(key: string, value: string | null) {
 
 /** État des notifications sur cet appareil. */
 export function pushState(): PushState {
-  if (!('serviceWorker' in navigator) || !('Notification' in window) || !window.isSecureContext) return 'unsupported';
-  // iPhone : seulement dans l'application installée sur l'écran d'accueil (iOS 16.4 et plus)
-  if (!('PushManager' in window)) return isIos() && !standalone() ? 'install' : 'unsupported';
+  if (!('serviceWorker' in navigator) || !('Notification' in window) || !('PushManager' in window) || !window.isSecureContext) {
+    if (inAppBrowser()) return 'inapp';
+    // iPhone : seulement dans l'application installée sur l'écran d'accueil (iOS 16.4 et plus)
+    return pushDevice() === 'ios' && !standalone() ? 'install' : 'unsupported';
+  }
   if (Notification.permission === 'denied') return 'denied';
   return read(ON) === '1' && Notification.permission === 'granted' ? 'on' : 'off';
+}
+
+/** Échec de l'activation : explication pour l'utilisateur et détail technique (nom et message de l'erreur). */
+export class PushError extends Error {
+  constructor(
+    message: string,
+    readonly detail?: string,
+  ) {
+    super(message);
+  }
+}
+export const errorDetail = (e: unknown) => (e instanceof Error ? `${e.name} : ${e.message}` : String(e));
+
+interface PushEnv {
+  device: PushDevice;
+  /** Application installée sur l'écran d'accueil. */
+  installed: boolean;
+}
+const env = (): PushEnv => ({ device: pushDevice(), installed: standalone() });
+
+/** Explication sous l'interrupteur quand il ne peut pas être activé (null sinon). */
+export function pushAdvice(state: PushState, { device, installed }: PushEnv = env()): string | null {
+  switch (state) {
+    case 'inapp':
+      return device === 'ios'
+        ? 'Cette page est ouverte dans le navigateur d’une autre application (WhatsApp, Facebook, Messenger…), qui ne gère pas les notifications : ouvrez-la dans Safari, ajoutez-la à l’écran d’accueil, puis activez les notifications depuis son icône.'
+        : 'Cette page est ouverte dans le navigateur d’une autre application (WhatsApp, Facebook, Messenger…), qui ne gère pas les notifications : ouvrez-la dans Chrome (⋮ › Ouvrir dans Chrome), installez-la sur l’écran d’accueil, puis activez les notifications ici.';
+    case 'install':
+      return 'Sur iPhone, les notifications ne fonctionnent que dans l’application installée sur l’écran d’accueil (iOS 16.4 ou plus récent) : ouvrez-la depuis son icône, puis activez-les ici.';
+    case 'unsupported':
+      return device === 'ios'
+        ? 'Les notifications demandent iOS 16.4 ou plus récent : mettez l’iPhone à jour (Réglages › Général › Mise à jour logicielle), puis activez-les ici.'
+        : device === 'android'
+          ? 'Ce navigateur ne gère pas les notifications : ouvrez ESN Compétition dans Chrome (ou Samsung Internet, Firefox), installez-la sur l’écran d’accueil, puis activez-les ici.'
+          : 'Les notifications ne sont pas disponibles sur ce navigateur.';
+    case 'denied':
+      return device === 'ios'
+        ? 'Les notifications sont bloquées pour ESN Compétition : Réglages de l’iPhone › Notifications › ESN Compétition › Autoriser les notifications, puis revenez ici.'
+        : device === 'android'
+          ? installed
+            ? 'Les notifications sont bloquées pour ESN Compétition : touchez longuement l’icône de l’application › Infos sur l’appli (ⓘ) › Notifications › Autoriser, puis revenez ici.'
+            : 'Les notifications sont bloquées pour ce site : dans Chrome, touchez le cadenas (ou ⓘ) à gauche de l’adresse › Autorisations › Notifications › Autoriser (ou ⋮ › Paramètres › Paramètres des sites › Notifications), puis revenez ici. Vérifiez aussi que Chrome a le droit d’envoyer des notifications (Paramètres du téléphone › Applications › Chrome › Notifications).'
+          : 'Les notifications sont bloquées pour ce site : autorisez-les dans les réglages du site (cadenas à gauche de l’adresse), puis revenez ici.';
+    default:
+      return null;
+  }
+}
+
+/** Pendant la demande d'autorisation. */
+export function pushWaitAdvice({ device, installed }: PushEnv = env()): string {
+  return device === 'android' && !installed
+    ? 'Touchez « Autoriser » dans la fenêtre qui s’affiche. Si rien n’apparaît, Chrome a mis la demande de côté : touchez l’icône de cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser.'
+    : 'Touchez « Autoriser » dans la fenêtre qui s’affiche.';
+}
+
+/** Autorisation ni donnée ni refusée (fenêtre fermée, ou mise de côté par le navigateur). */
+function dismissedAdvice({ device, installed }: PushEnv): string {
+  return device === 'android' && !installed
+    ? 'L’autorisation n’a pas été donnée : réessayez et touchez « Autoriser ». Si aucune fenêtre ne s’affiche, touchez le cadenas (ou la cloche) à gauche de l’adresse › Notifications › Autoriser, puis réessayez.'
+    : 'L’autorisation n’a pas été donnée : réessayez et touchez « Autoriser ».';
+}
+
+/** Inscription refusée par le service de notification du navigateur (Google pour Chrome sur Android). */
+export function subscribeAdvice(e: unknown, device: PushDevice = pushDevice()): string {
+  const name = e instanceof Error ? e.name : '';
+  const message = e instanceof Error ? e.message : String(e);
+  if (name === 'NotAllowedError') return 'Le navigateur refuse l’inscription aux notifications : autorisez-les pour ce site (cadenas à gauche de l’adresse), puis réessayez.';
+  // Chrome : notifications interdites au navigateur lui-même (réglages du téléphone) ou navigation privée
+  if (/permission denied/i.test(message))
+    return device === 'android'
+      ? 'Le téléphone n’autorise pas les notifications de Chrome : Paramètres du téléphone › Applications › Chrome (ou ESN Compétition si elle est installée) › Notifications › Autoriser. Elles ne fonctionnent pas non plus en navigation privée. Puis réessayez.'
+      : 'Le navigateur n’a pas le droit d’envoyer des notifications (réglages du système, ou navigation privée) : autorisez-les, puis réessayez.';
+  if (name === 'AbortError' || /push service|registration failed/i.test(message))
+    return device === 'android'
+      ? 'Le service de notifications de Google a refusé l’inscription. Il faut les services Google Play à jour (absents des Huawei récents) ; dans Brave, activez Paramètres › Confidentialité et sécurité › « Utiliser les services Google pour les messages push ». Sinon, ouvrez l’application dans Chrome et réessayez.'
+      : 'Le service de notifications du navigateur a refusé l’inscription : réessayez dans un moment, ou depuis un autre navigateur.';
+  return 'L’inscription aux notifications a échoué : réessayez dans un moment.';
+}
+
+/** Promesse limitée dans le temps (le service hors connexion peut ne jamais être prêt). */
+function within<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new PushError(message, `pas de réponse après ${ms / 1000} s`)), ms))]);
 }
 
 const followed = (swimmers: Swimmer[]) => swimmers.filter((s) => s.relation === 'child' || s.favorite);
@@ -65,8 +160,10 @@ function keyBytes(b64: string): Uint8Array {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
+const worker = () => within(navigator.serviceWorker.ready, 15000, 'Le service de l’application n’est pas prêt : fermez puis rouvrez l’application (ou rechargez la page), puis réessayez.');
+
 async function subscription(create: boolean): Promise<PushSubscription | null> {
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await worker();
   const cur = await reg.pushManager.getSubscription();
   if (cur || !create) return cur;
   return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) as BufferSource });
@@ -84,19 +181,37 @@ async function save(sub: PushSubscription, swimmers: Swimmer[], force = false) {
   write(SENT, sig);
 }
 
-/** Active les notifications (à appeler sur un geste de l'utilisateur : demande d'autorisation). */
+/**
+ * Active les notifications (à appeler sur un geste de l'utilisateur : demande d'autorisation). Renvoie
+ * `on` ou `denied` ; en cas d'échec, une PushError explique quoi faire.
+ */
 export async function enablePush(swimmers: Swimmer[]): Promise<PushState> {
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'off';
-  const sub = await subscription(true);
-  if (!sub) return 'off';
-  await save(sub, swimmers, true);
+  let permission: NotificationPermission;
+  try {
+    permission = await Notification.requestPermission();
+  } catch (e) {
+    throw new PushError('La demande d’autorisation n’a pas pu s’afficher : réessayez.', errorDetail(e));
+  }
+  if (permission === 'denied') return 'denied';
+  if (permission !== 'granted') throw new PushError(dismissedAdvice(env()), `autorisation : ${permission}`);
+  let sub: PushSubscription | null;
+  try {
+    sub = await subscription(true);
+  } catch (e) {
+    throw e instanceof PushError ? e : new PushError(subscribeAdvice(e), errorDetail(e));
+  }
+  if (!sub) throw new PushError(subscribeAdvice(null), 'aucun abonnement');
+  try {
+    await save(sub, swimmers, true);
+  } catch (e) {
+    throw new PushError('Le serveur du club n’a pas enregistré l’abonnement : vérifiez la connexion internet et réessayez dans un moment.', errorDetail(e));
+  }
   write(ON, '1');
   // Confirmation sur le téléphone : les notifications s'affichent bien
   const names = followed(swimmers).map((s) => s.firstName);
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await worker().catch(() => null);
   await reg
-    .showNotification('🔔 Notifications activées', {
+    ?.showNotification('🔔 Notifications activées', {
       body: names.length ? `Vous recevrez les résultats de ${names.join(', ')} pendant les compétitions.` : 'Suivez des nageurs pour recevoir leurs résultats.',
       icon: './icons/icon-192.png',
       tag: 'esn-activation',
