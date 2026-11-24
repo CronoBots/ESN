@@ -18,6 +18,15 @@ import { useEffect, useState } from 'react';
 import { disablePush, enablePush, errorDetail, pushAdvice, pushPrefs, pushState, pushWaitAdvice, PushError, setPushPrefs, type PushPrefs, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
+declare const __BUILD_TIME__: string | undefined;
+/** Date et heure (Belgique) de la version installée, ex. « 24/11 à 20:05 ». */
+const BUILD_LABEL = (() => {
+  const iso = typeof __BUILD_TIME__ === 'string' ? __BUILD_TIME__ : '';
+  if (!iso) return '';
+  const parts = new Intl.DateTimeFormat('fr-BE', { timeZone: 'Europe/Brussels', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso));
+  const v = (t: string) => parts.find((x) => x.type === t)?.value ?? '';
+  return `version du ${v('day')}/${v('month')} à ${v('hour')}:${v('minute')}`;
+})();
 
 async function shareOrDownload(name: string, content: string, type: string) {
   try {
@@ -213,7 +222,8 @@ export function Settings() {
           </div>
         </Section>
         <div className="section-foot center" style={{ marginTop: 18 }}>
-          ESN Compétition {APP_VERSION} · gratuit, sans publicité, sans compte
+          ESN Compétition {APP_VERSION}
+          {BUILD_LABEL && ` · ${BUILD_LABEL}`} · gratuit, sans publicité, sans compte
           <br />
           {data.swims.length} courses · {data.meets.length} compétitions · {formatDate(todayISO())}
         </div>
@@ -405,29 +415,26 @@ function NotificationsSection() {
           />
         </div>
         {!followed.length && state !== 'on' && <Row icon="users" iconBg="var(--brand-green)" title="Choisir mes nageurs" sub="Dans la liste du club" chevron onClick={() => openFollow()} />}
-        {state === 'on' && (
-          <>
-            <div className="field">
-              <span className="label">Résultats</span>
-              <div style={{ flex: 1, maxWidth: 250, marginLeft: 'auto' }}>
-                <Segmented
-                  value={prefs.results}
-                  onChange={(v) => updatePrefs({ ...prefs, results: v })}
-                  ariaLabel="Résultats notifiés"
-                  options={[
-                    { id: 'all', label: 'Tous' },
-                    { id: 'pb', label: 'Records perso' },
-                    { id: 'none', label: 'Aucun' },
-                  ]}
-                />
-              </div>
-            </div>
-            <div className="field">
-              <span className="label grow">Programme et finales</span>
-              <Toggle on={prefs.entries} onChange={(v) => updatePrefs({ ...prefs, entries: v })} label="Notifier le programme publié et les qualifications en finale" />
-            </div>
-          </>
-        )}
+        {/* Choix toujours visibles : enregistrés sur le téléphone, appliqués dès l'activation */}
+        <div className="field">
+          <span className="label">Résultats</span>
+          <div style={{ flex: 1, maxWidth: 250, marginLeft: 'auto' }}>
+            <Segmented
+              value={prefs.results}
+              onChange={(v) => updatePrefs({ ...prefs, results: v })}
+              ariaLabel="Résultats notifiés"
+              options={[
+                { id: 'all', label: 'Tous' },
+                { id: 'pb', label: 'Records perso' },
+                { id: 'none', label: 'Aucun' },
+              ]}
+            />
+          </div>
+        </div>
+        <div className="field">
+          <span className="label grow">Programme et finales</span>
+          <Toggle on={prefs.entries} onChange={(v) => updatePrefs({ ...prefs, entries: v })} label="Notifier le programme publié et les qualifications en finale" />
+        </div>
       </div>
       <div className={`section-foot${problem || blocked ? ' push-warn' : ''}`}>
         {busy && state !== 'on'

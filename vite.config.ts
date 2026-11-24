@@ -53,6 +53,8 @@ function serviceWorkerPlugin(): Plugin {
 
 export default defineConfig({
   base: './',
+  // Date de la version (bas des Réglages) : pour vérifier qu'un téléphone a bien la dernière
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   plugins: [react(), serviceWorkerPlugin()],
   build: {
     target: 'es2020',
