@@ -408,7 +408,8 @@ async function main() {
   if (manifestFile) writeFileSync(manifestFile, JSON.stringify(manifest));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Lancé directement (pas importé, ni regroupé dans le robot des notifications)
+if (process.argv[1] && /mirror-live\.mjs$/.test(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
     console.error(e);
     process.exit(1);

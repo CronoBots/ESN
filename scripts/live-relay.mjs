@@ -6,13 +6,15 @@
  * livetiming des compétitions du jour a changé (le site la réécrit à chaque publication) et, si oui,
  * relance le déploiement (« Déployer sur GitHub Pages »), qui recopie les feuilles dans le site :
  * tout de suite pour une nouvelle feuille de résultats, au plus toutes les 3 minutes sinon.
+ * À chaque passage (toutes les 2 minutes au plus), il lance aussi le robot des notifications
+ * (scripts/notify-results.ts), qui lit les résultats officiels des compétitions du club.
  * Avant de s'arrêter, il lance son successeur tant qu'une compétition est à suivre aujourd'hui ou demain.
  *
  *   node scripts/live-relay.mjs     (GH_TOKEN et GITHUB_REPOSITORY fournis par GitHub Actions)
  */
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { activeEvents, eventKey, meetFiles, withLinks } from './mirror-live.mjs';
 
@@ -72,11 +74,34 @@ function deploy() {
 /** Date en Belgique (« 2026-11-20 »), décalée de `days` jours. */
 const brusselsDay = (days = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(new Date(Date.now() + days * 86400000));
 
+const prevDay = (iso) => new Date(Date.parse(`${iso}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+
 /** Compétitions du club (avec livetiming) en cours ce jour-là, veille comprise. */
 function followedOn(day) {
   const calendar = JSON.parse(readFileSync(CALENDAR, 'utf8'));
-  const prev = (iso) => new Date(Date.parse(`${iso}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
-  return activeEvents(withLinks(calendar, foundLinks(calendar)), day).filter((e) => prev(e.start) <= day && (e.end ?? e.start) >= day);
+  return activeEvents(withLinks(calendar, foundLinks(calendar)), day).filter((e) => prevDay(e.start) <= day && (e.end ?? e.start) >= day);
+}
+
+/**
+ * Compétitions du club au calendrier ce jour-là (veille comprise), avec ou sans livetiming copié : les
+ * notifications lisent aussi les résultats de live.swimrankings.net (compétitions signalées par l'application).
+ */
+export function clubDayEvents(calendar, day) {
+  return (calendar.events ?? []).filter((e) => typeof e.start === 'string' && prevDay(e.start) <= day && (e.end ?? e.start) >= day);
+}
+const clubDay = (day) => clubDayEvents(JSON.parse(readFileSync(CALENDAR, 'utf8')), day).length > 0;
+
+/** Notifications des résultats (robot regroupé dans .notify-build), toutes les 2 minutes au plus. */
+const NOTIFIER = '.notify-build/notify.mjs';
+let lastNotify = 0;
+function notify() {
+  if (!process.env.ESN_PUSH_TOKEN || !existsSync(NOTIFIER) || Date.now() - lastNotify < 110000) return;
+  lastNotify = Date.now();
+  try {
+    execFileSync('node', [NOTIFIER], { stdio: 'inherit', timeout: 150000 });
+  } catch (e) {
+    console.warn(`Notifications : ${e.message}`);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -86,13 +111,18 @@ let lastDeploy = 0;
 const known = new Set();
 while (Date.now() < UNTIL) {
   const events = followedOn(brusselsDay());
-  if (!events.length && !followedOn(brusselsDay(1)).length) {
+  if (!clubDay(brusselsDay()) && !clubDay(brusselsDay(1))) {
     console.log('Aucune compétition à suivre aujourd’hui ni demain.');
     break;
   }
   // La nuit (22 h - 6 h) : en attente, sans rien interroger
-  if (!events.length || brusselsHour() < 6 || brusselsHour() >= 22) {
+  if (!clubDay(brusselsDay()) || brusselsHour() < 6 || brusselsHour() >= 22) {
     await sleep(10 * 60000);
+    continue;
+  }
+  notify();
+  if (!events.length) {
+    await sleep(EVERY);
     continue;
   }
   const pages = await Promise.all(events.map((e) => pageVersion(e.live)));
@@ -117,7 +147,7 @@ while (Date.now() < UNTIL) {
 
 // Relève : tant qu'une compétition est à suivre aujourd'hui ou demain, un nouveau relais est lancé ; il
 // attend la fin de celui-ci (une seule exécution à la fois) et prend le relais, sans dépendre du planificateur
-if (process.env.GITHUB_ACTIONS && (followedOn(brusselsDay()).length || followedOn(brusselsDay(1)).length)) {
+if (process.env.GITHUB_ACTIONS && (clubDay(brusselsDay()) || clubDay(brusselsDay(1)))) {
   try {
     execFileSync('gh', ['workflow', 'run', 'live-relay.yml', '--ref', 'main', '-R', process.env.GITHUB_REPOSITORY ?? 'CronoBots/ESN'], { stdio: 'inherit' });
     console.log('Relais suivant lancé.');

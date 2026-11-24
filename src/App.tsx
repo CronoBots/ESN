@@ -19,6 +19,7 @@ import { LevelsScreen } from './screens/Levels';
 import { ChampionshipsScreen } from './screens/Championships';
 import { ClubScreen, ensureClub, refreshClubRoster } from './screens/Club';
 import { ClubHome } from './screens/ClubHome';
+import { refreshPush } from './lib/push';
 import { resultsMessage } from './screens/autoResults';
 import { loadClubCalendar } from './components/ClubCalendar';
 import { isClubCompetitionDay } from './lib/clubCalendar';
@@ -143,6 +144,16 @@ export function App() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [data.swimmers.length]);
+
+  // Notifications : abonnement tenu à jour avec les nageurs suivis (et renouvelé s'il a expiré)
+  const followKey = data.swimmers
+    .filter((s) => s.relation === 'child' || s.favorite)
+    .map((s) => s.id)
+    .join(',');
+  useEffect(() => {
+    const t = setTimeout(() => void refreshPush(getState().swimmers).catch(() => {}), 2500);
+    return () => clearTimeout(t);
+  }, [followKey]);
 
   // Liste des membres du club : nouvelle version publiée par le club → mise à jour
   useEffect(() => {

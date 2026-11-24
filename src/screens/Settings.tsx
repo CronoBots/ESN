@@ -15,6 +15,7 @@ import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useState } from 'react';
+import { disablePush, enablePush, pushState, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 
@@ -144,6 +145,8 @@ export function Settings() {
             {club && <div className="section-foot">Liste du {formatDate(club.updated)}, mise à jour automatiquement quand le club en publie une nouvelle.</div>}
           </Section>
         )}
+
+        <NotificationsSection />
 
         <Section title="Résultats automatiques">
           <div className="list">
@@ -321,3 +324,58 @@ function SyncNowRow() {
     />
   );
 }
+
+/** Notifications des résultats des nageurs suivis, sur cet appareil. */
+function NotificationsSection() {
+  const data = useData();
+  const [state, setState] = useState<PushState>(() => pushState());
+  const [busy, setBusy] = useState(false);
+  const followed = data.swimmers.filter((s) => s.relation === 'child' || s.favorite);
+  const toggle = async (on: boolean) => {
+    setBusy(true);
+    try {
+      if (on) {
+        const next = await enablePush(getState().swimmers);
+        setState(next);
+        if (next === 'on') overlay.toast('Notifications activées', '🔔');
+        else if (next === 'denied') overlay.toast('Notifications refusées dans les réglages du téléphone', '⚠️');
+      } else {
+        await disablePush();
+        setState('off');
+      }
+    } catch {
+      overlay.toast('Activation impossible pour le moment : réessayez', '⚠️');
+      setState(pushState());
+    } finally {
+      setBusy(false);
+    }
+  };
+  const names = followed.map((s) => s.firstName).join(', ');
+  return (
+    <Section title="Notifications">
+      <div className="list">
+        <div className="field">
+          <span className="label grow">Résultats de mes nageurs</span>
+          <Toggle
+            on={state === 'on'}
+            onChange={(v) => void toggle(v)}
+            label="Recevoir une notification à chaque résultat de mes nageurs suivis"
+            disabled={busy || state === 'unsupported' || state === 'install' || state === 'denied' || (!followed.length && state !== 'on')}
+          />
+        </div>
+      </div>
+      <div className="section-foot">
+        {state === 'install'
+          ? 'Sur iPhone, les notifications ne fonctionnent que dans l’application installée sur l’écran d’accueil (iOS 16.4 ou plus récent) : ouvrez-la depuis son icône, puis activez-les ici.'
+          : state === 'unsupported'
+            ? 'Les notifications ne sont pas disponibles sur ce navigateur.'
+            : state === 'denied'
+              ? 'Les notifications sont bloquées pour ESN Compétition dans les réglages du téléphone : autorisez-les, puis revenez ici.'
+              : !followed.length
+                ? 'Suivez d’abord un ou plusieurs nageurs (Mon espace) pour recevoir leurs résultats.'
+                : `Une notification à chaque résultat officiel de ${names} : temps, place et record personnel, pendant la compétition. Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`}
+      </div>
+    </Section>
+  );
+}
+

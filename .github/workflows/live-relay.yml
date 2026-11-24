@@ -1,7 +1,7 @@
 name: Relais du direct
 
-# Les jours de compétition du club : reste actif ~6 heures et relance le déploiement dès que le
-# livetiming de la compétition change (scripts/live-relay.mjs). Le planificateur de GitHub n'étant pas
+# Les jours de compétition du club : reste actif ~6 heures, relance le déploiement dès que le
+# livetiming de la compétition change et envoie les notifications des résultats (scripts/live-relay.mjs). Le planificateur de GitHub n'étant pas
 # fiable, il est lancé à 6 h, 11 h 50 et 17 h 40 (heure belge d'hiver), et peut être lancé à la main.
 on:
   workflow_dispatch:
@@ -25,10 +25,13 @@ jobs:
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          sparse-checkout: |
-            public/data
-            scripts
+          node-version: 22
+          cache: npm
+      # Robot des notifications : code de l'application regroupé pour Node
+      - run: npm ci
+      - run: npx rolldown -c scripts/notify.rolldown.config.mjs
       # Liens de livetiming trouvés par le déploiement sur le site du district (LNL)
       - uses: actions/cache/restore@v4
         continue-on-error: true
@@ -39,3 +42,6 @@ jobs:
       - run: node scripts/live-relay.mjs
         env:
           GH_TOKEN: ${{ github.token }}
+          # Notifications : jeton du robot (base des abonnements) et clé privée d'envoi
+          ESN_PUSH_TOKEN: ${{ secrets.ESN_PUSH_TOKEN }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}

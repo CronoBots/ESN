@@ -5162,3 +5162,8 @@ button.meet-nav-btn:active {
 .recap-lines {
   margin-bottom: 4px;
 }
+
+.toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

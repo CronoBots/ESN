@@ -1,4 +1,5 @@
 import { CLUB } from '../club';
+import { reportLiveMeet } from './push';
 import { actions, batch, getState } from '../store/store';
 import type { Swim, Swimmer } from '../store/types';
 import { makeISO, monthFromToken, todayISO } from './dates';
@@ -679,6 +680,8 @@ async function doSync({ force, onProgress }: { force?: boolean; onProgress?: (p:
         if (pdf.complete) processed[m.id] = [...new Set([...(processed[m.id] ?? []), ...pending.map((s) => s.id)])];
         return;
       }
+      // Compétition en direct avec des nageurs du club : signalée au robot des notifications
+      if (m.status === 'live' && !isMirrored(m.id) && l.athletes.some((a) => CLUB.member.test((a.club ?? '').trim()))) reportLiveMeet(m.id);
       // Nageurs du club pas encore dans la liste
       if (club)
         for (const a of l.athletes)

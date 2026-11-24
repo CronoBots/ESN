@@ -14,3 +14,7 @@ playwright-report
 /classements/
 /controle/
 /audit/
+
+# Robot des notifications (regroupement et cache, générés)
+.notify-build/
+.notify-cache/
