@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
+import { markPhotoFailed, photoFailed, swimmerPhotoUrls } from '../lib/photo';
 import { bindLayers, goBack, isLayerAbove, popLayer, pushLayer } from '../router';
 import { STROKE_BY_ID } from '../lib/events';
 import { formatDelta, formatDeltaPct } from '../lib/time';
@@ -422,13 +423,16 @@ export function Avatar({
   size = 44,
   onBrand,
 }: {
-  swimmer: Pick<Swimmer, 'firstName' | 'lastName' | 'color'>;
+  swimmer: Pick<Swimmer, 'firstName' | 'lastName' | 'color'> & Partial<Pick<Swimmer, 'member' | 'former' | 'swimrankingsId'>>;
   size?: number;
   /** Sur un fond bleu ESN : pastille blanche translucide au lieu du dégradé */
   onBrand?: boolean;
 }) {
   const [a, b] = AVATAR_GRADIENTS[swimmer.color % AVATAR_GRADIENTS.length];
   const initials = `${swimmer.firstName?.[0] ?? ''}${swimmer.lastName?.[0] ?? ''}`.toUpperCase();
+  // Photo swimrankings des nageurs actifs du club (lib/photo) ; en échec, l'adresse suivante, puis les initiales
+  const [, retry] = useState(0);
+  const photo = swimmerPhotoUrls(swimmer).find((u) => !photoFailed(u));
   return (
     <span
       className={`avatar${onBrand ? ' on-brand' : ''}`}
@@ -436,6 +440,20 @@ export function Avatar({
       aria-hidden="true"
     >
       {initials}
+      {photo && (
+        <img
+          key={photo}
+          className="avatar-photo"
+          src={photo}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            markPhotoFailed(photo);
+            retry((n) => n + 1);
+          }}
+        />
+      )}
     </span>
   );
 }
