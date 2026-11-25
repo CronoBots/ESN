@@ -42,11 +42,11 @@ export function ClubMeetRecap({ meet, onJump }: { meet: Meet; onJump?: (swimmerI
   const pbFlags = usePbFlags();
   const qualifying = useQualifying();
   const [day, setDay] = useState('all');
-  const full = useMemo(() => meetRecap(meet.id, data.swims, data.swimmers, pbFlags), [meet.id, data.swims, data.swimmers, pbFlags]);
+  const full = useMemo(() => meetRecap(meet.id, data.swims, data.swimmers, pbFlags, undefined, data.officialRecords), [meet.id, data.swims, data.swimmers, pbFlags, data.officialRecords]);
   const shownDay = day !== 'all' && full.days.includes(day) ? day : 'all';
   const r: MeetRecap = useMemo(
-    () => (shownDay === 'all' ? full : meetRecap(meet.id, data.swims, data.swimmers, pbFlags, shownDay)),
-    [full, shownDay, meet.id, data.swims, data.swimmers, pbFlags],
+    () => (shownDay === 'all' ? full : meetRecap(meet.id, data.swims, data.swimmers, pbFlags, shownDay, data.officialRecords)),
+    [full, shownDay, meet.id, data.swims, data.swimmers, data.officialRecords, pbFlags],
   );
   const quals = useMemo(() => {
     if (!qualifying) return [];

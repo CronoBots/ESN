@@ -1,4 +1,5 @@
 import type { Meet, Swim, Swimmer } from '../store/types';
+import type { OfficialRecordsList } from './officialRecordsList';
 import { isValidResult, type PbInfo } from './stats';
 import { medalSwims } from './medals';
 import { clubRecords, recordComplete, recordKey } from './clubRecords';
@@ -64,7 +65,8 @@ const byName = (a: Swimmer, b: Swimmer) => a.lastName.localeCompare(b.lastName, 
  * Récap d'une compétition. `allSwims` : toutes les courses connues (records du club) ; `day` : un seul
  * jour (« 2026-11-21 »), sinon toute la compétition.
  */
-export function meetRecap(meetId: string, allSwims: Swim[], swimmers: Swimmer[], pbFlags: Map<string, PbInfo>, day?: string): MeetRecap {
+/** official : liste officielle des records du club (une course plus lente que la liste n'est pas un record du club). */
+export function meetRecap(meetId: string, allSwims: Swim[], swimmers: Swimmer[], pbFlags: Map<string, PbInfo>, day?: string, official?: OfficialRecordsList | null): MeetRecap {
   const atMeet = allSwims.filter((s) => s.meetId === meetId);
   // Une course au jour non relevé (dates de la compétition seulement) : pas de récap jour par jour
   const days = atMeet.some((s) => s.dayRange) ? [] : [...new Set(atMeet.map((s) => s.date))].sort();
@@ -112,7 +114,7 @@ export function meetRecap(meetId: string, allSwims: Swim[], swimmers: Swimmer[],
     const k = `${s.course}|${sw.gender}`;
     let recs = cache.get(k);
     if (!recs) {
-      recs = clubRecords(allSwims, swimmers, { course: s.course, gender: sw.gender });
+      recs = clubRecords(allSwims, swimmers, { course: s.course, gender: sw.gender, official });
       cache.set(k, recs);
     }
     if (recs.get(recordKey(s.distance, s.stroke))?.swim.id === s.id) records.push({ swim: s, swimmer: sw });

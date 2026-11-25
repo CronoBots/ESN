@@ -94,7 +94,7 @@ export function SwimmerFile({ swimmer, home, afterHero, children }: { swimmer: S
   const trophies = useMemo(() => achievements(mine, swimmer, data.meets, pbFlags), [mine, swimmer, data.meets, pbFlags]);
   const span = useMemo(() => careerSpan(mine), [mine]);
   const bests = useMemo(() => bestTimesTable(mine), [mine]);
-  const held = useMemo(() => (swimmer.member ? clubRecordsHeld(data.swims, data.swimmers, swimmer) : []), [data.swims, data.swimmers, swimmer]);
+  const held = useMemo(() => (swimmer.member ? clubRecordsHeld(data.swims, data.swimmers, swimmer, data.officialRecords) : []), [data.swims, data.swimmers, swimmer, data.officialRecords]);
   const seasons = useMemo(() => seasonsSummary(mine, swimmer, pbFlags), [mine, swimmer, pbFlags]);
   const ranks = useMemo(() => topRanks(data.rankings, id), [data.rankings, id]);
   const { reached } = useLevelGoals(swimmer, mine, false);

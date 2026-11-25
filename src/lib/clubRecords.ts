@@ -1,5 +1,7 @@
 import type { Course, Gender, Stroke, Swim, Swimmer } from '../store/types';
 import { chronoCompare, countsForRecords } from './stats';
+import { holderSwimmer, officialBest, type OfficialRecordsList } from './officialRecords';
+// (officialRecords n'importe de ce fichier que des types : pas de dépendance circulaire à l'exécution)
 
 /**
  * Records du club : meilleur temps de tous les nageurs de l'ESN (membres actuels et
@@ -63,9 +65,10 @@ export function recordComplete(_course: Course, distance: number, _stroke: Strok
 
 /**
  * Membres du club qui détiennent au moins un record (une épreuve, un bassin, une tranche d'âge,
- * tous âges compris), comme clubRecords. Sert à n'afficher que les anciens membres qui ont marqué le club.
+ * tous âges compris), comme clubRecords, et ceux de la liste officielle du club. Sert à n'afficher que les
+ * anciens membres qui ont marqué le club.
  */
-export function recordHolders(swims: Swim[], swimmers: Swimmer[]): Set<string> {
+export function recordHolders(swims: Swim[], swimmers: Swimmer[], official?: OfficialRecordsList | null): Set<string> {
   const members = new Map(swimmers.filter((s) => s.member).map((s) => [s.id, s]));
   const best = new Map<string, Swim & { timeCs: number }>();
   for (const s of swims) {
@@ -80,17 +83,24 @@ export function recordHolders(swims: Swim[], swimmers: Swimmer[]): Set<string> {
       if (!cur || s.timeCs < cur.timeCs || (s.timeCs === cur.timeCs && chronoCompare(s, cur) < 0)) best.set(k, s);
     }
   }
-  return new Set([...best.values()].map((s) => s.swimmerId));
+  const out = new Set([...best.values()].map((s) => s.swimmerId));
+  for (const r of official?.records ?? []) {
+    const sw = holderSwimmer(r, swimmers);
+    if (sw) out.add(sw.id);
+  }
+  return out;
 }
 
 /**
  * Record de chaque épreuve pour un bassin, un sexe et une tranche d'âge : temps le plus
  * rapide en compétition d'un membre du club (à temps égal, le premier réalisé).
+ * Avec la liste officielle du club (opts.official) : un temps plus lent que le record de la liste
+ * (tous bassins) n'est pas le record du club, l'épreuve est alors absente du résultat.
  */
 export function clubRecords(
   swims: Swim[],
   swimmers: Swimmer[],
-  opts: { course: Course; gender: Gender; band?: AgeBand },
+  opts: { course: Course; gender: Gender; band?: AgeBand; official?: OfficialRecordsList | null },
 ): Map<string, ClubRecord> {
   const members = new Map(swimmers.filter((s) => s.member && s.gender === opts.gender).map((s) => [s.id, s]));
   const band = opts.band ?? AGE_BANDS[0];
@@ -107,5 +117,10 @@ export function clubRecords(
       out.set(k, { swim: s, swimmer, age });
     }
   }
+  if (opts.official)
+    for (const [k, r] of out) {
+      const best = officialBest(opts.official, opts.gender, band.id, r.swim.distance, r.swim.stroke);
+      if (best && r.swim.timeCs > best.timeCs) out.delete(k);
+    }
   return out;
 }

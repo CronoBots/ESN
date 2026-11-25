@@ -17,8 +17,8 @@ export function useClubWeekend(): ClubWeekend | null {
   const data = useData();
   const pbFlags = usePbFlags();
   return useMemo(
-    () => lastClubWeekend(data.swims, data.swimmers, data.meets, pbFlags, todayISO()),
-    [data.swims, data.swimmers, data.meets, pbFlags],
+    () => lastClubWeekend(data.swims, data.swimmers, data.meets, pbFlags, todayISO(), data.officialRecords),
+    [data.swims, data.swimmers, data.meets, data.officialRecords, pbFlags],
   );
 }
 

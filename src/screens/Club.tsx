@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon';
 import { openShareApp } from '../components/Invite';
 import { offerInstall } from './Install';
 import { navigate } from '../router';
-import { decryptEntries, decryptHistory, decryptRankings, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptEntries, decryptHistory, decryptOfficialRecords, decryptRankings, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
 import { entriesReport } from '../lib/clubEntries';
 import { todayISO } from '../lib/dates';
 import { historyNote, parseSwimrankings } from '../lib/swimrankings';
@@ -26,6 +26,8 @@ const HISTORY_URL = './data/club-history.json';
 const RANKINGS_URL = './data/club-rankings.json';
 /** Inscriptions du club aux prochaines compétitions (programme de chaque nageur), chiffrées avec le même code. */
 const ENTRIES_URL = './data/club-entries.json';
+/** Liste officielle des records du club (PDF du club), chiffrée avec le même code. */
+const RECORDS_URL = './data/club-records.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ».
  * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. 6 : rattaché aussi par les autres noms du membre.
  * 7 : disqualifications, forfaits et abandons (DSQ, DNS, DNF, sans temps), avec la raison de la disqualification.
@@ -122,6 +124,24 @@ async function runClubEntries(): Promise<number> {
   return added;
 }
 export const applyClubEntries = oneAtATime(runClubEntries);
+
+/**
+ * Liste officielle des records du club (PDF du club, publié chiffré) : remplace la précédente, une fois par
+ * version publiée. Elle fait foi pour les records d'avant sa date. Pas de fichier publié : rien à faire.
+ */
+async function runOfficialRecords(): Promise<number> {
+  const club = getState().settings.club;
+  if (!club || club.expired) return 0;
+  const res = await fetch(RECORDS_URL, { cache: 'no-cache' }).catch(() => null);
+  if (!res?.ok) return 0;
+  const enc: unknown = await res.json().catch(() => null);
+  if (!isEncryptedRoster(enc, 'esn-records') || enc.iv === club.officialRecordsVersion) return 0;
+  const list = await decryptOfficialRecords(enc, club.code).catch(() => null);
+  if (!list) return 0;
+  actions.setOfficialRecords(list, enc.iv);
+  return list.records.length;
+}
+export const applyOfficialRecords = oneAtATime(runOfficialRecords);
 
 async function runClubHistory(): Promise<number> {
   const club = getState().settings.club;
@@ -286,7 +306,7 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
   if (!enc) throw new Error('indisponible');
   const roster = await decryptRoster(enc, code);
   const r = actions.applyRoster(roster, code.trim(), enc.iv);
-  void applyClubHistory().then(applyClubRankings).then(applyClubEntries);
+  void applyClubHistory().then(applyClubRankings).then(applyClubEntries).then(applyOfficialRecords);
   return r;
 }
 
@@ -322,6 +342,7 @@ export async function refreshClubRoster(): Promise<number> {
     await applyClubHistory();
     await applyClubRankings();
     await applyClubEntries();
+    await applyOfficialRecords();
     return 0;
   }
   try {
@@ -329,6 +350,7 @@ export async function refreshClubRoster(): Promise<number> {
     await applyClubHistory();
     await applyClubRankings();
     await applyClubEntries();
+    await applyOfficialRecords();
     return added;
   } catch (e) {
     // Le club a changé de code : on le redemandera
@@ -366,8 +388,8 @@ export const isFollowed = (sw: Swimmer) => sw.favorite || sw.relation === 'child
  * une recherche à leur nom, et affichés s'ils sont suivis.
  */
 function useHiddenFormer(): (s: Swimmer) => boolean {
-  const { swims, swimmers } = useData();
-  const holders = useMemo(() => recordHolders(swims, swimmers), [swims, swimmers]);
+  const { swims, swimmers, officialRecords } = useData();
+  const holders = useMemo(() => recordHolders(swims, swimmers, officialRecords), [swims, swimmers, officialRecords]);
   return useMemo(() => (s: Swimmer) => !!s.member && !!s.former && !holders.has(s.id) && !isFollowed(s), [holders]);
 }
 

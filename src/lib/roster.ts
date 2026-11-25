@@ -14,6 +14,7 @@
  */
 import { gunzipSync, gzipSync } from 'fflate';
 import type { ClubEntriesFile } from './clubEntries';
+import type { OfficialRecordsList } from './officialRecordsList';
 
 export interface RosterGroup {
   id: string;
@@ -58,7 +59,7 @@ export interface ClubHistory {
 }
 
 export interface EncryptedRoster {
-  format: 'esn-roster' | 'esn-history' | 'esn-rankings' | 'esn-entries';
+  format: 'esn-roster' | 'esn-history' | 'esn-rankings' | 'esn-entries' | 'esn-records';
   v: 1;
   kdf: 'PBKDF2-SHA-256';
   iterations: number;
@@ -160,6 +161,18 @@ export async function decryptEntries(enc: EncryptedRoster, code: string): Promis
   const e = (await decryptJson(enc, code)) as ClubEntriesFile;
   if (!e || !Array.isArray(e.meets)) throw new Error('Inscriptions invalides');
   return e;
+}
+
+/** Liste officielle des records du club (noms des détenteurs : chiffrée comme le reste). */
+export function encryptOfficialRecords(list: OfficialRecordsList, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
+  return encryptJson(list, code, 'esn-records', iterations);
+}
+
+export async function decryptOfficialRecords(enc: EncryptedRoster, code: string): Promise<OfficialRecordsList> {
+  const l = (await decryptJson(enc, code)) as OfficialRecordsList;
+  // Même contrôle que validOfficialRecords (pas d'import de valeur ici : fichier lu aussi par Node)
+  if (!l || typeof l.asOf !== 'string' || !Array.isArray(l.records)) throw new Error('Liste des records invalide');
+  return l;
 }
 
 export function isEncryptedRoster(x: unknown, format: EncryptedRoster['format'] = 'esn-roster'): x is EncryptedRoster {

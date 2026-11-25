@@ -1,4 +1,5 @@
 import type { RosterGroup } from '../lib/roster';
+import type { OfficialRecordsList } from '../lib/officialRecordsList';
 
 export type Stroke = 'FREE' | 'BACK' | 'BREAST' | 'FLY' | 'IM';
 /** SCM = petit bassin (25 m), LCM = grand bassin (50 m). */
@@ -165,6 +166,8 @@ export interface ClubAccess {
   rankingsVersion?: string;
   /** Version des inscriptions du club déjà appliquée. */
   entriesVersion?: string;
+  /** Version de la liste officielle des records du club déjà appliquée. */
+  officialRecordsVersion?: string;
 }
 
 export interface LiveSyncSettings {
@@ -201,5 +204,7 @@ export interface AppData {
   goals: Goal[];
   /** Classements nationaux des nageurs du club (remplacés à chaque version publiée). */
   rankings?: NationalRank[];
+  /** Liste officielle des records du club (remplacée à chaque version publiée). */
+  officialRecords?: OfficialRecordsList;
   settings: Settings;
 }

@@ -16,6 +16,11 @@
 //                                                        envoyé par le club, ou son texte pdftotext -layout) : programme de chaque
 //                                                        nageur et records officiels de son âge, chiffrés dans
 //                                                        public/data/club-entries.json (la même compétition est remplacée)
+//   node scripts/roster.mjs records FICHIER.pdf [CODE]   liste officielle des records du club (PDF « Records Club » du site
+//                                                        du club ; date tirée du nom « RECORDS 31.12.2025 » ou --au=AAAA-MM-JJ) :
+//                                                        chaque record retrouvé dans historique/ est marqué vérifié ;
+//                                                        --doutes=FICHIER.tsv (local) marque des records « à vérifier ».
+//                                                        Chiffrée dans public/data/club-records.json (remplace la précédente)
 //   node scripts/roster.mjs classements DOSSIER CODE     chiffre les classements nationaux (un .txt par nageur)
 //                                                        dans public/data/club-rankings.json (fusionnés ligne par
 //                                                        ligne : un classement publié absent du fichier est gardé,
@@ -30,9 +35,10 @@
 // ESN_DATA : autre dossier que public/data pour les fichiers publiés (tests).
 // La liste en clair ne doit JAMAIS être ajoutée au dépôt (public) : seul le fichier chiffré l'est.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { aliasesText, decryptEntries, decryptHistory, decryptRankings, decryptRoster, encryptEntries, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, normalizeCode, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { aliasesText, decryptEntries, decryptHistory, decryptRankings, decryptRoster, encryptEntries, encryptHistory, encryptOfficialRecords, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, normalizeCode, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { holderMatches, parseOfficialRecordsText } from '../src/lib/officialRecordsList.ts';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { CLUB } from '../src/club.ts';
@@ -63,10 +69,13 @@ const OUT = new URL('club-roster.json', DATA);
 const HISTORY = new URL('club-history.json', DATA);
 const RANKINGS = new URL('club-rankings.json', DATA);
 const ENTRIES = new URL('club-entries.json', DATA);
+const OFFICIAL = new URL('club-records.json', DATA);
 const [cmd, ...all] = process.argv.slice(2);
 // Options (--remplacer, --nouveau-code) à part des arguments
 const args = all.filter((a) => !a.startsWith('--'));
 const option = (name) => all.includes(`--${name}`);
+/** Valeur d'une option « --nom=valeur » (undefined si absente). */
+const value = (name) => all.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 
 function summary(roster) {
   const count = (n) => `${n} nageur${n > 1 ? 's' : ''}`;
@@ -252,6 +261,58 @@ if (cmd === 'code') {
   console.log(`${meet.name} (${meet.city ?? '?'}, ${meet.startDate}${meet.endDate ? ` au ${meet.endDate}` : ''}) : ${meet.athletes.length} nageurs, ${starts} départs`);
   if (unknown.length) console.log(`⚠ ${unknown.length} nageur(s) absent(s) de la liste du club (autre orthographe ?) : ${unknown.map((a) => `${a.lastName} ${a.firstName} (${a.birthYear})`).join(', ')}`);
   console.log(`Inscriptions de ${merged.meets.length} compétition(s) chiffrées dans public/data/club-entries.json`);
+} else if (cmd === 'records') {
+  const [file, given] = args;
+  if (!file) throw new Error('Usage : node scripts/roster.mjs records « RECORDS 31.12.2025.pdf » [CODE] [--au=AAAA-MM-JJ] [--doutes=FICHIER.tsv]');
+  const code = given ?? process.env.ESN_CODE ?? CLUB.accessKey;
+  // Date de la liste : celle du nom du fichier du club (« RECORDS 31.12.2025 »), sinon --au
+  const title = basename(file).replace(/\.(pdf|txt)$/i, '');
+  const d = /(\d{2})[./-](\d{2})[./-](\d{4})/.exec(title);
+  const asOf = value('au') ?? (d ? `${d[3]}-${d[2]}-${d[1]}` : null);
+  if (!asOf || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) throw new Error('Date de la liste introuvable dans le nom du fichier : ajoutez --au=AAAA-MM-JJ');
+  // PDF : texte en tableau (pdftotext -table garde les colonnes filles / garçons alignées)
+  const text = /\.pdf$/i.test(file) ? execFileSync('pdftotext', ['-enc', 'UTF-8', '-table', file, '-'], { encoding: 'utf8' }) : readFileSync(file, 'utf8');
+  const { records, unread } = parseOfficialRecordsText(text);
+  if (!records.length) throw new Error('Aucun record lu : est-ce bien la liste « Records Club » du club ?');
+  // Vérifié : même nageur, même épreuve, même temps (et même bassin s'il est indiqué) dans l'historique relevé (tous clubs)
+  const STROKE_FR = { FREE: 'Libre', BACK: 'Dos', BREAST: 'Brasse', FLY: 'Papillon', IM: '4 nages' };
+  const fmt = (cs) => (cs >= 6000 ? `${Math.floor(cs / 6000)}:${String(Math.floor((cs % 6000) / 100)).padStart(2, '0')}` : String(Math.floor(cs / 100))) + `.${String(cs % 100).padStart(2, '0')}`;
+  // Le détenteur peut être écrit comme l'un des autres noms du membre (liste du club)
+  const members = existsSync(OUT) ? (await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code)).members : [];
+  const hist = existsSync('historique')
+    ? readdirSync('historique')
+        .filter(isSwimmerFile)
+        .map((f) => readFileSync(join('historique', f), 'utf8'))
+        .map((t) => ({ h: historyHeader(t), lines: new Set(t.split(/\r?\n/).map((l) => l.split('\t').slice(0, 3).map((c) => c.trim()).join('|'))) }))
+        .filter((x) => x.h)
+        .map((x) => ({ ...x, names: [x.h, ...(members.find((m) => sameMember(m, x.h))?.aliases ?? [])] }))
+    : [];
+  for (const r of records) {
+    const pools = r.course ? [r.course === 'SCM' ? '25m' : '50m'] : ['25m', '50m'];
+    const keys = pools.map((p) => `${r.distance}m ${STROKE_FR[r.stroke]}|${p}|${fmt(r.timeCs)}`);
+    if (hist.some((x) => x.names.some((nm) => holderMatches(r.holder, nm)) && keys.some((k) => x.lines.has(k)))) r.verified = true;
+  }
+  // Records douteux (fichier local) : sexe, épreuve (« 100m Brasse »), temps, détenteur, raison
+  const doubtsFile = value('doutes');
+  let doubts = 0;
+  if (doubtsFile)
+    for (const l of readFileSync(doubtsFile, 'utf8').split(/\r?\n/).slice(1).filter(Boolean)) {
+      const [g, ev, t, who, why] = l.split('\t');
+      const hit = records.filter((r) => r.gender === g && `${r.distance}m ${STROKE_FR[r.stroke]}` === ev && fmt(r.timeCs) === t && r.holder === who);
+      if (!hit.length) console.log(`⚠ doute sans record correspondant : ${ev} ${t}`);
+      for (const r of hit) {
+        r.doubt = why;
+        r.verified = false;
+        doubts++;
+      }
+    }
+  const list = { title, asOf, source: 'Records Club, site du club', records };
+  writeFileSync(OFFICIAL, `${JSON.stringify(await encryptOfficialRecords(list, code))}\n`);
+  const n = (f) => records.filter(f).length;
+  console.log(`${records.length} records lus (liste au ${asOf}) : ${n((r) => r.verified)} vérifiés dans l'historique, ${n((r) => !r.verified)} non vérifiés, ${doubts} à vérifier`);
+  console.log(`  sans date : ${n((r) => !r.date)} ; bassin 50 m : ${n((r) => r.course === 'LCM')} ; sans bassin : ${n((r) => !r.course)}`);
+  if (unread.length) console.log(`⚠ ${unread.length} ligne(s) au temps illisible :\n${unread.map((l) => `  ${l}`).join('\n')}`);
+  console.log('Liste officielle des records chiffrée dans public/data/club-records.json');
 } else {
   const head = readFileSync(new URL(import.meta.url), 'utf8').split('\n');
   console.log(head.slice(0, head.findIndex((l) => !l.startsWith('//'))).join('\n'));
