@@ -164,6 +164,40 @@ function noAnswerAdvice({ device, installed }: PushEnv): string {
     : 'Aucune fenêtre d’autorisation ne s’est affichée : touchez la cloche ou le cadenas à gauche de l’adresse › Notifications › Autoriser ; l’activation se termine toute seule. Sinon : Paramètres du téléphone › Applications › Chrome › Notifications › Autoriser, puis touchez à nouveau l’interrupteur.';
 }
 
+/**
+ * Guide pas à pas pour autoriser les notifications dans les réglages, quand la fenêtre de demande ne
+ * s'affiche pas (Android : un refus passé, ou les notifications coupées pour l'application, et le
+ * téléphone ne redemande plus jamais).
+ */
+export function pushHelpSteps({ device, installed }: PushEnv = env()): { title: string; note?: string }[] {
+  if (device === 'android' && installed)
+    return [
+      { title: 'Sur l’écran d’accueil, appui long sur l’icône ESN Compétition', note: 'Un petit menu s’ouvre. Sinon : Paramètres du téléphone › Applications › ESN Compétition.' },
+      { title: 'Touchez « Infos sur l’appli » (ⓘ)' },
+      { title: 'Touchez « Notifications »' },
+      { title: 'Activez « Autoriser les notifications »', note: 'Selon le téléphone : « Afficher les notifications ».' },
+      { title: 'Revenez dans ESN Compétition', note: 'L’activation se termine toute seule ; sinon, touchez « J’ai autorisé ».' },
+    ];
+  if (device === 'android')
+    return [
+      { title: 'Touchez le cadenas (ou ⓘ) à gauche de l’adresse, en haut', note: 'Ou la petite cloche barrée, si elle apparaît.' },
+      { title: 'Touchez « Autorisations », puis « Notifications »' },
+      { title: 'Choisissez « Autoriser »' },
+      { title: 'Revenez sur la page', note: 'L’activation se termine toute seule ; sinon, touchez « J’ai autorisé ».' },
+    ];
+  if (device === 'ios')
+    return [
+      { title: 'Ouvrez les Réglages de l’iPhone' },
+      { title: 'Notifications › ESN Compétition' },
+      { title: 'Activez « Autoriser les notifications »' },
+      { title: 'Revenez dans ESN Compétition', note: 'Puis touchez « J’ai autorisé ».' },
+    ];
+  return [{ title: 'Cliquez sur le cadenas à gauche de l’adresse', note: 'Notifications › Autoriser, puis revenez sur la page.' }];
+}
+
+/** Aide en plus pour Android : Chrome lui-même doit pouvoir notifier. */
+export const androidChromeNote = 'Toujours rien ? Paramètres du téléphone › Applications › Chrome › Notifications › Autoriser, puis recommencez.';
+
 /** Autorisation de notifier déjà accordée sur cet appareil (réglages du téléphone ou du site). */
 export const permissionGranted = () => 'Notification' in window && Notification.permission === 'granted';
 
@@ -265,7 +299,7 @@ export async function enablePush(swimmers: Swimmer[]): Promise<PushState> {
   let permission: NotificationPermission;
   try {
     // Demande mise de côté par le navigateur (Chrome sur Android) : pas de réponse, l'interrupteur est rendu
-    permission = await within(Notification.requestPermission(), 10000, noAnswerAdvice(env()), 'autorisation-sans-reponse');
+    permission = await within(Notification.requestPermission(), env().device === 'android' ? 5000 : 10000, noAnswerAdvice(env()), 'autorisation-sans-reponse');
   } catch (e) {
     if (e instanceof PushError) throw e;
     throw new PushError('La demande d’autorisation n’a pas pu s’afficher : réessayez.', errorDetail(e), 'autorisation-erreur');

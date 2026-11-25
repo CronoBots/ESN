@@ -1,6 +1,6 @@
 import { actions, getState, useData } from '../store/store';
 import { fullName, isActiveMember, mySwimmers } from '../store/hooks';
-import { Avatar, NavBar, Row, Section, Segmented, Toggle, overlay } from '../components/ui';
+import { Avatar, NavBar, Row, Section, Segmented, SheetLayout, Toggle, overlay } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { navigate } from '../router';
 import { groupName, isFollowed, loadClub, openFollow, useRosterAvailable } from './Club';
@@ -15,7 +15,27 @@ import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useEffect, useRef, useState } from 'react';
-import { disablePush, enablePush, errorDetail, permissionGranted, pushAdvice, pushPrefs, pushState, pushTargets, pushWaitAdvice, PushError, refreshPush, reportPushProblem, setPushPrefs, watchPermission, type PushPrefs, type PushState } from '../lib/push';
+import {
+  androidChromeNote,
+  disablePush,
+  enablePush,
+  errorDetail,
+  permissionGranted,
+  pushAdvice,
+  pushDevice,
+  pushHelpSteps,
+  pushPrefs,
+  pushState,
+  pushTargets,
+  pushWaitAdvice,
+  PushError,
+  refreshPush,
+  reportPushProblem,
+  setPushPrefs,
+  watchPermission,
+  type PushPrefs,
+  type PushState,
+} from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 declare const __BUILD_TIME__: string | undefined;
@@ -336,6 +356,68 @@ function SyncNowRow() {
 }
 
 /** Notifications des résultats des nageurs suivis, sur cet appareil. */
+/**
+ * Guide « Autoriser les notifications » : la fenêtre de demande n'est pas apparue (ou l'autorisation est
+ * bloquée). Étapes dans les réglages du téléphone ; au retour, l'activation se termine toute seule.
+ */
+function PushHelpSheet({ close, onGranted }: { close: () => void; onGranted: () => void }) {
+  const [notYet, setNotYet] = useState(false);
+  const steps = pushHelpSteps();
+  useEffect(() => {
+    const check = () => {
+      if (permissionGranted()) {
+        close();
+        onGranted();
+      }
+    };
+    const again = () => document.visibilityState === 'visible' && check();
+    document.addEventListener('visibilitychange', again);
+    const stop = watchPermission(check);
+    return () => {
+      document.removeEventListener('visibilitychange', again);
+      stop();
+    };
+  }, [close, onGranted]);
+  return (
+    <SheetLayout
+      title="Autoriser les notifications"
+      onCancel={close}
+      cancelLabel="Fermer"
+      doneLabel="J’ai autorisé"
+      onDone={() => {
+        if (permissionGranted()) {
+          close();
+          onGranted();
+        } else setNotYet(true);
+      }}
+    >
+      <p className="muted" style={{ margin: '4px 2px 0', lineHeight: 1.45 }}>
+        Le téléphone n’a pas affiché sa demande d’autorisation : c’est lui qui la gère, et après un refus (ou si les notifications sont coupées pour
+        l’application) il ne la propose plus. Il suffit de les autoriser dans ses réglages :
+      </p>
+      <ol className="guide-steps">
+        {steps.map((st, i) => (
+          <li key={i}>
+            <span className="guide-n" aria-hidden="true">
+              {i + 1}
+            </span>
+            <div>
+              <div className="guide-title">{st.title}</div>
+              {st.note && <div className="guide-note">{st.note}</div>}
+            </div>
+          </li>
+        ))}
+      </ol>
+      {pushDevice() === 'android' && <p className="muted small" style={{ margin: '10px 2px 0' }}>{androidChromeNote}</p>}
+      {notYet && (
+        <p className="section-foot push-warn" style={{ margin: '12px 0 0' }}>
+          Pas encore autorisé sur ce téléphone : refaites les étapes ci-dessus, l’interrupteur « Autoriser les notifications » doit être activé.
+        </p>
+      )}
+    </SheetLayout>
+  );
+}
+
 const PUSH_BLOCKED_TITLE: Partial<Record<PushState, string>> = {
   inapp: 'Ouvrez l’application dans le navigateur',
   install: 'Installez d’abord l’application',
@@ -362,7 +444,10 @@ function NotificationsSection() {
       if (on) {
         const next = await enablePush(pushTargets(getState()));
         setState(next);
-        if (next === 'denied') reportPushProblem('refusee');
+        if (next === 'denied') {
+          reportPushProblem('refusee');
+          openHelp();
+        }
         if (next === 'on') {
           wanted.current = false;
           overlay.toast('Notifications activées', '🔔');
@@ -375,6 +460,8 @@ function NotificationsSection() {
       setProblem(e instanceof PushError ? { text: e.message, detail: e.detail } : { text: 'Activation impossible pour le moment : réessayez.', detail: errorDetail(e) });
       // Rapport de diagnostic anonyme (étape et erreur, sans nom)
       reportPushProblem(e instanceof PushError ? e.stage : 'inattendue', e instanceof PushError ? e.detail : errorDetail(e));
+      // Pas de fenêtre de demande : guide pas à pas dans les réglages du téléphone
+      if (e instanceof PushError && (e.stage === 'autorisation-sans-reponse' || e.stage === 'autorisation-ignoree')) openHelp();
       setState(pushState());
     } finally {
       busyRef.current = false;
@@ -390,6 +477,7 @@ function NotificationsSection() {
     if (wanted.current && !busyRef.current && now === 'off' && permissionGranted()) void toggle(true);
     else if (!busyRef.current) setProblem(null);
   };
+  const openHelp = () => overlay.sheet((close) => <PushHelpSheet close={close} onGranted={() => resume.current()} />);
   useEffect(() => {
     const again = () => document.visibilityState === 'visible' && resume.current();
     document.addEventListener('visibilitychange', again);
@@ -405,7 +493,11 @@ function NotificationsSection() {
     if (busy) return;
     if (on && blocked) {
       reportPushProblem(`bloquee-${state}`);
-      overlay.actions({ title: PUSH_BLOCKED_TITLE[state], message: blocked, actions: [], cancelLabel: 'Compris' });
+      // Autorisation bloquée : le guide pas à pas ; autres cas (navigateur, installation) : l'explication
+      if (state === 'denied') {
+        wanted.current = true;
+        openHelp();
+      } else overlay.actions({ title: PUSH_BLOCKED_TITLE[state], message: blocked, actions: [], cancelLabel: 'Compris' });
       return;
     }
     // Aucun nageur suivi : choix dans la liste du club, puis activation (le bouton OK compte comme geste)
