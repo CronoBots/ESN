@@ -179,11 +179,15 @@ function OfficialBlock({ ranking, entry, c, girl, need, total }: { ranking: Offi
   if (ranking.edition === c.edition - 1) {
     if (!entry || entry.rank == null || entry.scratched) return null;
     const stats = categoryStats(ranking, entry.cat, entry.gender);
-    const label = c.allround?.categories.find((x) => categoryKey(x) === entry.cat)?.label.split(' (')[0] ?? entry.cat;
+    const cat = c.allround?.categories.find((x) => categoryKey(x) === entry.cat);
+    const label = cat?.label.split(' (')[0] ?? entry.cat;
+    // Même règle l'an dernier : seuls les meilleurs résultats comptaient (« 4 meilleures épreuves sur 5 »)
+    const rule = cat?.counted && cat.counted < cat.events.length ? `${cat.counted} meilleures épreuves sur ${cat.events.length}, ` : '';
     return (
       <div className="allround-official last-year">
         L’an dernier ({ranking.edition}) : {ordinal(entry.rank)}
-        {stats ? ` sur ${stats.ranked.toLocaleString('fr-BE')} classés` : ''} en {label}, {entry.selected ? e('sélectionné') : e('non sélectionné')}.
+        {stats ? ` sur ${stats.ranked.toLocaleString('fr-BE')} classés` : ''} en {label}, {entry.selected ? e('sélectionné') : e('non sélectionné')}, avec{' '}
+        {entry.total.toLocaleString('fr-BE')} points ({rule}barème de la fédération).
       </div>
     );
   }
@@ -297,6 +301,8 @@ export function AllroundCard({ swimmer, swims }: { swimmer: Swimmer; swims: Swim
             {status.category.label}
             <br />
             {status.events.length - missing.length} épreuve{status.events.length - missing.length > 1 ? 's' : ''} sur {status.events.length}
+            <br />
+            {need < status.events.length ? `${need} meilleures comptées` : 'toutes comptées'}
           </div>
         </div>
         <div className="allround-rule">
