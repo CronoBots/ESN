@@ -129,6 +129,12 @@ describe('liste officielle des records du club : records d’aujourd’hui', () 
     expect(clubRecords(record, [ana], { course: 'SCM', gender: 'F', band, official: LIST }).size).toBe(1);
   });
 
+  it('le détenteur écrit autrement dans la liste est reconnu par les autres noms du membre', () => {
+    const lea = swimmer('lea', 'F', 2009, { firstName: 'Léa', lastName: 'CAPELLE', aliases: [{ lastName: 'KAPELLE', firstName: 'Léa', birthYear: 2009 }] });
+    expect(holderSwimmer({ holder: 'KAPELLE Léa', gender: 'F' }, [ana, lea])?.id).toBe('lea');
+    expect(holderSwimmer({ holder: 'KAPELLE Léa', gender: 'M' }, [ana, lea])).toBeUndefined();
+  });
+
   it('un ancien membre détenteur d’un record de la liste fait partie des détenteurs de records', () => {
     expect(holderSwimmer(LIST.records[0], [ana, emma])?.id).toBe('emma');
     expect(recordHolders([], [ana, emma], LIST).has('emma')).toBe(true);

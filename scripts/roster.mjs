@@ -277,17 +277,20 @@ if (cmd === 'code') {
   // Vérifié : même nageur, même épreuve, même temps (et même bassin s'il est indiqué) dans l'historique relevé (tous clubs)
   const STROKE_FR = { FREE: 'Libre', BACK: 'Dos', BREAST: 'Brasse', FLY: 'Papillon', IM: '4 nages' };
   const fmt = (cs) => (cs >= 6000 ? `${Math.floor(cs / 6000)}:${String(Math.floor((cs % 6000) / 100)).padStart(2, '0')}` : String(Math.floor(cs / 100))) + `.${String(cs % 100).padStart(2, '0')}`;
+  // Le détenteur peut être écrit comme l'un des autres noms du membre (liste du club)
+  const members = existsSync(OUT) ? (await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code)).members : [];
   const hist = existsSync('historique')
     ? readdirSync('historique')
         .filter(isSwimmerFile)
         .map((f) => readFileSync(join('historique', f), 'utf8'))
         .map((t) => ({ h: historyHeader(t), lines: new Set(t.split(/\r?\n/).map((l) => l.split('\t').slice(0, 3).map((c) => c.trim()).join('|'))) }))
         .filter((x) => x.h)
+        .map((x) => ({ ...x, names: [x.h, ...(members.find((m) => sameMember(m, x.h))?.aliases ?? [])] }))
     : [];
   for (const r of records) {
     const pools = r.course ? [r.course === 'SCM' ? '25m' : '50m'] : ['25m', '50m'];
     const keys = pools.map((p) => `${r.distance}m ${STROKE_FR[r.stroke]}|${p}|${fmt(r.timeCs)}`);
-    if (hist.some((x) => holderMatches(r.holder, x.h) && keys.some((k) => x.lines.has(k)))) r.verified = true;
+    if (hist.some((x) => x.names.some((nm) => holderMatches(r.holder, nm)) && keys.some((k) => x.lines.has(k)))) r.verified = true;
   }
   // Records douteux (fichier local) : sexe, épreuve (« 100m Brasse »), temps, détenteur, raison
   const doubtsFile = value('doutes');
