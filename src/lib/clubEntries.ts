@@ -185,7 +185,8 @@ export function parseClubEntries(text: string): ClubEntriesMeet {
       ...(entryCs != null ? { entryCs, entryCourse: e[5].toLowerCase() === '50m' ? 'LCM' : 'SCM' } : {}),
       ...(Object.keys(records).length ? { records } : {}),
     });
-    if (prog?.gender && !athlete.gender) athlete.gender = prog.gender;
+    // Sexe d'après le programme, sauf épreuves d'une catégorie (« Canetons ») : mixtes, même numérotées « Dames »
+    if (prog?.gender && !category && !athlete.gender) athlete.gender = prog.gender;
     pending = null;
   }
   if (!athletes.some((x) => x.entries.length)) throw new Error('Aucun engagement reconnu');
