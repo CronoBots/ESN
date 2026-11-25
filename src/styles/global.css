@@ -5278,3 +5278,9 @@ button.meet-nav-btn:active {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Programme : temps à viser (limite d'un championnat, record du club de son âge) */
+.row-sub.entry-targets {
+  color: var(--text-2);
+  white-space: normal;
+}

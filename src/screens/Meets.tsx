@@ -20,6 +20,8 @@ import { MeetOverviewSections, type OverviewSections } from '../components/MeetO
 import { ClubMeetRecap } from '../components/MeetRecap';
 import { meetSummaries } from '../lib/meetRecap';
 import { publishedMeet, upcomingClubEvents, type ClubEvent } from '../lib/clubCalendar';
+import { entryTargets } from '../lib/entryTargets';
+import { championshipShort, useQualifying } from '../components/Qualifying';
 
 
 type Order = 'recent' | 'chrono';
@@ -372,6 +374,8 @@ export function MeetDetail({ id }: { id: string }) {
   const timeline = useTimeline(focus);
   // Sections de la vue d'ensemble officielle (médailles, programme), pour les raccourcis en haut de page
   const [overview, setOverview] = useState<OverviewSections>(null);
+  // Temps à viser sur le programme : limites des championnats, records du club (inscriptions du club)
+  const qualifying = useQualifying();
 
   if (!meet) {
     return (
@@ -448,6 +452,7 @@ export function MeetDetail({ id }: { id: string }) {
                     s.round !== 'TIM' ? ROUND_LABEL[s.round] : null,
                   ].filter(Boolean);
                   const rank = s.place ? <PlaceLabel place={s.place} round={s.round} /> : null;
+                  const targets = entryTargets(s, swimmer, data.swims, qualifying, today, championshipShort).slice(0, 2);
                   return (
                     <button
                       key={s.id}
@@ -462,6 +467,18 @@ export function MeetDetail({ id }: { id: string }) {
                         </div>
                         <div className="row-sub">{sub.join('\u00a0· ') || (rank ? null : swimDate(s))}</div>
                         {rank && <div className="row-sub">{rank}</div>}
+                        {targets.length > 0 && (
+                          <div className="row-sub entry-targets">
+                            À viser :{' '}
+                            {targets.map((t, i) => (
+                              <span key={t.kind + t.label} className="nowrap">
+                                {i > 0 ? ' · ' : ''}
+                                <b className="tnum">{formatTime(t.cs)}</b> {t.label}
+                                {t.gapCs != null ? ` (${formatDelta(-t.gapCs)})` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="row-end">
                         <div

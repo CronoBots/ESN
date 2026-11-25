@@ -7,7 +7,9 @@ import { Icon } from '../components/Icon';
 import { openShareApp } from '../components/Invite';
 import { offerInstall } from './Install';
 import { navigate } from '../router';
-import { decryptHistory, decryptRankings, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { decryptEntries, decryptHistory, decryptRankings, decryptRoster, isEncryptedRoster, keepClubRaces, WrongCodeError, type EncryptedRoster, type RosterGroup } from '../lib/roster';
+import { entriesReport } from '../lib/clubEntries';
+import { todayISO } from '../lib/dates';
 import { historyNote, parseSwimrankings } from '../lib/swimrankings';
 import { sameSwimmer } from '../lib/results';
 import { normName } from '../lib/results';
@@ -22,6 +24,8 @@ const ROSTER_URL = './data/club-roster.json';
 /** Historique swimrankings des membres, chiffré avec le même code. */
 const HISTORY_URL = './data/club-history.json';
 const RANKINGS_URL = './data/club-rankings.json';
+/** Inscriptions du club aux prochaines compétitions (programme de chaque nageur), chiffrées avec le même code. */
+const ENTRIES_URL = './data/club-entries.json';
 /** 2 : noms des compétitions repris tels quels (chiffres compris). 3 : dates d'août abrégées « aoû ».
  * 5 : temps de passage officiels (400 m d'un 800 m…) retirés des courses. 6 : rattaché aussi par les autres noms du membre.
  * 7 : disqualifications, forfaits et abandons (DSQ, DNS, DNF, sans temps), avec la raison de la disqualification.
@@ -76,6 +80,48 @@ async function runClubRankings(): Promise<number> {
   actions.setRankings(list, enc.iv);
   return list.length;
 }
+
+/**
+ * Inscriptions du club (fichier envoyé par le club, publié chiffré) : les épreuves de chaque nageur engagé
+ * deviennent son programme, dès la publication, avant les listes de départ de l'organisateur. Un engagement
+ * retiré du fichier republié disparaît. Une fois par version publiée.
+ */
+async function runClubEntries(): Promise<number> {
+  const club = getState().settings.club;
+  if (!club || club.expired) return 0;
+  const res = await fetch(ENTRIES_URL, { cache: 'no-cache' }).catch(() => null);
+  if (!res?.ok) return 0;
+  const enc: unknown = await res.json().catch(() => null);
+  if (!isEncryptedRoster(enc, 'esn-entries') || enc.iv === club.entriesVersion) return 0;
+  const file = await decryptEntries(enc, club.code).catch(() => null);
+  if (!file) return 0;
+  const today = todayISO();
+  const members = getState().swimmers.filter((s) => s.member);
+  let added = 0;
+  batch(() => {
+    for (const meet of file.meets) {
+      // Compétition passée : ses résultats ont pris le relais
+      if ((meet.endDate ?? meet.startDate) < today) continue;
+      const keep = new Set<string>();
+      const meetIds = new Set<string>();
+      for (const a of meet.athletes) {
+        // Sous le nom de la liste du club, sinon sous l'un de ses autres noms
+        const sw = members.find((s) => sameSwimmer(a, s)) ?? members.find((s) => s.aliases?.some((al) => sameSwimmer(a, al)));
+        if (!sw) continue;
+        const r = actions.importClubResults(sw.id, [entriesReport(meet, a)]);
+        added += r.added;
+        for (const e of a.entries) keep.add(`${sw.id}|${e.eventNo}`);
+        const id = r.swims[0]?.meetId ?? getState().swims.find((x) => x.swimmerId === sw.id && x.source === 'club' && x.date >= meet.startDate && x.date <= (meet.endDate ?? meet.startDate))?.meetId;
+        if (id) meetIds.add(id);
+      }
+      if (meetIds.size) actions.dropClubEntries([...meetIds], keep);
+    }
+  });
+  const now = getState().settings.club;
+  if (now) actions.updateSettings({ club: { ...now, entriesVersion: enc.iv } });
+  return added;
+}
+export const applyClubEntries = oneAtATime(runClubEntries);
 
 async function runClubHistory(): Promise<number> {
   const club = getState().settings.club;
@@ -240,7 +286,7 @@ async function unlockClub(code: string): Promise<{ added: number; total: number 
   if (!enc) throw new Error('indisponible');
   const roster = await decryptRoster(enc, code);
   const r = actions.applyRoster(roster, code.trim(), enc.iv);
-  void applyClubHistory().then(applyClubRankings);
+  void applyClubHistory().then(applyClubRankings).then(applyClubEntries);
   return r;
 }
 
@@ -275,12 +321,14 @@ export async function refreshClubRoster(): Promise<number> {
   if (!enc || (enc.iv === club.version && (club.rosterParser ?? 1) >= ROSTER_PARSER)) {
     await applyClubHistory();
     await applyClubRankings();
+    await applyClubEntries();
     return 0;
   }
   try {
     const added = actions.applyRoster(await decryptRoster(enc, club.code), club.code, enc.iv).added;
     await applyClubHistory();
     await applyClubRankings();
+    await applyClubEntries();
     return added;
   } catch (e) {
     // Le club a changé de code : on le redemandera

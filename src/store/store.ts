@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { AppData, Goal, LiveSyncSettings, Meet, NationalRank, Settings, Swim, Swimmer } from './types';
+import type { AppData, EntryRecords, Goal, LiveSyncSettings, Meet, NationalRank, Settings, Swim, Swimmer } from './types';
 import { closeSwimmer, sameSwimmer, swimmerNames, type ReportMeet, type ReportSwim } from '../lib/results';
 import type { Roster } from '../lib/roster';
 import { CLUB } from '../club';
@@ -334,7 +334,7 @@ export interface ImportReport {
   source?: Swim['source'];
   /** Compétition existante choisie par l'utilisateur. */
   meetId?: string;
-  swims: (ReportSwim & { date?: string; startTime?: string; points?: number; heat?: number; lane?: number; notes?: string })[];
+  swims: (ReportSwim & { date?: string; startTime?: string; points?: number; heat?: number; lane?: number; notes?: string; records?: EntryRecords })[];
 }
 
 /* ------------------------------------------------------------------------ */
@@ -350,8 +350,9 @@ const normMeet = (t?: string) =>
 const dayMs = 86400000;
 
 /** Retrouve une compétition existante (même nom, dates proches, même bassin). */
-function findMeet(meets: Meet[], name: string, date: string, course: Meet['course']): Meet | undefined {
+function findMeet(meets: Meet[], name: string, date: string, course: Meet['course'], city?: string): Meet | undefined {
   const n = normMeet(name);
+  const c = normMeet(city);
   const sameName = (m: Meet) => {
     const mn = normMeet(m.name);
     return mn && n && (mn.startsWith(n) || n.startsWith(mn));
@@ -359,7 +360,9 @@ function findMeet(meets: Meet[], name: string, date: string, course: Meet['cours
   const t = new Date(date).getTime();
   return (
     meets.find((m) => sameName(m) && m.course === course && date >= m.startDate && date <= (m.endDate ?? m.startDate)) ??
-    meets.find((m) => sameName(m) && m.course === course && Math.abs(t - new Date(m.startDate).getTime()) <= 4 * dayMs)
+    meets.find((m) => sameName(m) && m.course === course && Math.abs(t - new Date(m.startDate).getTime()) <= 4 * dayMs) ??
+    // Nom écrit autrement (invitation du club organisateur, livetiming, swimrankings) : même ville, même bassin, pendant la compétition
+    (c ? meets.find((m) => normMeet(m.city) === c && m.course === course && date >= m.startDate && date <= (m.endDate ?? m.startDate)) : undefined)
   );
 }
 
@@ -747,7 +750,7 @@ export const actions = {
       const now = Date.now();
       let seq = 0;
       for (const r of reports) {
-        let meet = (r.meetId && meets.find((m) => m.id === r.meetId)) || findMeet(meets, r.meet.name, r.meet.startDate, r.meet.course);
+        let meet = (r.meetId && meets.find((m) => m.id === r.meetId)) || findMeet(meets, r.meet.name, r.meet.startDate, r.meet.course, r.meet.city);
         if (!meet) {
           meet = {
             id: uid(),
@@ -803,7 +806,8 @@ export const actions = {
                 (rs.heat != null && rs.heat !== same.heat) ||
                 (rs.lane != null && rs.lane !== same.lane) ||
                 (rs.startTime != null && rs.startTime !== same.startTime) ||
-                (rs.entryCs != null && rs.entryCs !== same.entryCs);
+                (rs.entryCs != null && rs.entryCs !== same.entryCs) ||
+                (rs.records != null && JSON.stringify(rs.records) !== JSON.stringify(same.records));
               if (changed)
                 refreshed.push({
                   ...same,
@@ -812,6 +816,7 @@ export const actions = {
                   startTime: rs.startTime ?? same.startTime,
                   entryCs: rs.entryCs ?? same.entryCs,
                   eventNo: same.eventNo ?? rs.eventNo,
+                  records: rs.records ?? same.records,
                   updatedAt: now,
                 });
               continue;
@@ -939,6 +944,7 @@ export const actions = {
             lane: rs.lane,
             notes: rs.notes,
             entryCs: rs.entryCs,
+            ...(rs.records ? { records: rs.records } : {}),
             status: rs.status,
             round: rs.round,
             eventNo: rs.eventNo,
@@ -1107,6 +1113,23 @@ export const actions = {
    * Les résultats trouvés par la recherche automatique ne sont jamais touchés.
    */
   /** Classements nationaux publiés par le club : remplacent les précédents. */
+  /**
+   * Inscriptions du club republiées : un engagement du club (programme pas encore nagé) qui n'y figure plus
+   * est retiré. `keep` : « idNageur|n° d'épreuve » des engagements publiés pour ces compétitions.
+   */
+  dropClubEntries(meetIds: string[], keep: Set<string>): number {
+    let n = 0;
+    setState((s) => {
+      const swims = s.swims.filter((x) => {
+        const drop = x.source === 'club' && x.timeCs == null && x.status === 'OK' && !!x.meetId && meetIds.includes(x.meetId) && !keep.has(`${x.swimmerId}|${x.eventNo}`);
+        if (drop) n++;
+        return !drop;
+      });
+      return n ? { ...s, swims } : s;
+    });
+    return n;
+  },
+
   setRankings(rankings: NationalRank[], version: string) {
     setState((s) => ({
       ...s,

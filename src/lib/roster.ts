@@ -13,6 +13,7 @@
  * avant la compression restent lisibles.
  */
 import { gunzipSync, gzipSync } from 'fflate';
+import type { ClubEntriesFile } from './clubEntries';
 
 export interface RosterGroup {
   id: string;
@@ -57,7 +58,7 @@ export interface ClubHistory {
 }
 
 export interface EncryptedRoster {
-  format: 'esn-roster' | 'esn-history' | 'esn-rankings';
+  format: 'esn-roster' | 'esn-history' | 'esn-rankings' | 'esn-entries';
   v: 1;
   kdf: 'PBKDF2-SHA-256';
   iterations: number;
@@ -148,6 +149,17 @@ export function encryptHistory(history: ClubHistory, code: string, iterations = 
 /** Classements nationaux des nageurs du club : même forme que l'historique (un texte par nageur). */
 export function encryptRankings(rankings: ClubHistory, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
   return encryptJson(rankings, code, 'esn-rankings', iterations);
+}
+
+/** Inscriptions du club aux compétitions (programme et records de chaque engagement). */
+export function encryptEntries(entries: ClubEntriesFile, code: string, iterations = ROSTER_ITERATIONS): Promise<EncryptedRoster> {
+  return encryptJson(entries, code, 'esn-entries', iterations);
+}
+
+export async function decryptEntries(enc: EncryptedRoster, code: string): Promise<ClubEntriesFile> {
+  const e = (await decryptJson(enc, code)) as ClubEntriesFile;
+  if (!e || !Array.isArray(e.meets)) throw new Error('Inscriptions invalides');
+  return e;
 }
 
 export function isEncryptedRoster(x: unknown, format: EncryptedRoster['format'] = 'esn-roster'): x is EncryptedRoster {

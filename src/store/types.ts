@@ -59,6 +59,17 @@ export interface DayRange {
   to: string;
 }
 
+/** Records officiels pour l'âge du nageur (fichier d'inscriptions du club), en centièmes. */
+export interface EntryRecords {
+  /** Record du club pour son âge. */
+  club?: number;
+  /** Record du club toutes catégories. */
+  clubAll?: number;
+  district?: number;
+  francophone?: number;
+  belgian?: number;
+}
+
 export interface Swim {
   id: string;
   swimmerId: string;
@@ -96,6 +107,8 @@ export interface Swim {
   timing?: 'electronic' | 'manual';
   notes?: string;
   source: 'manual' | 'swimrankings' | 'club' | 'live';
+  /** Engagement du club : records officiels de son âge (club, district, francophone, Belgique). */
+  records?: EntryRecords;
   createdAt: number;
   updatedAt: number;
 }
@@ -150,6 +163,8 @@ export interface ClubAccess {
   rosterParser?: number;
   /** Version des classements nationaux déjà appliquée. */
   rankingsVersion?: string;
+  /** Version des inscriptions du club déjà appliquée. */
+  entriesVersion?: string;
 }
 
 export interface LiveSyncSettings {

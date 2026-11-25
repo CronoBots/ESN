@@ -12,6 +12,10 @@
 //                                                        les courses nagées pour l'ESN sont gardées (8e colonne) ;
 //                                                        un fichier plus pauvre que la version publiée (moins de
 //                                                        temps, @@PARTIEL, club non relevé) est écarté sans --remplacer
+//   node scripts/roster.mjs inscriptions FICHIER [CODE]  inscriptions du club à une compétition (PDF « inscription_ESN_pour_… »
+//                                                        envoyé par le club, ou son texte pdftotext -layout) : programme de chaque
+//                                                        nageur et records officiels de son âge, chiffrés dans
+//                                                        public/data/club-entries.json (la même compétition est remplacée)
 //   node scripts/roster.mjs classements DOSSIER CODE     chiffre les classements nationaux (un .txt par nageur)
 //                                                        dans public/data/club-rankings.json (fusionnés ligne par
 //                                                        ligne : un classement publié absent du fichier est gardé,
@@ -28,9 +32,11 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { aliasesText, decryptHistory, decryptRankings, decryptRoster, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, normalizeCode, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
+import { aliasesText, decryptEntries, decryptHistory, decryptRankings, decryptRoster, encryptEntries, encryptHistory, encryptRankings, encryptRoster, generateCode, historyHeader, isSwimmerFile, keepClubRaces, memberKey, normalizeCode, parseRosterCsv, validateRoster } from '../src/lib/roster.ts';
 import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { CLUB } from '../src/club.ts';
+import { announcedTotals, mergeEntries, parseClubEntries } from '../src/lib/clubEntries.ts';
 
 /** Historique déjà publié (vide s'il n'y en a pas). */
 async function publishedHistory(code) {
@@ -56,6 +62,7 @@ const DATA = process.env.ESN_DATA ? pathToFileURL(`${resolve(process.env.ESN_DAT
 const OUT = new URL('club-roster.json', DATA);
 const HISTORY = new URL('club-history.json', DATA);
 const RANKINGS = new URL('club-rankings.json', DATA);
+const ENTRIES = new URL('club-entries.json', DATA);
 const [cmd, ...all] = process.argv.slice(2);
 // Options (--remplacer, --nouveau-code) à part des arguments
 const args = all.filter((a) => !a.startsWith('--'));
@@ -218,6 +225,33 @@ if (cmd === 'code') {
   athletes.push(...kept);
   writeFileSync(RANKINGS, `${JSON.stringify(await encryptRankings({ updated: new Date().toISOString().slice(0, 10), athletes }, code))}\n`);
   console.log(`Classements de ${athletes.length} nageurs chiffrés dans public/data/club-rankings.json`);
+} else if (cmd === 'inscriptions') {
+  const [file, given] = args;
+  if (!file) throw new Error('Fichier d’inscriptions manquant');
+  const code = given ?? process.env.ESN_CODE ?? CLUB.accessKey;
+  // PDF : texte mis en page par pdftotext (colonnes du programme conservées)
+  const text = /\.pdf$/i.test(file) ? execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' }) : readFileSync(file, 'utf8');
+  const meet = parseClubEntries(text);
+  const starts = meet.athletes.reduce((n, a) => n + a.entries.length, 0);
+  const announced = announcedTotals(text);
+  if (announced && (announced.swimmers !== meet.athletes.length || announced.starts !== starts))
+    throw new Error(`Lecture incomplète : ${meet.athletes.length} nageurs et ${starts} départs lus, ${announced.swimmers} et ${announced.starts} annoncés`);
+  const roster = await decryptRoster(JSON.parse(readFileSync(OUT, 'utf8')), code);
+  const known = (a) => roster.members.some((m) => sameMember(m, a) || m.aliases?.some((al) => sameMember(al, a)));
+  // Prénom coupé par le fichier du club (colonne trop étroite : « Cassandr ») : complété d'après la liste du club
+  const flat = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+  for (const a of meet.athletes) {
+    if (known(a) || flat(a.firstName).length < 4) continue;
+    const full = roster.members.filter((m) => m.birthYear === a.birthYear && flat(m.lastName) === flat(a.lastName) && flat(m.firstName).startsWith(flat(a.firstName)));
+    if (full.length === 1) a.firstName = full[0].firstName;
+  }
+  const unknown = meet.athletes.filter((a) => !known(a));
+  const before = existsSync(ENTRIES) ? await decryptEntries(JSON.parse(readFileSync(ENTRIES, 'utf8')), code) : null;
+  const merged = mergeEntries(before, meet, new Date().toISOString().slice(0, 10));
+  writeFileSync(ENTRIES, `${JSON.stringify(await encryptEntries(merged, code))}\n`);
+  console.log(`${meet.name} (${meet.city ?? '?'}, ${meet.startDate}${meet.endDate ? ` au ${meet.endDate}` : ''}) : ${meet.athletes.length} nageurs, ${starts} départs`);
+  if (unknown.length) console.log(`⚠ ${unknown.length} nageur(s) absent(s) de la liste du club (autre orthographe ?) : ${unknown.map((a) => `${a.lastName} ${a.firstName} (${a.birthYear})`).join(', ')}`);
+  console.log(`Inscriptions de ${merged.meets.length} compétition(s) chiffrées dans public/data/club-entries.json`);
 } else {
   const head = readFileSync(new URL(import.meta.url), 'utf8').split('\n');
   console.log(head.slice(0, head.findIndex((l) => !l.startsWith('//'))).join('\n'));
