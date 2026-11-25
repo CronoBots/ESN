@@ -185,9 +185,8 @@ export function ClubRecords() {
         <div className="section-foot" style={{ marginTop: 18 }}>
           {shown === 'list' ? (
             <>
-              Liste officielle des records du club au {asOf} (site du club), tous bassins. « Non vérifié » : course pas encore retrouvée dans
-              les résultats relevés par l’application. Depuis cette date, une course plus rapide d’un membre devient le record. L’âge est
-              celui de l’année de la course.
+              Liste officielle des records du club au {asOf} (site du club), tous bassins. Depuis cette date, une course plus rapide d’un
+              membre devient le record. L’âge est celui de l’année de la course.
             </>
           ) : (
             <>
@@ -280,12 +279,11 @@ function OfficialRow({ row }: { row: OfficialStanding }) {
           {holder?.former ? ' · ancien membre' : ''}
         </div>
         {(where || official.date) && <div className="row-sub">{[official.date ? formatDate(official.date) : '', where].filter(Boolean).join(' · ')}</div>}
-        {official.doubt && <div className="row-sub record-partial">{official.doubt}</div>}
       </div>
       <div className="row-end">
         <div style={{ textAlign: 'right' }}>
+          {/* Liste officielle du club : affichée telle quelle, sans mention de vérification (choix du club) */}
           <div className="time-big">{formatTime(official.timeCs)}</div>
-          {official.doubt ? <span className="badge bad">À vérifier</span> : !official.verified && <span className="badge">Non vérifié</span>}
         </div>
         {holder && official.course && <Icon name="chevronRight" className="chev" />}
       </div>
