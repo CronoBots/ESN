@@ -137,7 +137,16 @@ describe('bilan de la récupération', () => {
       const issues: string[] = [];
       // Écarts expliqués : course nagée pour un autre club (relevé complet local historique/, retirée à la
       // publication) ou temps de passage officiel (400 m d'un 800 m…, que l'application ne compte pas comme course)
-      const explained = { club: [] as string[], split: [] as string[] };
+      const explained = { club: [] as string[], split: [] as string[], relay: [] as string[] };
+      // Départs de relais retirés de l'historique (pas une course individuelle ; swimrankings les compte) :
+      // audit/retraits-departs-relais-*.tsv, colonnes fichier, épreuve, bassin, temps, date…
+      const relayOff = existsSync('audit')
+        ? readdirSync('audit')
+            .filter((x) => /^retraits-departs-relais-.*\.tsv$/.test(x))
+            .flatMap((x) => readFileSync(`audit/${x}`, 'utf8').split(/\r?\n/).slice(1).filter(Boolean))
+            .map((l) => l.split('\t'))
+            .map((c) => ({ file: c[0], swim: parseSwimrankings([c[1], c[2], c[3], '', c[4], '', ''].join('\t')).swims[0] }))
+        : [];
       const local = existsSync('historique')
         ? readdirSync('historique')
             .filter((x) => x.endsWith('.txt') && !x.startsWith('_'))
@@ -176,16 +185,21 @@ describe('bilan de la récupération', () => {
           const ev = `${eventLabel(pb.distance, pb.stroke)} ${pb.course === 'LCM' ? '50 m' : '25 m'}`;
           const club = best?.timeCs === pb.timeCs ? null : otherClub(h, pb);
           const lap = best?.timeCs === pb.timeCs || club ? undefined : longer(pub, pb);
+          const relay =
+            best?.timeCs === pb.timeCs || club || lap
+              ? undefined
+              : relayOff.find((r) => r.file === f && r.swim?.distance === pb.distance && r.swim.stroke === pb.stroke && r.swim.course === pb.course && r.swim.timeCs === pb.timeCs && r.swim.date === pb.date);
           if (best && best.timeCs === pb.timeCs) ok++;
           else if (club) explained.club.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} nagé pour ${club}`);
           else if (lap) explained.split.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} = temps de passage officiel de son ${lap.distance} m (pas une course)`);
+          else if (relay) explained.relay.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} = départ de relais, retiré de l'historique (pas une course individuelle)`);
           else if (!best) issues.push(`${who(h)} · ${ev} : record ${formatTime(pb.timeCs)} du ${pb.date} absent de l'historique (aucune course de cette épreuve)`);
           else if (best.timeCs > pb.timeCs)
             issues.push(`${who(h)} · ${ev} : record swimrankings ${formatTime(pb.timeCs)} (${pb.date}) manque, l'historique s'arrête à ${formatTime(best.timeCs)} (autre club ? course non relevée ?)`);
           else issues.push(`${who(h)} · ${ev} : l'historique a ${formatTime(best.timeCs)} (${best.date}), plus rapide que le record swimrankings ${formatTime(pb.timeCs)}`);
         }
       }
-      const nExpl = explained.club.length + explained.split.length;
+      const nExpl = explained.club.length + explained.split.length + explained.relay.length;
       say(`${ok} meilleurs temps identiques ; ${nExpl} écart(s) expliqué(s) ; ${issues.length} écart(s) à vérifier.`);
       if (issues.length) say('### À vérifier');
       issues.forEach((i) => say(`- ${i}`));
@@ -193,8 +207,10 @@ describe('bilan de la récupération', () => {
       explained.club.forEach((i) => say(`- ${i}`));
       say(`### Expliqués : temps de passage officiels (${explained.split.length})`);
       explained.split.forEach((i) => say(`- ${i}`));
+      say(`### Expliqués : départs de relais retirés (${explained.relay.length})`);
+      explained.relay.forEach((i) => say(`- ${i}`));
       summary.push(
-        `Contrôle des meilleurs temps : ${ok} identiques, ${nExpl} écarts expliqués (${explained.club.length} autre club, ${explained.split.length} passages officiels), ${issues.length} à vérifier`,
+        `Contrôle des meilleurs temps : ${ok} identiques, ${nExpl} écarts expliqués (${explained.club.length} autre club, ${explained.split.length} passages officiels, ${explained.relay.length} départs de relais), ${issues.length} à vérifier`,
       );
     }
     say();
