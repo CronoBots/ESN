@@ -285,10 +285,13 @@ async function save(sub: PushSubscription, swimmers: Swimmer[], force = false) {
   const kinds = kindsOf(pushPrefs());
   const json = sub.toJSON();
   const sig = `${json.endpoint}|${keys.join(',')}|${kinds.join(',')}`;
-  if (!force && read(SENT) === sig) return;
+  // Déjà envoyé tel quel : rien à refaire, sauf une fois par jour (abonnement retiré par le serveur ou
+  // renouvelé par le téléphone : il est réenregistré tout seul)
+  const [lastSig, at] = (read(SENT) ?? '').split('@@');
+  if (!force && lastSig === sig && Date.now() - Number(at || 0) < 86400000) return;
   const res = await pushRpc('esn_push_subscribe', { p_endpoint: json.endpoint, p_p256dh: json.keys?.p256dh, p_auth: json.keys?.auth, p_swimmers: keys, p_kinds: kinds });
   if (!res.ok) throw new Error(`Abonnement refusé (${res.status})`);
-  write(SENT, sig);
+  write(SENT, `${sig}@@${Date.now()}`);
 }
 
 /**
