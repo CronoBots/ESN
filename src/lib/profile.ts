@@ -1,4 +1,5 @@
 import type { Course, NationalRank, Stroke, Swim, Swimmer } from '../store/types';
+import type { OfficialRecordsList } from './officialRecordsList';
 import { AGE_BANDS, clubRecords, type AgeBand } from './clubRecords';
 import { seasonOf } from './dates';
 import { distancesFor, STROKES } from './events';
@@ -59,11 +60,12 @@ export interface HeldRecord {
 }
 
 /** Records du club que ce nageur détient aujourd'hui : record absolu d'abord, puis par âge. */
-export function clubRecordsHeld(swims: Swim[], swimmers: Swimmer[], swimmer: Swimmer): HeldRecord[] {
+// official : liste officielle des records du club (un temps plus lent que la liste n'est pas un record du club)
+export function clubRecordsHeld(swims: Swim[], swimmers: Swimmer[], swimmer: Swimmer, official?: OfficialRecordsList | null): HeldRecord[] {
   const out: HeldRecord[] = [];
   for (const band of AGE_BANDS)
     for (const course of ['SCM', 'LCM'] as const)
-      for (const r of clubRecords(swims, swimmers, { course, gender: swimmer.gender, band }).values())
+      for (const r of clubRecords(swims, swimmers, { course, gender: swimmer.gender, band, official }).values())
         if (r.swimmer.id === swimmer.id) out.push({ band, course, swim: r.swim });
   const order = new Map(AGE_BANDS.map((b, i) => [b.id, i]));
   return out.sort((a, b) => order.get(a.band.id)! - order.get(b.band.id)! || (a.course === b.course ? 0 : a.course === 'LCM' ? -1 : 1));

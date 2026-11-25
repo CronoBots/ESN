@@ -47,8 +47,8 @@ export function ClubHome() {
       .filter((m) => (m.endDate ?? m.startDate) < today && clubMeetIds.has(m.id))
       .sort((a, b) => (a.startDate < b.startDate ? 1 : -1))
       .slice(0, 5)
-      .map((meet) => ({ meet, r: meetRecap(meet.id, data.swims, data.swimmers, pbFlags) }));
-  }, [data.meets, data.swims, data.swimmers, clubMeetIds, pbFlags, today]);
+      .map((meet) => ({ meet, r: meetRecap(meet.id, data.swims, data.swimmers, pbFlags, undefined, data.officialRecords) }));
+  }, [data.meets, data.swims, data.swimmers, data.officialRecords, clubMeetIds, pbFlags, today]);
 
   const engaged = (m: Meet) => new Set(data.swims.filter((s) => s.meetId === m.id && members.has(s.swimmerId)).map((s) => s.swimmerId)).size;
 

@@ -4,6 +4,7 @@ import { closeSwimmer, sameSwimmer, swimmerNames, type ReportMeet, type ReportSw
 import type { Roster } from '../lib/roster';
 import { CLUB } from '../club';
 import { historyNote, type ParsedAthlete, type ParsedSwim } from '../lib/swimrankings';
+import { validOfficialRecords, type OfficialRecordsList } from '../lib/officialRecordsList';
 import { uid } from '../lib/id';
 import { idbGet, idbPut, openDb } from './idb';
 
@@ -67,6 +68,7 @@ export function normalizeData(raw: unknown): AppData {
     swims,
     goals,
     rankings: arr<NationalRank>(d.rankings).filter((r) => r && r.swimmerId && !demo.has(r.swimmerId)),
+    ...(validOfficialRecords(d.officialRecords) ? { officialRecords: validOfficialRecords(d.officialRecords) } : {}),
     settings: {
       ...DEFAULT_SETTINGS,
       ...(d.settings ?? {}),
@@ -1135,6 +1137,15 @@ export const actions = {
       ...s,
       rankings,
       settings: s.settings.club ? { ...s.settings, club: { ...s.settings.club, rankingsVersion: version } } : s.settings,
+    }));
+  },
+
+  /** Liste officielle des records du club publiée (remplace la précédente). */
+  setOfficialRecords(officialRecords: OfficialRecordsList, version: string) {
+    setState((s) => ({
+      ...s,
+      officialRecords,
+      settings: s.settings.club ? { ...s.settings, club: { ...s.settings.club, officialRecordsVersion: version } } : s.settings,
     }));
   },
 

@@ -16,9 +16,9 @@ export function LiveBanner() {
   const live = useMemo(() => {
     return liveClubMeets(data.meets, data.swims, data.swimmers, today).map((meet) => ({
       meet,
-      r: meetRecap(meet.id, data.swims, data.swimmers, pbFlags),
+      r: meetRecap(meet.id, data.swims, data.swimmers, pbFlags, undefined, data.officialRecords),
     }));
-  }, [data.meets, data.swims, data.swimmers, pbFlags, today]);
+  }, [data.meets, data.swims, data.swimmers, data.officialRecords, pbFlags, today]);
   if (!live.length) return null;
   return (
     <div className="live-banners">

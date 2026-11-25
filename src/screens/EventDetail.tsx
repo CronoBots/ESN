@@ -2,6 +2,18 @@ import { useMemo, useState } from 'react';
 import { useData } from '../store/store';
 import { fullName, hasClubMembers, sortSwimmers, swimsOf, usePbFlags } from '../store/hooks';
 import { ageAt, bandForAge, clubRecords, recordComplete, recordKey, type ClubRecord } from '../lib/clubRecords';
+import { holderSwimmer, officialBest } from '../lib/officialRecords';
+
+/** Ligne « Record du club » d'une épreuve : temps relevé ou record de la liste officielle du club. */
+interface ClubRecordLine {
+  key: string;
+  timeCs: number;
+  who: string;
+  year?: string;
+  /** Bassin du record de la liste quand ce n'est pas celui de la page. */
+  pool?: string;
+  own: boolean;
+}
 import { Avatar, Empty, NavBar, Section, Segmented, StrokeTag } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ProgressChart, type ChartSeries } from '../components/Chart';
@@ -52,13 +64,27 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
     if (!swimmer?.member || !hasClubMembers(data.swimmers)) return [];
     const band = bandForAge(ageAt({ date: `${new Date().getFullYear()}-01-01` }, swimmer));
     const k = recordKey(distance, stroke);
-    const out: { label: string; rec: ClubRecord }[] = [];
-    const atAge = band ? clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender, band }).get(k) : undefined;
-    if (band && atAge) out.push({ label: `à ${band.label}`, rec: atAge });
-    const all = clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender }).get(k);
-    if (all && all.swim.id !== atAge?.swim.id) out.push({ label: 'tous âges', rec: all });
+    // Record de la liste officielle du club s'il est plus rapide que les temps relevés (tous bassins, comme la liste)
+    const pick = (bandId: string, rec: ClubRecord | undefined): ClubRecordLine | undefined => {
+      const off = officialBest(data.officialRecords, swimmer.gender, bandId, distance, stroke);
+      if (off && (!rec || off.timeCs < rec.swim.timeCs))
+        return {
+          key: `liste-${bandId}`,
+          timeCs: off.timeCs,
+          who: holderSwimmer(off, data.swimmers) ? fullName(holderSwimmer(off, data.swimmers)!) : off.holder,
+          year: off.date?.slice(0, 4),
+          pool: off.course && off.course !== course ? courseLabel(off.course) : undefined,
+          own: holderSwimmer(off, data.swimmers)?.id === swimmer.id,
+        };
+      return rec ? { key: rec.swim.id, timeCs: rec.swim.timeCs, who: fullName(rec.swimmer), year: rec.swim.date.slice(0, 4), own: rec.swimmer.id === swimmer.id } : undefined;
+    };
+    const out: (ClubRecordLine & { label: string })[] = [];
+    const atAge = band ? pick(band.id, clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender, band }).get(k)) : undefined;
+    if (band && atAge) out.push({ label: `à ${band.label}`, ...atAge });
+    const all = pick('all', clubRecords(data.swims, data.swimmers, { course, gender: swimmer.gender }).get(k));
+    if (all && all.key !== atAge?.key) out.push({ label: 'tous âges', ...all });
     return out;
-  }, [data.swims, data.swimmers, swimmer, course, distance, stroke]);
+  }, [data.swims, data.swimmers, data.officialRecords, swimmer, course, distance, stroke]);
 
   if (!swimmer) {
     return (
@@ -169,19 +195,21 @@ export function EventDetail({ swimmerId, course, distance, stroke }: { swimmerId
 
               {clubRecs.length > 0 && (
                 <button className="club-record-lines" onClick={() => navigate('/club-records')}>
-                  {clubRecs.map(({ label, rec }) => {
-                    const own = rec.swimmer.id === swimmer.id;
-                    const gap = best?.timeCs != null ? best.timeCs - rec.swim.timeCs : 0;
+                  {clubRecs.map(({ label, timeCs, who, year, pool, own, key }) => {
+                    const gap = best?.timeCs != null ? best.timeCs - timeCs : 0;
+                    const official = key.startsWith('liste-');
                     return (
                       <span key={label} className="club-record-line">
                         <Icon name="trophy" aria-hidden="true" />
                         <span>
-                          {recordComplete(course, distance, stroke) ? 'Record du club' : 'Meilleur temps connu à l’ESN'} {label} :{' '}
+                          {official || recordComplete(course, distance, stroke) ? 'Record du club' : 'Meilleur temps connu à l’ESN'} {label} :{' '}
                           {own ? (
-                            <b>{swimmer.firstName} le détient ({formatTime(rec.swim.timeCs)})</b>
+                            <b>{swimmer.firstName} le détient ({formatTime(timeCs)})</b>
                           ) : (
                             <>
-                              <b className="tnum">{formatTime(rec.swim.timeCs)}</b> · {fullName(rec.swimmer)}, {rec.swim.date.slice(0, 4)}
+                              <b className="tnum">{formatTime(timeCs)}</b> · {who}
+                              {year ? `, ${year}` : ''}
+                              {pool ? ` (${pool})` : ''}
                               {gap > 0 ? <span className="muted tnum"> · encore {formatTime(gap)}</span> : null}
                             </>
                           )}

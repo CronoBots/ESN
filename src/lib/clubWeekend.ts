@@ -1,4 +1,5 @@
 import type { Meet, Swim, Swimmer } from '../store/types';
+import type { OfficialRecordsList } from './officialRecordsList';
 import { clubRecords, recordComplete, recordKey } from './clubRecords';
 import { isValidResult, type PbInfo } from './stats';
 import { addDays } from './dates';
@@ -45,6 +46,8 @@ export function lastClubWeekend(
   meets: Meet[],
   pbFlags: Map<string, PbInfo>,
   today: string,
+  /** Liste officielle des records du club : une course plus lente que la liste n'est pas un record du club. */
+  official?: OfficialRecordsList | null,
 ): ClubWeekend | null {
   const members = new Map(swimmers.filter((s) => s.member && !s.former).map((s) => [s.id, s]));
   const valid = swims.filter(
@@ -84,7 +87,7 @@ export function lastClubWeekend(
     const k = `${s.course}|${sw.gender}`;
     let recs = cache.get(k);
     if (!recs) {
-      recs = clubRecords(swims, swimmers, { course: s.course, gender: sw.gender });
+      recs = clubRecords(swims, swimmers, { course: s.course, gender: sw.gender, official });
       cache.set(k, recs);
     }
     if (recs.get(recordKey(s.distance, s.stroke))?.swim.id === s.id) records.push({ swim: s, swimmer: sw });
