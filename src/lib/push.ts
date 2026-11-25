@@ -75,9 +75,37 @@ export class PushError extends Error {
   constructor(
     message: string,
     readonly detail?: string,
+    /** Étape qui a échoué (rapport de diagnostic). */
+    readonly stage = 'inconnue',
   ) {
     super(message);
   }
+}
+
+declare const __BUILD_TIME__: string | undefined;
+const REPORTED = 'esn-notifications-rapports';
+
+/**
+ * Rapport de diagnostic anonyme quand l'activation échoue : étape, erreur du navigateur, appareil (système,
+ * navigateur, application installée ou non, autorisation, version de l'application). Aucun nom, aucune
+ * adresse de notification. Au plus un rapport par étape toutes les 10 minutes.
+ */
+export function reportPushProblem(stage: string, detail?: string) {
+  const seen: Record<string, number> = (() => {
+    try {
+      return JSON.parse(read(REPORTED) ?? '{}');
+    } catch {
+      return {};
+    }
+  })();
+  if (Date.now() - (seen[stage] ?? 0) < 600000) return;
+  seen[stage] = Date.now();
+  write(REPORTED, JSON.stringify(seen));
+  const { device, installed } = env();
+  const permission = 'Notification' in window ? Notification.permission : 'absente';
+  const build = typeof __BUILD_TIME__ === 'string' ? __BUILD_TIME__.slice(0, 16) : '?';
+  const info = `${device} · ${installed ? 'application installée' : 'navigateur'} · autorisation ${permission} · version ${build} · ${navigator.userAgent}`;
+  void pushRpc('esn_push_report', { p_stage: stage, p_detail: detail ?? null, p_device: info }).catch(() => undefined);
 }
 export const errorDetail = (e: unknown) => (e instanceof Error ? `${e.name} : ${e.message}` : String(e));
 
@@ -185,9 +213,9 @@ export function subscribeAdvice(e: unknown, device: PushDevice = pushDevice()): 
 }
 
 /** Promesse limitée dans le temps (le service hors connexion peut ne jamais être prêt). */
-function within<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+function within<T>(p: Promise<T>, ms: number, message: string, stage = 'delai'): Promise<T> {
   const where = (({ device, installed }) => `${device === 'android' ? 'Android' : device === 'ios' ? 'iPhone' : 'ordinateur'} · ${installed ? 'application installée' : 'navigateur'}`)(env());
-  return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new PushError(message, `pas de réponse après ${ms / 1000} s · ${where}`)), ms))]);
+  return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new PushError(message, `pas de réponse après ${ms / 1000} s · ${where}`, stage)), ms))]);
 }
 
 const followed = (swimmers: Swimmer[]) => swimmers.filter((s) => s.relation === 'child' || s.favorite);
@@ -207,7 +235,8 @@ function keyBytes(b64: string): Uint8Array {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
-const worker = () => within(navigator.serviceWorker.ready, 15000, 'Le service de l’application n’est pas prêt : fermez puis rouvrez l’application (ou rechargez la page), puis réessayez.');
+const worker = () =>
+  within(navigator.serviceWorker.ready, 15000, 'Le service de l’application n’est pas prêt : fermez puis rouvrez l’application (ou rechargez la page), puis réessayez.', 'service');
 
 async function subscription(create: boolean): Promise<PushSubscription | null> {
   const reg = await worker();
@@ -236,24 +265,24 @@ export async function enablePush(swimmers: Swimmer[]): Promise<PushState> {
   let permission: NotificationPermission;
   try {
     // Demande mise de côté par le navigateur (Chrome sur Android) : pas de réponse, l'interrupteur est rendu
-    permission = await within(Notification.requestPermission(), 10000, noAnswerAdvice(env()));
+    permission = await within(Notification.requestPermission(), 10000, noAnswerAdvice(env()), 'autorisation-sans-reponse');
   } catch (e) {
     if (e instanceof PushError) throw e;
-    throw new PushError('La demande d’autorisation n’a pas pu s’afficher : réessayez.', errorDetail(e));
+    throw new PushError('La demande d’autorisation n’a pas pu s’afficher : réessayez.', errorDetail(e), 'autorisation-erreur');
   }
   if (permission === 'denied') return 'denied';
-  if (permission !== 'granted') throw new PushError(dismissedAdvice(env()), `autorisation : ${permission}`);
+  if (permission !== 'granted') throw new PushError(dismissedAdvice(env()), `autorisation : ${permission}`, 'autorisation-ignoree');
   let sub: PushSubscription | null;
   try {
     sub = await subscription(true);
   } catch (e) {
-    throw e instanceof PushError ? e : new PushError(subscribeAdvice(e), errorDetail(e));
+    throw e instanceof PushError ? e : new PushError(subscribeAdvice(e), errorDetail(e), 'inscription');
   }
-  if (!sub) throw new PushError(subscribeAdvice(null), 'aucun abonnement');
+  if (!sub) throw new PushError(subscribeAdvice(null), 'aucun abonnement', 'inscription');
   try {
     await save(sub, swimmers, true);
   } catch (e) {
-    throw new PushError('Le serveur du club n’a pas enregistré l’abonnement : vérifiez la connexion internet et réessayez dans un moment.', errorDetail(e));
+    throw new PushError('Le serveur du club n’a pas enregistré l’abonnement : vérifiez la connexion internet et réessayez dans un moment.', errorDetail(e), 'serveur');
   }
   write(ON, '1');
   // Confirmation sur le téléphone : les notifications s'affichent bien

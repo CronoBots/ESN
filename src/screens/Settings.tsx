@@ -15,7 +15,7 @@ import { openShareApp } from '../components/Invite';
 import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useEffect, useRef, useState } from 'react';
-import { disablePush, enablePush, errorDetail, permissionGranted, pushAdvice, pushPrefs, pushState, pushTargets, pushWaitAdvice, PushError, refreshPush, setPushPrefs, watchPermission, type PushPrefs, type PushState } from '../lib/push';
+import { disablePush, enablePush, errorDetail, permissionGranted, pushAdvice, pushPrefs, pushState, pushTargets, pushWaitAdvice, PushError, refreshPush, reportPushProblem, setPushPrefs, watchPermission, type PushPrefs, type PushState } from '../lib/push';
 
 export const APP_VERSION = '1.0.0';
 declare const __BUILD_TIME__: string | undefined;
@@ -362,6 +362,7 @@ function NotificationsSection() {
       if (on) {
         const next = await enablePush(pushTargets(getState()));
         setState(next);
+        if (next === 'denied') reportPushProblem('refusee');
         if (next === 'on') {
           wanted.current = false;
           overlay.toast('Notifications activées', '🔔');
@@ -372,6 +373,8 @@ function NotificationsSection() {
       }
     } catch (e) {
       setProblem(e instanceof PushError ? { text: e.message, detail: e.detail } : { text: 'Activation impossible pour le moment : réessayez.', detail: errorDetail(e) });
+      // Rapport de diagnostic anonyme (étape et erreur, sans nom)
+      reportPushProblem(e instanceof PushError ? e.stage : 'inattendue', e instanceof PushError ? e.detail : errorDetail(e));
       setState(pushState());
     } finally {
       busyRef.current = false;
@@ -401,6 +404,7 @@ function NotificationsSection() {
   const tap = (on: boolean) => {
     if (busy) return;
     if (on && blocked) {
+      reportPushProblem(`bloquee-${state}`);
       overlay.actions({ title: PUSH_BLOCKED_TITLE[state], message: blocked, actions: [], cancelLabel: 'Compris' });
       return;
     }
@@ -484,7 +488,7 @@ function NotificationsSection() {
                 ? 'Suivez d’abord un ou plusieurs nageurs pour recevoir leurs résultats.'
                 : !notified.length
                   ? 'Aucun nageur choisi : activez au moins un nageur ci-dessus pour recevoir ses notifications.'
-                  : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail.`))}
+                  : `Pour ${names} : chaque résultat officiel (temps, place, record personnel) ou seulement les records perso, et le programme dès sa publication (épreuves, heures, séries et couloirs, qualification en finale). Seuls l’adresse de notification de ce téléphone et un code par nageur suivi sont enregistrés, ni nom ni e-mail ; en cas d’échec de l’activation, l’erreur (sans nom) est envoyée au club pour la corriger.`))}
         {problem?.detail && <span className="push-detail">Détail : {problem.detail}</span>}
       </div>
     </Section>
