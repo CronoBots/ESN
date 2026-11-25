@@ -16,7 +16,10 @@ import { CLUB } from '../club';
 import { syncLive } from '../lib/liveResults';
 import { useEffect, useRef, useState } from 'react';
 import {
+  androidBrowser,
   androidChromeNote,
+  browserHelpSteps,
+  OPEN_IN_CHROME,
   disablePush,
   enablePush,
   errorDetail,
@@ -408,7 +411,43 @@ function PushHelpSheet({ close, onGranted }: { close: () => void; onGranted: () 
           </li>
         ))}
       </ol>
-      {pushDevice() === 'android' && <p className="muted small" style={{ margin: '10px 2px 0' }}>{androidChromeNote}</p>}
+      {pushDevice() === 'android' && (
+        <>
+          <p className="muted small" style={{ margin: '10px 2px 0' }}>
+            {androidChromeNote}
+          </p>
+          {/* Notifications déjà autorisées pour l'application : c'est le navigateur qui met la demande de côté */}
+          <div className="guide-sub">Déjà autorisées dans le téléphone, et toujours rien ?</div>
+          <p className="muted" style={{ margin: '4px 2px 0', lineHeight: 1.45 }}>
+            Alors c’est {androidBrowser() === 'samsung' ? 'Internet Samsung' : 'Chrome'}, le navigateur qui fait tourner l’application, qui met la
+            demande de côté sans l’afficher :
+          </p>
+          <ol className="guide-steps">
+            {browserHelpSteps().map((st, i) => (
+              <li key={i}>
+                <span className="guide-n" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <div>
+                  <div className="guide-title">{st.title}</div>
+                  {st.note && <div className="guide-note">{st.note}</div>}
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="guide-sub">Autre solution : activer depuis Chrome</div>
+          <p className="muted" style={{ margin: '4px 2px 8px', lineHeight: 1.45 }}>
+            Dans Chrome, la demande apparaît sous forme de cloche dans la barre d’adresse. Ouvrez l’application dans Chrome (ou tapez
+            cronobots.github.io/ESN), allez dans Réglages › Notifications, touchez l’interrupteur, puis la cloche › Autoriser.{' '}
+            {androidBrowser() === 'samsung'
+              ? 'Choisissez à nouveau vos nageurs dans Chrome : les notifications arriveront par Chrome.'
+              : 'Les nageurs suivis et l’abonnement sont partagés avec l’application installée.'}
+          </p>
+          <a className="btn block" href={OPEN_IN_CHROME}>
+            Ouvrir dans Chrome
+          </a>
+        </>
+      )}
       {notYet && (
         <p className="section-foot push-warn" style={{ margin: '12px 0 0' }}>
           Pas encore autorisé sur ce téléphone : refaites les étapes ci-dessus, l’interrupteur « Autoriser les notifications » doit être activé.

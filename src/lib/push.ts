@@ -198,6 +198,37 @@ export function pushHelpSteps({ device, installed }: PushEnv = env()): { title: 
 /** Aide en plus pour Android : Chrome lui-même doit pouvoir notifier. */
 export const androidChromeNote = 'Toujours rien ? Paramètres du téléphone › Applications › Chrome › Notifications › Autoriser, puis recommencez.';
 
+/** Navigateur qui fait tourner l'application sur Android : Chrome ou Internet Samsung. */
+export const androidBrowser = (ua = navigator.userAgent): 'samsung' | 'chrome' => (/SamsungBrowser/i.test(ua) ? 'samsung' : 'chrome');
+
+/**
+ * Notifications déjà autorisées pour l'application dans Android, et toujours aucune fenêtre : c'est le
+ * navigateur qui met la demande de côté (Chrome : « messages plus discrets », site bloqué). Étapes dans ses
+ * propres réglages.
+ */
+export function browserHelpSteps(browser = androidBrowser()): { title: string; note?: string }[] {
+  return browser === 'samsung'
+    ? [
+        { title: 'Ouvrez l’application Internet Samsung (le navigateur)' },
+        { title: 'Menu (☰) › Paramètres › Sites et téléchargements', note: 'Selon la version : Confidentialité et sécurité › Autorisations de site.' },
+        { title: 'Notifications : cherchez cronobots.github.io et choisissez « Autoriser »', note: 'S’il n’y est pas, activez « Demander avant d’autoriser ».' },
+        { title: 'Revenez dans ESN Compétition et touchez à nouveau l’interrupteur' },
+      ]
+    : [
+        { title: 'Ouvrez Chrome (le navigateur)' },
+        { title: '⋮ › Paramètres › Paramètres des sites › Notifications' },
+        { title: 'Désactivez « Utiliser des messages plus discrets »', note: 'Chrome cache alors la demande : dans l’application installée, elle ne s’affiche jamais.' },
+        { title: 'Si cronobots.github.io est dans « Bloqué » ou « Non autorisé » : touchez-le › Autoriser' },
+        { title: 'Revenez dans ESN Compétition et touchez à nouveau l’interrupteur' },
+      ];
+}
+
+/**
+ * Lien qui ouvre ESN Compétition dans Chrome (onglet), où la demande d'autorisation apparaît sous forme de
+ * cloche dans la barre d'adresse.
+ */
+export const OPEN_IN_CHROME = 'intent://cronobots.github.io/ESN/#Intent;scheme=https;package=com.android.chrome;end';
+
 /** Autorisation de notifier déjà accordée sur cet appareil (réglages du téléphone ou du site). */
 export const permissionGranted = () => 'Notification' in window && Notification.permission === 'granted';
 

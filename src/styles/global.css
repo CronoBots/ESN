@@ -5296,3 +5296,10 @@ button.meet-nav-btn:active {
   color: var(--text-2);
   white-space: normal;
 }
+
+/* Guide d'autorisation des notifications : intertitres */
+.guide-sub {
+  margin: 18px 2px 0;
+  font-weight: 700;
+  font-size: 16px;
+}
