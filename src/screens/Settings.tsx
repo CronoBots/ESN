@@ -416,6 +416,34 @@ function PushHelpSheet({ close, onGranted }: { close: () => void; onGranted: () 
           <p className="muted small" style={{ margin: '10px 2px 0' }}>
             {androidChromeNote}
           </p>
+          {/* Internet Samsung : dans l'application installée, la demande ne s'affiche pas ; dans un onglet, si */}
+          {androidBrowser() === 'samsung' && (
+            <>
+              <div className="guide-sub">Le plus simple sur ce téléphone : activer depuis Internet Samsung</div>
+              <p className="muted" style={{ margin: '4px 2px 0', lineHeight: 1.45 }}>
+                L’application tourne dans Internet Samsung, qui n’affiche pas la demande dans l’application installée, mais bien dans un onglet du
+                navigateur :
+              </p>
+              <ol className="guide-steps">
+                {[
+                  { title: 'Ouvrez Internet Samsung (le navigateur, pas l’icône ESN Compétition)' },
+                  { title: 'Tapez cronobots.github.io/ESN dans la barre d’adresse' },
+                  { title: 'Réglages › Notifications : touchez l’interrupteur' },
+                  { title: 'Touchez « Autoriser » dans la fenêtre qui apparaît en bas', note: 'L’autorisation vaut aussi pour l’application installée.' },
+                ].map((st, i) => (
+                  <li key={i}>
+                    <span className="guide-n" aria-hidden="true">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <div className="guide-title">{st.title}</div>
+                      {st.note && <div className="guide-note">{st.note}</div>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
           {/* Notifications déjà autorisées pour l'application : c'est le navigateur qui met la demande de côté */}
           <div className="guide-sub">Déjà autorisées dans le téléphone, et toujours rien ?</div>
           <p className="muted" style={{ margin: '4px 2px 0', lineHeight: 1.45 }}>
